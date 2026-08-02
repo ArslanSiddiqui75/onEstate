@@ -1,0 +1,208 @@
+# 0nEstate (CertifiedUK / CertifiedUS) — Project Context
+
+> **Purpose**: This file preserves project context across model switches and chat sessions.
+> **Last updated**: 2026-08-02
+
+---
+
+## What Is This
+
+A unified, multi-tenant real estate SaaS platform built for estate agencies and brokerages. Two go-to-market brands (CertifiedUK / CertifiedUS) share a single codebase toggled by `NEXT_PUBLIC_BRAND`.
+
+Three surfaces:
+- `/` — Marketing landing page
+- `/app` — Multi-tenant product workspace (6 modules)
+- `/admin` — SaaS admin console
+
+---
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router) + TypeScript
+- **Styling**: Tailwind CSS v4
+- **Animations**: Framer Motion
+- **UI Primitives**: Radix UI
+- **Auth & DB**: Supabase Auth + Postgres + RLS (optional — durable localStorage fallback)
+- **SMS/Telephony**: Twilio (optional — simulated when unset)
+- **Payments**: Stripe Checkout + Customer Portal (platform-owned)
+- **Validation**: Zod v4
+- **Icons**: Lucide React
+- **Package manager**: npm
+
+---
+
+## Project Structure (Key Paths)
+
+```
+src/
+├── app/
+│   ├── page.tsx                      # Marketing landing page (~21 KB)
+│   ├── admin/                        # SaaS admin console
+│   │   ├── audit/ organizations/ subscriptions/ users/
+│   ├── app/                          # Product workspace
+│   │   ├── crm/page.tsx              # CRM module (~48 KB, 1289 lines)
+│   │   ├── listings/page.tsx         # Listings module (~13.5 KB)
+│   │   ├── transactions/page.tsx     # Transactions module (~12.7 KB)
+│   │   ├── website/page.tsx          # Website builder (~24 KB)
+│   │   ├── social/page.tsx           # Social media module
+│   │   ├── billing/page.tsx          # Billing module (~9.7 KB)
+│   │   ├── onboarding/page.tsx       # Tenant onboarding
+│   │   ├── login/ signup/
+│   ├── api/
+│   │   ├── stripe/  (checkout/ portal/ webhook/)
+│   │   ├── twilio/  (sms/ webhook/inbound/ webhook/status/)
+│   │   ├── social/  (accounts/ cron/ oauth/ publish/ status/)
+│   │   ├── waitlist/
+├── components/
+│   ├── ui/           # Design system (Badge, Button, Card, Input, etc.)
+│   ├── crm/          # automation-builder.tsx (25 KB)
+│   ├── social/       # social-planner.tsx (60 KB)
+│   ├── shell/        # App shell / sidebar
+│   ├── team/         # invite-modal.tsx
+│   ├── brand/        # Brand switcher
+│   ├── marketing/    # Landing page components
+├── lib/
+│   ├── app/session.tsx          # Main session provider (~36 KB, 1254 lines)
+│   ├── data/
+│   │   ├── repository.ts        # WorkspaceRepository interface
+│   │   ├── local-repository.ts  # localStorage implementation
+│   │   ├── supabase-repository.ts # Supabase implementation
+│   │   ├── workspace-store.ts   # Types + localStorage helpers
+│   │   ├── bootstrap.ts         # Seed data factory
+│   ├── stripe/config.ts         # Stripe client + price mapping
+│   ├── twilio/client.ts         # Twilio SMS client (live + simulated)
+│   ├── social/
+│   │   ├── providers.ts         # All 4 platform adapters (615 lines)
+│   │   ├── publish-service.ts   # Publish engine + cron
+│   │   ├── oauth-service.ts     # State + PKCE management
+│   │   ├── crypto.ts            # Token encryption
+│   │   ├── media.ts             # Platform labels/icons
+│   ├── rbac/matrix.ts           # 6×6 role-module access matrix
+│   ├── plans/catalog.ts         # Plan definitions + feature flags
+│   ├── access.ts                # hasModuleAccess(), hasFeature()
+│   ├── portals/adapters.ts      # Portal sync adapters (Rightmove, Zoopla, etc.)
+│   ├── jobs/queue.ts            # Background job queue abstraction
+│   ├── website/templates.ts     # [NEW] Website template definitions
+├── types/index.ts               # All TypeScript types (389 lines)
+supabase/migrations/             # 7 SQL migrations (001–007)
+```
+
+---
+
+## Data Architecture
+
+**Dual-mode persistence**: Everything works without Supabase (localStorage) and with Supabase (Postgres + RLS).
+
+Key types:
+- `WorkspaceSnapshot` — full state object (workspace-store.ts)
+- `WorkspaceOrg` — org with Stripe billing fields
+- `WorkspaceUser` — user with role + orgId
+- `WebsiteSite` — website config (headline, tagline, domain, sections, templateId, domainStatus)
+- `Lead`, `Contact`, `Listing`, `TransactionDeal` — core business objects
+- `SocialAccount`, `SocialPost` — social module
+- `Automation`, `AutomationStep` — CRM automation builder
+
+Session provider (`lib/app/session.tsx`) exposes all state + mutation methods via React Context.
+
+---
+
+## RBAC
+
+6 roles × 6 modules matrix. Enforced in UI (`hasModuleAccess`) and DB (RLS policies).
+
+| Module | Owner | Broker | Team Lead | Agent | Assistant | Accountant |
+|---|---|---|---|---|---|---|
+| CRM | Full | Full | Full | Full | Full | Full |
+| Listings | Full | Full | Full | Edit | View | Full |
+| Transactions | Full | Edit | Edit | View | — | View |
+| Website | Edit | Edit | Edit | — | — | — |
+| Social | Edit | View | View | — | Edit | — |
+| Billing | View | — | View | — | — | Full |
+
+---
+
+## Module Completion Status
+
+### ✅ Fully Built (just need env keys to go live)
+1. **CRM & Lead Management** (~90%) — Pipeline, search, pagination, scoring, contacts, SMS via Twilio, call logging, automation builder
+2. **Listings & Portal Sync** (~85%) — Table, search, sync buttons, portal adapters (stubbed), job queue
+3. **Transactions & Compliance** (~80%) — Deal cards, checklists, progress bars, e-sign indicators
+4. **Social Media Tools** (~85%) — All 4 platforms (Facebook, Instagram, LinkedIn, X) with real OAuth, publish, refresh, cron scheduler
+5. **Billing & Subscriptions** (~90%) — Stripe Checkout, Portal, Webhooks (6 events), plan swap with proration, UI
+
+### 🔴 Major Work Remaining
+6. **Website Builder** (~50% → building now):
+   - ✅ Settings panel, section toggles, live preview, domain field, publish toggle
+   - 🔨 IN PROGRESS: Template/theme system (8 pre-made templates)
+   - 🔨 IN PROGRESS: Domain connection system (DNS verification, status tracking)
+   - ❌ NOT YET: Public website rendering (server-side, multi-tenant by domain)
+   - ❌ NOT YET: Custom block editor, client portal as standalone
+
+---
+
+## Integration Status
+
+### Twilio ↔ CRM — ✅ Code Complete
+- `src/lib/twilio/client.ts` — sendTwilioSms with live/simulated fallback
+- `/api/twilio/sms` — Outbound with consent check, thread creation, message logging
+- `/api/twilio/webhook/inbound` — Inbound SMS handling
+- `/api/twilio/webhook/status` — Delivery status callbacks
+- CRM page sends SMS via session.sendSms → /api/twilio/sms
+- **Needs**: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
+
+### Stripe ↔ Billing — ✅ Code Complete
+- `src/lib/stripe/config.ts` — Client, price lookup, reverse lookup
+- `/api/stripe/checkout` — Session creation, existing subscription swap
+- `/api/stripe/portal` — Customer portal redirect
+- `/api/stripe/webhook` — 6 event types, org billing patch, audit logging
+- Migration 007 — billing columns on organizations
+- **Needs**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`
+
+### Social Media — ✅ Code Complete
+- `src/lib/social/providers.ts` — Facebook, Instagram, LinkedIn, X (all 4 with real OAuth + publish)
+- `src/lib/social/publish-service.ts` — Manual + scheduled cron publisher
+- `/api/social/` — 5 endpoints (accounts, cron, oauth, publish, status)
+- Token encryption at rest, auto-refresh
+- **Needs**: `META_APP_ID`, `META_APP_SECRET`, etc. per platform
+- **Decision**: n8n/Zapier NOT needed for MVP — direct API is already built
+
+---
+
+## Current Work In Progress
+
+### Website Template System & Domain Connection (Aug 2026)
+Building 8 pre-made templates (template picker UI, domain verification flow, DNS status tracking).
+
+New/modified files:
+- `src/lib/website/templates.ts` — [NEW] Template definitions
+- `src/types/index.ts` — Added `templateId`, `domainStatus`, `domainVerifiedAt`, `sslStatus` to `WebsiteSite`
+- `src/app/app/website/page.tsx` — Template picker + domain verification UI
+- `src/app/api/website/domain/verify/route.ts` — [NEW] DNS verification endpoint
+
+Public website rendering (server-side multi-tenant) is NOT built yet — that's Phase 2 of this feature.
+
+---
+
+## Environment Variables
+
+All documented in `.env.example`. Key groups:
+- `NEXT_PUBLIC_BRAND` — certified-uk or certified-us
+- Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`
+- Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
+- Social: `META_APP_ID`, `META_APP_SECRET`, `INSTAGRAM_APP_*`, `LINKEDIN_CLIENT_*`, `X_CLIENT_*`
+- Social infra: `SOCIAL_TOKEN_ENCRYPTION_KEY`, `SOCIAL_CRON_SECRET`
+
+---
+
+## Conventions
+
+- All pages are client components (`"use client"`)
+- Session state via `useAppSession()` hook from `lib/app/session.tsx`
+- Toast notifications via `toast.success()` / `toast.error()` from `components/ui/toast.tsx`
+- Module access checks via `hasModuleAccess(role, plan, module, level)`
+- Locked modules render `<LockedModule>` component
+- Loading/error via skeleton components and `<Alert>`
+- Motion via `fadeUp` / `staggerContainer` from `lib/motion.ts`
+- All money formatting via `formatMoney(amount, market)` from `lib/utils.ts`
+- IDs generated via `newId(prefix)` from `workspace-store.ts`

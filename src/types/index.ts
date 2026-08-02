@@ -316,6 +316,19 @@ export interface LeadTask {
   status: "open" | "done";
 }
 
+export type DomainStatus = "none" | "pending" | "verifying" | "connected" | "failed";
+export type SslStatus = "none" | "provisioning" | "active" | "error";
+
+export type WebsiteTemplateId =
+  | "modern-minimal"
+  | "luxury-dark"
+  | "classic-agency"
+  | "bold-vibrant"
+  | "coastal-living"
+  | "urban-edge"
+  | "heritage-estate"
+  | "tech-forward";
+
 export interface WebsiteSite {
   id: string;
   orgId: string;
@@ -334,6 +347,14 @@ export interface WebsiteSite {
   showContactForm?: boolean;
   showAgentBio?: boolean;
   aboutBio?: string;
+  /** Selected website template/theme */
+  templateId?: WebsiteTemplateId;
+  /** Domain connection status */
+  domainStatus?: DomainStatus;
+  /** When the domain was verified */
+  domainVerifiedAt?: string;
+  /** SSL certificate status */
+  sslStatus?: SslStatus;
 }
 
 export type SocialPlatform = "instagram" | "facebook" | "linkedin" | "x";
