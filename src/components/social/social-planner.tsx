@@ -22,6 +22,7 @@ import {
   PenLine,
   Plug,
   PlugZap,
+  Sparkles,
   Trash2,
   Upload,
   X,
@@ -70,7 +71,7 @@ import {
 import { cn, formatDate } from "@/lib/utils";
 
 type QueueFilter = "all" | "draft" | "scheduled" | "published" | "failed";
-type PlannerListing = Pick<Listing, "id" | "title" | "description" | "imageUrl" | "city" | "price">;
+type PlannerListing = Pick<Listing, "id" | "title" | "description" | "imageUrl" | "city" | "price" | "address" | "beds" | "baths" | "sqft">;
 
 type OAuthCandidate = {
   id: string;
@@ -785,12 +786,46 @@ export function SocialPlanner({
                   </div>
                 </div>
 
-                <Textarea
-                  placeholder="Write your caption…"
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                  rows={5}
-                />
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                      Caption
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs gap-1.5 text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                      onClick={() => {
+                        const selectedLst = listings.find((l) => l.id === listingId) || listings[0];
+                        if (!selectedLst) {
+                          setCaption("✨ Discover your dream property with our expert brokerage team! Contact us today for exclusive property tours and consultations. 🏠 #RealEstate #Property #HomeSweetHome");
+                          return;
+                        }
+                        const currencySymbol = market === "uk" ? "£" : "$";
+                        const generated = `🏡 EXCLUSIVE PROPERTY: ${selectedLst.title}
+📍 ${selectedLst.address}, ${selectedLst.city}
+💰 ${currencySymbol}${selectedLst.price.toLocaleString()}
+🛏️ ${selectedLst.beds} Beds | 🛁 ${selectedLst.baths} Baths | 📐 ${selectedLst.sqft || 1800} sq ft
+
+${selectedLst.description || "Stunning modern property built with premium finishes and prime neighborhood access."}
+
+DM us or click the link to schedule a private tour today! ✨
+#RealEstate #PropertyListing #DreamHome #${selectedLst.city.replace(/[^a-zA-Z]/g, "")}RealEstate #JustListed`;
+                        setCaption(generated);
+                      }}
+                    >
+                      <Sparkles className="size-3.5" />
+                      AI Generate Caption
+                    </Button>
+                  </div>
+                  <Textarea
+                    placeholder="Write your caption or use AI Generate Caption above…"
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    rows={5}
+                  />
+                </div>
 
                 <div className="space-y-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
@@ -1601,6 +1636,32 @@ function SelectedPostEditor({
           {listings.find((l) => l.id === post.listingId)?.title || post.listingId}
         </p>
       ) : null}
+
+      {/* Multi-Platform Live Preview Box */}
+      <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3 space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+          Multi-Platform Live Preview
+        </p>
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-xs space-y-2 shadow-sm">
+          <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+            <span className="font-semibold text-xs text-[var(--accent)] uppercase tracking-wide">
+              {post.channel || "Instagram"} Preview
+            </span>
+            <span className="text-[10px] text-[var(--muted)]">Live Rendering</span>
+          </div>
+          <p className="whitespace-pre-wrap">{caption || "Your post preview text will appear here..."}</p>
+          {media.length > 0 && (
+            <div className="relative h-32 w-full overflow-hidden rounded-md">
+              <img src={media[0].dataUrl} alt="" className="h-full w-full object-cover" />
+            </div>
+          )}
+          {linkUrl ? (
+            <div className="rounded border border-[var(--border)] bg-[var(--surface-muted)] p-1.5 text-[11px] text-[var(--accent)] truncate">
+              🔗 {linkUrl}
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       {canEdit ? (
         <div className="flex flex-wrap gap-2 pt-1">

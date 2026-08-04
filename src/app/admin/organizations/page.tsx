@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "@/components/ui/toast";
 import {
   Select,
   SelectContent,
@@ -88,6 +90,7 @@ export default function AdminOrganizationsPage() {
               <TH>Seats</TH>
               <TH>Health</TH>
               <TH>Last active</TH>
+              <TH className="text-right">Actions</TH>
             </TR>
           </THead>
           <TBody>
@@ -161,11 +164,25 @@ export default function AdminOrganizationsPage() {
                   <TD className="text-xs text-[var(--muted)]">
                     {new Date(tenant.lastActiveAt).toLocaleString()}
                   </TD>
+                  <TD className="text-right">
+                    <Button
+                      size="sm"
+                      variant={tenant.lifecycleStatus === "suspended" ? "default" : "secondary"}
+                      onClick={() => {
+                        const nextStatus = tenant.lifecycleStatus === "suspended" ? "active" : "suspended";
+                        tenant.lifecycleStatus = nextStatus;
+                        toast.info(`Organization "${tenant.name}" set to ${nextStatus}`);
+                      }}
+                      className="text-xs"
+                    >
+                      {tenant.lifecycleStatus === "suspended" ? "Activate" : "Suspend"}
+                    </Button>
+                  </TD>
                 </TR>
               );
             })}
             {rows.length === 0 ? (
-              <EmptyRow colSpan={7}>
+              <EmptyRow colSpan={8}>
                 No organizations match. Create a workspace in <code>/app</code> or sign in
                 with a seed account to populate the registry.
               </EmptyRow>

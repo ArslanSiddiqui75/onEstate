@@ -16,6 +16,7 @@ import type {
   Contact,
   ContactCategory,
   ContactSource,
+  Lead,
   LeadStage,
   LeadType,
   Priority,
@@ -28,6 +29,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { AutomationBuilder } from "@/components/crm/automation-builder";
 import {
   Contact as ContactIcon,
+  Download,
+  Eye,
+  FileSpreadsheet,
   Inbox as InboxIcon,
   ListChecks,
   Pencil,
@@ -35,6 +39,7 @@ import {
   Search,
   Sparkles,
   Trash2,
+  Upload,
   Workflow,
   X,
 } from "lucide-react";
@@ -124,9 +129,42 @@ export default function AppCrmPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [viewDetailLead, setViewDetailLead] = useState<Lead | null>(null);
+  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [csvText, setCsvText] = useState("");
   const [draftText, setDraftText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function exportLeadsCsv(leadsToExport: Lead[]) {
+    if (!leadsToExport.length) {
+      toast.error("No leads to export");
+      return;
+    }
+    const headers = ["ID", "Name", "Email", "Phone", "Type", "Stage", "Score", "Source", "Budget", "Priority", "Created At"];
+    const rows = leadsToExport.map((l) => [
+      l.id,
+      `"${l.name.replace(/"/g, '""')}"`,
+      l.email || "",
+      l.phone || "",
+      l.type,
+      l.stage,
+      l.score,
+      `"${(l.source || "").replace(/"/g, '""')}"`,
+      l.budget || 0,
+      l.priority || "medium",
+      l.createdAt,
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `leads_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(`Exported ${leadsToExport.length} leads to CSV`);
+  }
 
   const allMarketLeads = useMemo(
     () =>
@@ -296,7 +334,25 @@ export default function AppCrmPage() {
               {allMarketLeads.length} lead{allMarketLeads.length !== 1 ? "s" : ""}
             </span>
             {canEdit ? (
-              <div className="ml-auto flex items-center gap-2">
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => exportLeadsCsv(allMarketLeads)}
+                  className="gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export CSV
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowCsvImport(true)}
+                  className="gap-1.5"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  Import CSV
+                </Button>
                 <InviteModal
                   plan={org.plan}
                   currentMemberCount={members.length}
@@ -443,6 +499,7 @@ export default function AppCrmPage() {
                   <TH>Next action</TH>
                   <TH>Budget</TH>
                   <TH>Score</TH>
+                  <TH className="text-right">Actions</TH>
                 </TR>
               </THead>
               <TBody>
@@ -453,7 +510,13 @@ export default function AppCrmPage() {
                   return (
                     <TR key={lead.id}>
                       <TD>
-                        <p className="font-medium">{lead.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => setViewDetailLead(lead)}
+                          className="font-medium hover:underline text-left"
+                        >
+                          {lead.name}
+                        </button>
                         <p className="text-xs text-[var(--muted)]">{lead.source}</p>
                       </TD>
                       <TD>
@@ -506,6 +569,16 @@ export default function AppCrmPage() {
                       </TD>
                       <TD>{lead.budget ? formatMoney(lead.budget, market) : "—"}</TD>
                       <TD>{flags.leadScoring ? lead.score : "—"}</TD>
+                      <TD className="text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setViewDetailLead(lead)}
+                          title="View lead details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TD>
                     </TR>
                   );
                 })}
@@ -869,6 +942,164 @@ export default function AppCrmPage() {
           </section>
         </TabsContent>
       </Tabs>
+
+      {viewDetailLead ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="surface-panel w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[1.75rem] p-6 shadow-2xl space-y-4">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <Avatar name={viewDetailLead.name} size="md" />
+                <div>
+                  <h2 className="text-xl font-semibold">{viewDetailLead.name}</h2>
+                  <p className="text-xs text-[var(--muted)]">
+                    {viewDetailLead.email} · {viewDetailLead.phone || "No phone"} · {viewDetailLead.source}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewDetailLead(null)}
+                className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-muted)]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]">
+              <Badge tone="accent">Type: {viewDetailLead.type}</Badge>
+              <Badge tone="success">Stage: {viewDetailLead.stage}</Badge>
+              <Badge tone={viewDetailLead.priority === "urgent" ? "danger" : "neutral"}>
+                Priority: {viewDetailLead.priority || "medium"}
+              </Badge>
+              {flags.leadScoring ? <Badge>Score: {viewDetailLead.score}/100</Badge> : null}
+              {viewDetailLead.budget ? (
+                <Badge tone="accent">Budget: {formatMoney(viewDetailLead.budget, market)}</Badge>
+              ) : null}
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <h3 className="text-sm font-semibold">Lead Details & Activity</h3>
+              <div className="grid gap-3 sm:grid-cols-2 rounded-xl bg-[var(--surface-muted)] p-4 text-sm">
+                <div>
+                  <span className="text-xs text-[var(--muted)] font-medium block">Next Action</span>
+                  <span>{viewDetailLead.nextAction || "None scheduled"}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-[var(--muted)] font-medium block">Owner / Assigned Agent</span>
+                  <span>{members.find((m) => m.id === viewDetailLead.assignedTo)?.name || "Unassigned"}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-[var(--muted)] font-medium block">Created Date</span>
+                  <span>{formatDate(viewDetailLead.createdAt, market)}</span>
+                </div>
+                <div>
+                  <span className="text-xs text-[var(--muted)] font-medium block">Last Updated</span>
+                  <span>{formatDate(viewDetailLead.updatedAt, market)}</span>
+                </div>
+              </div>
+
+              {viewDetailLead.notes ? (
+                <div className="rounded-xl border border-[var(--border)] p-3 text-sm">
+                  <span className="text-xs font-semibold text-[var(--muted)] block">Notes</span>
+                  <p className="mt-1">{viewDetailLead.notes}</p>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t border-[var(--border)]">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setSelectedLeadId(viewDetailLead.id);
+                  setViewDetailLead(null);
+                  setTab("inbox");
+                }}
+              >
+                <InboxIcon className="h-3.5 w-3.5 mr-1" />
+                Go to SMS Thread
+              </Button>
+              <Button size="sm" onClick={() => setViewDetailLead(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showCsvImport ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="surface-panel w-full max-w-lg rounded-[1.75rem] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Bulk Import Leads via CSV</h2>
+              <button
+                type="button"
+                onClick={() => setShowCsvImport(false)}
+                className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-muted)]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[var(--muted)]">
+              Paste CSV data with headers: <code>name, email, phone, type, budget, source</code>.
+            </p>
+
+            <textarea
+              className="min-h-36 w-full font-mono text-xs rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3"
+              placeholder={`name,email,phone,type,budget,source\nJohn Doe,john@example.com,+447700900077,buyer,450000,Rightmove\nJane Smith,jane@example.com,+15550199,seller,850000,Zillow`}
+              value={csvText}
+              onChange={(e) => setCsvText(e.target.value)}
+            />
+
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="secondary" onClick={() => setShowCsvImport(false)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={!csvText.trim() || busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    const lines = csvText.trim().split("\n");
+                    let importedCount = 0;
+                    const hasHeader = lines[0].toLowerCase().includes("name");
+                    const dataLines = hasHeader ? lines.slice(1) : lines;
+
+                    for (const line of dataLines) {
+                      const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+                      if (!cols[0]) continue;
+                      await addLead({
+                        name: cols[0],
+                        email: cols[1] || `imported_${Date.now()}@lead.com`,
+                        phone: cols[2] || "",
+                        type: (cols[3] as LeadType) || "buyer",
+                        stage: "new",
+                        score: 60,
+                        assignedTo: user.id,
+                        market,
+                        source: cols[5] || "CSV Import",
+                        budget: Number(cols[4]) || undefined,
+                        nextAction: "Initial contact after import",
+                      });
+                      importedCount++;
+                    }
+                    toast.success(`Successfully imported ${importedCount} leads`);
+                    setCsvText("");
+                    setShowCsvImport(false);
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "CSV Import failed");
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {busy ? "Importing…" : "Import Leads"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

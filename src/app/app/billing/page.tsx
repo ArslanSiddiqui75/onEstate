@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { CreditCard, ShieldCheck, ListChecks } from "lucide-react";
+import { CreditCard, ShieldCheck, ListChecks, ChevronDown, ChevronUp, Download, FileText } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
+import { Table, TBody, TD, TH, THead, TR, TableShell } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { PlanId } from "@/types";
 import { MODULE_LABELS } from "@/lib/rbac/matrix";
@@ -41,6 +42,7 @@ export default function AppBillingPage() {
   const [tone, setTone] = useState<"neutral" | "danger">("neutral");
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [showMatrix, setShowMatrix] = useState(false);
 
   if (!user || !org) return null;
 
@@ -263,6 +265,136 @@ export default function AppBillingPage() {
           );
         })}
       </motion.div>
+
+      {/* Feature Comparison Matrix Toggle */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between cursor-pointer" onClick={() => setShowMatrix((v) => !v)}>
+          <div>
+            <h3 className="font-semibold text-base">Compare Plan Features & Limits</h3>
+            <p className="text-xs text-[var(--muted)]">Detailed breakdown of seat limits, CRM, portal sync, and support per tier.</p>
+          </div>
+          <Button variant="ghost" size="sm" className="gap-1">
+            {showMatrix ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {showMatrix ? "Hide Matrix" : "Show Matrix"}
+          </Button>
+        </div>
+
+        {showMatrix ? (
+          <div className="mt-4 pt-4 border-t border-[var(--border)] overflow-x-auto">
+            <TableShell>
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Feature / Capability</TH>
+                    <TH>Solo / Starter</TH>
+                    <TH>Team / Brokerage</TH>
+                    <TH>Enterprise</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  <TR>
+                    <TD className="font-medium">Team Seats Included</TD>
+                    <TD>1 Seat</TD>
+                    <TD>Up to 10 Seats</TD>
+                    <TD>Unlimited Seats</TD>
+                  </TR>
+                  <TR>
+                    <TD className="font-medium">CRM Lead Storage</TD>
+                    <TD>500 Leads</TD>
+                    <TD>5,000 Leads</TD>
+                    <TD>Unlimited Leads</TD>
+                  </TR>
+                  <TR>
+                    <TD className="font-medium">Portal Distribution Sync</TD>
+                    <TD>Manual / 2 Portals</TD>
+                    <TD>Automated (Rightmove, Zoopla, Zillow, MLS)</TD>
+                    <TD>Custom API Feeds & Real-time Webhooks</TD>
+                  </TR>
+                  <TR>
+                    <TD className="font-medium">Social Media Planner</TD>
+                    <TD>Manual Scheduling</TD>
+                    <TD>Auto Listing-to-Post (All 4 Networks)</TD>
+                    <TD>Multi-Brand Social Suite & AI Captions</TD>
+                  </TR>
+                  <TR>
+                    <TD className="font-medium">Compliance & E-Sign</TD>
+                    <TD>Basic Checklists</TD>
+                    <TD>E-Signatures & Audit Trail</TD>
+                    <TD>Custom Conveyancing Workflows</TD>
+                  </TR>
+                  <TR>
+                    <TD className="font-medium">Support SLA</TD>
+                    <TD>Standard Email</TD>
+                    <TD>Priority Chat & Phone</TD>
+                    <TD>Dedicated Account Manager (24/7)</TD>
+                  </TR>
+                </TBody>
+              </Table>
+            </TableShell>
+          </div>
+        ) : null}
+      </Card>
+
+      {/* Invoice & Payment History */}
+      <Card className="p-4 space-y-3">
+        <CardHeader
+          title="Billing & Invoice History"
+          description="Past subscription receipts and payment transactions"
+        />
+        <TableShell>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Date</TH>
+                <TH>Description</TH>
+                <TH>Plan Tier</TH>
+                <TH>Amount</TH>
+                <TH>Status</TH>
+                <TH className="text-right">Receipt</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {[
+                { date: "2026-08-01", desc: "Monthly Platform Subscription", plan: org.plan, amount: currency + (market === "uk" ? "299" : "349"), status: "paid" },
+                { date: "2026-07-01", desc: "Monthly Platform Subscription", plan: org.plan, amount: currency + (market === "uk" ? "299" : "349"), status: "paid" },
+                { date: "2026-06-01", desc: "Monthly Platform Subscription", plan: org.plan, amount: currency + (market === "uk" ? "299" : "349"), status: "paid" },
+              ].map((inv, idx) => (
+                <TR key={idx}>
+                  <TD>{inv.date}</TD>
+                  <TD className="font-medium">{inv.desc}</TD>
+                  <TD className="capitalize">{inv.plan}</TD>
+                  <TD className="font-medium">{inv.amount}</TD>
+                  <TD>
+                    <Badge tone="success" className="capitalize">{inv.status}</Badge>
+                  </TD>
+                  <TD className="text-right">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1 text-xs"
+                      onClick={() => {
+                        const receiptText = `RECEIPT - 0nEstate\nInvoice Date: ${inv.date}\nOrganization: ${org.name}\nPlan: ${inv.plan.toUpperCase()}\nAmount Paid: ${inv.amount}\nStatus: PAID\nThank you for choosing 0nEstate!`;
+                        const blob = new Blob([receiptText], { type: "text/plain" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `invoice_${inv.date}_0nEstate.txt`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        toast.success("Receipt downloaded");
+                      }}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Receipt
+                    </Button>
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        </TableShell>
+      </Card>
     </div>
   );
 }

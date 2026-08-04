@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, CheckSquare, AlertTriangle } from "lucide-react";
+import { FileText, CheckSquare, AlertTriangle, Plus, Download, X } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { formatDate, formatMoney } from "@/lib/utils";
 import { fadeUp, staggerContainer } from "@/lib/motion";
+import type { TransactionDeal } from "@/types";
 
 const STAGES = [
   "Instruction",
@@ -33,6 +37,9 @@ const STAGES = [
 export default function AppTransactionsPage() {
   const { user, org, deals, market, updateDealChecklistItem, updateDealMeta } =
     useAppSession();
+  const [showNewDealModal, setShowNewDealModal] = useState(false);
+  const [newItemLabel, setNewItemLabel] = useState<Record<string, string>>({});
+
   if (!user || !org) return null;
   if (!hasModuleAccess(user.role, org.plan, "transactions", "view")) {
     return (
@@ -46,6 +53,43 @@ export default function AppTransactionsPage() {
 
   const marketDeals = deals.filter((deal) => deal.market === market);
 
+  function exportDealSummary(deal: TransactionDeal) {
+    const doneCount = deal.checklist.filter(i => i.done).length;
+    const summary = `
+========================================
+TRANSACTION SUMMARY REPORT: ${deal.listingTitle}
+========================================
+Market: ${deal.market.toUpperCase()}
+Value: ${formatMoney(deal.value, deal.market)}
+Stage: ${deal.stage}
+Parties: ${deal.parties.join(" · ")}
+Target Close Date: ${deal.targetCloseDate ? formatDate(deal.targetCloseDate, deal.market) : "N/A"}
+E-Sign Status: ${deal.eSignStatus}
+Compliance Status: ${deal.complianceStatus || "on_track"}
+Ledger Status: ${deal.ledgerStatus || "not_started"}
+Checklist Progress: ${doneCount}/${deal.checklist.length} items completed
+
+CHECKLIST DETAILS:
+${deal.checklist.map((item, idx) => `${idx + 1}. [${item.done ? "X" : " "}] ${item.label}`).join("\n")}
+
+NOTES:
+${deal.notes || "No notes attached."}
+
+Generated on ${new Date().toLocaleString()} by 0nEstate platform.
+========================================
+`.trim();
+
+    const blob = new Blob([summary], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `deal_summary_${deal.listingTitle.replace(/[^a-z0-9]/gi, "_")}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast.success("Exported deal summary report");
+  }
+
   // Empty state
   if (marketDeals.length === 0) {
     return (
@@ -58,6 +102,14 @@ export default function AppTransactionsPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">Transactions & Conveyancing</h1>
+        <Button onClick={() => setShowNewDealModal(true)} className="gap-1.5">
+          <Plus className="h-4 w-4" />
+          Add transaction
+        </Button>
+      </div>
+
       <motion.div
         variants={staggerContainer}
         initial="hidden"
@@ -96,23 +148,35 @@ export default function AppTransactionsPage() {
                     {deal.parties.join(" · ")}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-display text-2xl">
-                    {formatMoney(deal.value, market)}
-                  </p>
-                  {deal.targetCloseDate ? (
-                    <p className={`text-xs ${
-                      new Date(deal.targetCloseDate) < new Date()
-                        ? "font-semibold text-[var(--danger)] flex items-center gap-1 justify-end"
-                        : "text-[var(--muted)]"
-                    }`}>
-                      {new Date(deal.targetCloseDate) < new Date() && (
-                        <AlertTriangle className="h-3 w-3" />
-                      )}
-                      {new Date(deal.targetCloseDate) < new Date() ? "Overdue · " : "Target close "}
-                      {formatDate(deal.targetCloseDate, market)}
+                <div className="flex items-center gap-3">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => exportDealSummary(deal)}
+                    className="gap-1.5 text-xs"
+                    title="Download text summary report"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Export Summary
+                  </Button>
+                  <div className="text-right">
+                    <p className="font-display text-2xl">
+                      {formatMoney(deal.value, market)}
                     </p>
-                  ) : null}
+                    {deal.targetCloseDate ? (
+                      <p className={`text-xs ${
+                        new Date(deal.targetCloseDate) < new Date()
+                          ? "font-semibold text-[var(--danger)] flex items-center gap-1 justify-end"
+                          : "text-[var(--muted)]"
+                      }`}>
+                        {new Date(deal.targetCloseDate) < new Date() && (
+                          <AlertTriangle className="h-3 w-3" />
+                        )}
+                        {new Date(deal.targetCloseDate) < new Date() ? "Overdue · " : "Target close "}
+                        {formatDate(deal.targetCloseDate, market)}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
@@ -207,6 +271,31 @@ export default function AppTransactionsPage() {
                       </li>
                     ))}
                   </ul>
+
+                  {/* Add Custom Checklist Item */}
+                  <form
+                    className="mt-3 flex gap-2"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const label = newItemLabel[deal.id]?.trim();
+                      if (!label) return;
+                      const newItem = { id: `chk_${Date.now()}`, label, done: false };
+                      deal.checklist.push(newItem);
+                      setNewItemLabel((prev) => ({ ...prev, [deal.id]: "" }));
+                      toast.success(`Added "${label}" to checklist`);
+                    }}
+                  >
+                    <Input
+                      placeholder="Add custom compliance item…"
+                      value={newItemLabel[deal.id] || ""}
+                      onChange={(e) => setNewItemLabel((prev) => ({ ...prev, [deal.id]: e.target.value }))}
+                      className="h-9 text-xs"
+                    />
+                    <Button type="submit" size="sm" variant="secondary" className="gap-1">
+                      <Plus className="h-3.5 w-3.5" />
+                      Add
+                    </Button>
+                  </form>
                 </TabsContent>
 
                 <TabsContent value="details" className="mt-4">
@@ -304,6 +393,79 @@ export default function AppTransactionsPage() {
           </motion.article>
         ))}
       </motion.div>
+
+      {showNewDealModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="surface-panel w-full max-w-md rounded-[1.75rem] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">New Transaction Deal</h2>
+              <button
+                type="button"
+                onClick={() => setShowNewDealModal(false)}
+                className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-muted)]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form
+              className="space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const form = new FormData(e.currentTarget);
+                const title = String(form.get("title"));
+                const value = Number(form.get("value") || 0);
+                const party1 = String(form.get("party1") || "Buyer");
+                const party2 = String(form.get("party2") || "Seller");
+                const targetCloseDate = String(form.get("targetCloseDate") || "");
+
+                const newDeal: TransactionDeal = {
+                  id: `deal_${Date.now()}`,
+                  listingId: `lst_custom_${Date.now()}`,
+                  listingTitle: title,
+                  parties: [party1, party2],
+                  stage: "Instruction",
+                  checklist: [
+                    { id: `c_${Date.now()}_1`, label: "ID & AML check complete", done: false },
+                    { id: `c_${Date.now()}_2`, label: "Draft contract issued", done: false },
+                    { id: `c_${Date.now()}_3`, label: "Searches & inquiries submitted", done: false },
+                    { id: `c_${Date.now()}_4`, label: "Mortgage offer verified", done: false },
+                  ],
+                  eSignStatus: "not_started",
+                  market,
+                  value,
+                  currency: market === "uk" ? "GBP" : "USD",
+                  targetCloseDate: targetCloseDate || undefined,
+                  complianceStatus: "on_track",
+                  ledgerStatus: "not_started",
+                  updatedAt: new Date().toISOString(),
+                };
+                deals.push(newDeal);
+                toast.success(`Created transaction "${title}"`);
+                setShowNewDealModal(false);
+              }}
+            >
+              <Input name="title" placeholder="Property / Deal Title" required />
+              <Input name="value" type="number" placeholder="Deal Value" required />
+              <div className="grid grid-cols-2 gap-2">
+                <Input name="party1" placeholder="Party 1 (Buyer/Tenant)" required />
+                <Input name="party2" placeholder="Party 2 (Seller/Landlord)" required />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-[var(--muted)]">Target Close Date</label>
+                <Input name="targetCloseDate" type="date" className="mt-1" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button type="button" variant="secondary" onClick={() => setShowNewDealModal(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Create Deal
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
