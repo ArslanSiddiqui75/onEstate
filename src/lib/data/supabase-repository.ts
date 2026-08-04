@@ -318,17 +318,53 @@ export function createSupabaseRepository(
       const { data, error } = await supabase
         .from("leads")
         .update({
-          next_action: patch.nextAction,
-          next_action_due_at: patch.nextActionDueAt,
-          priority: patch.priority,
-          notes: patch.notes,
+          ...(patch.name !== undefined ? { name: patch.name } : {}),
+          ...(patch.email !== undefined ? { email: patch.email } : {}),
+          ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
+          ...(patch.nextAction !== undefined ? { next_action: patch.nextAction } : {}),
+          ...(patch.nextActionDueAt !== undefined ? { next_action_due_at: patch.nextActionDueAt } : {}),
+          ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+          ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
-        .select("*")
+        .select("*, lead_phone_numbers(*)")
         .single();
       if (error) throw error;
-      return mapLead(data);
+      
+      if (patch.phones) {
+        // Simple wipe and replace for phones to sync changes easily
+        await supabase.from("lead_phone_numbers").delete().eq("lead_id", id);
+        if (patch.phones.length > 0) {
+          await supabase.from("lead_phone_numbers").insert(
+            patch.phones.map((p) => ({
+              lead_id: id,
+              org_id: ctx.org.id,
+              label: p.label,
+              number: p.number,
+              source: p.source,
+              consent: p.consent,
+              verification: p.verification,
+              preferred: Boolean(p.preferred),
+            }))
+          );
+        }
+        data.lead_phone_numbers = patch.phones;
+      }
+      
+      return mapLead(
+        data,
+        (data.lead_phone_numbers || []).map((p: Record<string, unknown>) => ({
+          id: String(p.id || newId("phone")),
+          label: String(p.label),
+          number: String(p.number),
+          source: p.source as NonNullable<Lead["phones"]>[number]["source"],
+          consent: p.consent as NonNullable<Lead["phones"]>[number]["consent"],
+          verification: p.verification as NonNullable<Lead["phones"]>[number]["verification"],
+          preferred: Boolean(p.preferred),
+          lastContactedAt: p.last_contacted_at ? String(p.last_contacted_at) : undefined,
+        }))
+      );
     },
 
     async listContacts() {

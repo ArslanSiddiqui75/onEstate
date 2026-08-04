@@ -663,6 +663,31 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     ) => {
       if (!repoRef.current) return;
       await repoRef.current.updateContact(id, patch);
+      
+      const snap = await repoRef.current.getSnapshot();
+      if (snap) {
+        const contact = snap.contacts.find((c) => c.id === id);
+        const targetLeadId = patch.leadId || contact?.leadId;
+        if (targetLeadId) {
+          const leadPatch: any = {};
+          if (patch.name !== undefined) leadPatch.name = patch.name;
+          if (patch.email !== undefined) leadPatch.email = patch.email;
+          if (patch.phone !== undefined) {
+            leadPatch.phone = patch.phone;
+            const lead = snap.leads.find((l) => l.id === targetLeadId);
+            if (lead?.phones?.length) {
+              leadPatch.phones = [
+                { ...lead.phones[0], number: patch.phone || "" },
+                ...lead.phones.slice(1),
+              ];
+            }
+          }
+          if (Object.keys(leadPatch).length > 0) {
+            await repoRef.current.updateLead(targetLeadId, leadPatch);
+          }
+        }
+      }
+
       await refresh();
     },
     [refresh],

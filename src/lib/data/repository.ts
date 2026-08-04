@@ -35,7 +35,7 @@ export interface WorkspaceRepository {
   updateLead(
     id: string,
     patch: Partial<
-      Pick<Lead, "nextAction" | "nextActionDueAt" | "priority" | "notes">
+      Pick<Lead, "name" | "email" | "phone" | "phones" | "nextAction" | "nextActionDueAt" | "priority" | "notes">
     >,
   ): Promise<Lead>;
   listContacts(): Promise<Contact[]>;
