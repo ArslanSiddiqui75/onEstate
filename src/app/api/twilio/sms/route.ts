@@ -26,10 +26,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await sendTwilioSms({
-    to: parsed.data.to,
-    body: parsed.data.body,
-  });
+  let result;
+  try {
+    result = await sendTwilioSms({
+      to: parsed.data.to,
+      body: parsed.data.body,
+    });
+  } catch (error) {
+    console.error("Twilio SMS Error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to send SMS" },
+      { status: 500 }
+    );
+  }
 
   const supabase = createServiceSupabaseClient();
   let messageId: string | undefined;
