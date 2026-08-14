@@ -12,8 +12,15 @@ export function createPkcePair() {
 
 export function getRequestOrigin(request: Request): string {
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
-  const proto = request.headers.get("x-forwarded-proto") || "https";
+  const forwardedProto = request.headers.get("x-forwarded-proto");
   if (host) {
+    const isLocal =
+      host.startsWith("localhost") ||
+      host.startsWith("127.0.0.1") ||
+      host.startsWith("0.0.0.0") ||
+      host.includes("localhost:") ||
+      host.includes("127.0.0.1:");
+    const proto = forwardedProto || (isLocal ? "http" : "https");
     return `${proto}://${host}`;
   }
   return new URL(request.url).origin;

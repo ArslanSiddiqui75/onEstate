@@ -21,11 +21,12 @@ function OAuthReturnBanner() {
 
   useEffect(() => {
     if (handledRef.current) return;
-    handledRef.current = true;
-
     const connected = searchParams.get("social_connected");
     const count = searchParams.get("count");
     const error = searchParams.get("social_error");
+
+    if (!connected && !error) return;
+    handledRef.current = true;
 
     if (connected) {
       const label = PLATFORM_LABEL[connected as SocialPlatform] || connected;
@@ -43,10 +44,8 @@ function OAuthReturnBanner() {
     }
 
     // Safely clear the query params and #_ fragment from the URL bar without triggering Next.js routing loops
-    if (connected || error || (typeof window !== "undefined" && window.location.hash)) {
-      if (typeof window !== "undefined") {
-        window.history.replaceState(null, "", "/app/social");
-      }
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", window.location.pathname);
     }
   }, [searchParams, refresh]);
 

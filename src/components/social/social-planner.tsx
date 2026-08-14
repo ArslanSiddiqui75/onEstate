@@ -281,8 +281,18 @@ export function SocialPlanner({
       const stillConnected = prev.filter((id) =>
         connected.some((a) => a.id === id),
       );
-      if (stillConnected.length) return stillConnected;
-      return connected.slice(0, 1).map((a) => a.id);
+      const target =
+        stillConnected.length > 0
+          ? stillConnected
+          : connected.slice(0, 1).map((a) => a.id);
+
+      if (
+        prev.length === target.length &&
+        prev.every((id, idx) => id === target[idx])
+      ) {
+        return prev;
+      }
+      return target;
     });
   }, [connected]);
 

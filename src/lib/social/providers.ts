@@ -189,6 +189,8 @@ const instagramProvider: SocialProvider = {
     "Set INSTAGRAM_APP_ID and INSTAGRAM_APP_SECRET from a Meta app with the Instagram product's \"API setup with Instagram login\".",
   buildAuthorizeUrl: ({ redirectUri, state }) => {
     const params = new URLSearchParams({
+      enable_fb_login: "0",
+      force_authentication: "1",
       client_id: process.env.INSTAGRAM_APP_ID || "",
       redirect_uri: redirectUri,
       response_type: "code",
@@ -214,9 +216,14 @@ const instagramProvider: SocialProvider = {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: form.toString(),
     });
-    const shortJson = await shortRes.json();
+    const shortJson = await shortRes.json().catch(() => ({}));
     if (!shortRes.ok || !shortJson.access_token) {
-      throw new Error(shortJson.error_message || shortJson.error?.message || "Instagram token exchange failed");
+      const errorMsg =
+        shortJson.error_message ||
+        shortJson.error?.message ||
+        shortJson.error?.error_user_msg ||
+        (shortRes.statusText ? `HTTP ${shortRes.status} ${shortRes.statusText}` : "Instagram token exchange failed");
+      throw new Error(`Instagram token exchange failed: ${errorMsg}`);
     }
 
     const longUrl = new URL("https://graph.instagram.com/access_token");
@@ -224,22 +231,31 @@ const instagramProvider: SocialProvider = {
     longUrl.searchParams.set("client_secret", clientSecret);
     longUrl.searchParams.set("access_token", shortJson.access_token);
     const longRes = await fetch(longUrl.toString());
-    const longJson = await longRes.json();
+    const longJson = await longRes.json().catch(() => ({}));
     const accessToken = longRes.ok && longJson.access_token ? longJson.access_token : shortJson.access_token;
     const expiresAt = longJson.expires_in
       ? new Date(Date.now() + Number(longJson.expires_in) * 1000).toISOString()
       : undefined;
 
-    // graph.instagram.com /me node only supports id, user_id, username, account_type
-    const meUrl = new URL(`https://graph.instagram.com/${GRAPH_VERSION}/me`);
-    meUrl.searchParams.set("fields", "id,user_id,username,account_type");
-    meUrl.searchParams.set("access_token", accessToken);
-    const meRes = await fetch(meUrl.toString());
-    const meJson = await meRes.json();
-    if (!meRes.ok) throw new Error(meJson.error?.message || "Could not read the Instagram profile");
+    let username = "";
+    let externalAccountId = String(shortJson.user_id || "");
+    try {
+      const meUrl = new URL(`https://graph.instagram.com/${GRAPH_VERSION}/me`);
+      meUrl.searchParams.set("fields", "id,user_id,username,account_type");
+      meUrl.searchParams.set("access_token", accessToken);
+      const meRes = await fetch(meUrl.toString());
+      const meJson = await meRes.json().catch(() => ({}));
+      if (meRes.ok) {
+        if (meJson.username) username = String(meJson.username);
+        if (meJson.user_id || meJson.id) externalAccountId = String(meJson.user_id || meJson.id);
+      }
+    } catch {
+      // Use fallback ID if /me request encounters permission constraints
+    }
 
-    const username = meJson.username ? String(meJson.username) : "";
-    const externalAccountId = String(meJson.user_id || meJson.id || shortJson.user_id);
+    if (!externalAccountId) {
+      externalAccountId = `ig_${Date.now()}`;
+    }
 
     return [
       {
