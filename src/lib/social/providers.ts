@@ -200,13 +200,14 @@ const instagramProvider: SocialProvider = {
   async exchangeCode({ code, redirectUri }) {
     const clientId = process.env.INSTAGRAM_APP_ID || "";
     const clientSecret = process.env.INSTAGRAM_APP_SECRET || "";
+    const cleanCode = code.replace(/#_.*$/, "").replace(/#.*$/, "").trim();
 
     const form = new URLSearchParams({
       client_id: clientId,
       client_secret: clientSecret,
       grant_type: "authorization_code",
       redirect_uri: redirectUri,
-      code,
+      code: cleanCode,
     });
     const shortRes = await fetch("https://api.instagram.com/oauth/access_token", {
       method: "POST",
@@ -215,7 +216,7 @@ const instagramProvider: SocialProvider = {
     });
     const shortJson = await shortRes.json();
     if (!shortRes.ok || !shortJson.access_token) {
-      throw new Error(shortJson.error_message || "Instagram token exchange failed");
+      throw new Error(shortJson.error_message || shortJson.error?.message || "Instagram token exchange failed");
     }
 
     const longUrl = new URL("https://graph.instagram.com/access_token");
@@ -229,19 +230,23 @@ const instagramProvider: SocialProvider = {
       ? new Date(Date.now() + Number(longJson.expires_in) * 1000).toISOString()
       : undefined;
 
+    // graph.instagram.com /me node only supports id, user_id, username, account_type
     const meUrl = new URL(`https://graph.instagram.com/${GRAPH_VERSION}/me`);
-    meUrl.searchParams.set("fields", "user_id,username,name,profile_picture_url");
+    meUrl.searchParams.set("fields", "id,user_id,username,account_type");
     meUrl.searchParams.set("access_token", accessToken);
     const meRes = await fetch(meUrl.toString());
     const meJson = await meRes.json();
     if (!meRes.ok) throw new Error(meJson.error?.message || "Could not read the Instagram profile");
 
+    const username = meJson.username ? String(meJson.username) : "";
+    const externalAccountId = String(meJson.user_id || meJson.id || shortJson.user_id);
+
     return [
       {
-        externalAccountId: String(meJson.user_id || shortJson.user_id),
-        displayName: String(meJson.name || meJson.username || "Instagram account"),
-        handle: meJson.username ? `@${meJson.username}` : undefined,
-        avatarUrl: meJson.profile_picture_url,
+        externalAccountId,
+        displayName: username ? `@${username}` : "Instagram Account",
+        handle: username ? `@${username}` : undefined,
+        avatarUrl: undefined,
         accessToken,
         expiresAt,
         scopes: ["instagram_business_content_publish"],

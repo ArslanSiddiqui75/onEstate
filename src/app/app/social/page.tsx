@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
@@ -12,44 +12,60 @@ import type { SocialPlatform } from "@/types";
 
 function OAuthReturnBanner() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { refresh } = useAppSession();
-  const handledRef = useRef(false);
+  const [banner, setBanner] = useState<{
+    tone: "success" | "danger";
+    message: string;
+  } | null>(null);
 
-  const notice = useMemo(() => {
+  useEffect(() => {
     const connected = searchParams.get("social_connected");
     const count = searchParams.get("count");
     const error = searchParams.get("social_error");
+
     if (connected) {
       const label = PLATFORM_LABEL[connected as SocialPlatform] || connected;
       const n = Number(count || 1);
-      return {
-        tone: "success" as const,
+      setBanner({
+        tone: "success",
         message: `Connected ${n} ${label} ${n === 1 ? "account" : "accounts"}.`,
-      };
+      });
+      void refresh();
+    } else if (error) {
+      setBanner({
+        tone: "danger",
+        message: error,
+      });
     }
-    if (error) return { tone: "danger" as const, message: error };
-    return null;
-  }, [searchParams]);
 
-  useEffect(() => {
-    if (!notice || handledRef.current) return;
-    handledRef.current = true;
-    if (notice.tone === "success") void refresh();
-    router.replace("/app/social");
+    // Safely clear the query params and #_ fragment from the URL bar without triggering Next.js routing loops
+    if (connected || error || (typeof window !== "undefined" && window.location.hash)) {
+      if (typeof window !== "undefined") {
+        window.history.replaceState({}, "", "/app/social");
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notice]);
+  }, []);
 
-  if (!notice) return null;
+  if (!banner) return null;
+
   return (
     <div
       className={
-        notice.tone === "success"
-          ? "rounded-[var(--radius-sm)] border border-[var(--success)]/30 bg-[var(--success-soft)] px-3 py-2 text-sm text-[var(--success)]"
-          : "rounded-[var(--radius-sm)] border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]"
+        banner.tone === "success"
+          ? "flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--success)]/30 bg-[var(--success-soft)] px-3 py-2 text-sm text-[var(--success)]"
+          : "flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]"
       }
     >
-      {notice.message}
+      <span>{banner.message}</span>
+      <button
+        type="button"
+        onClick={() => setBanner(null)}
+        className="text-xs font-semibold opacity-70 hover:opacity-100 transition-opacity"
+        aria-label="Dismiss banner"
+      >
+        Dismiss
+      </button>
     </div>
   );
 }

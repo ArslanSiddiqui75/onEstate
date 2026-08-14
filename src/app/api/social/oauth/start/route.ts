@@ -5,6 +5,7 @@ import {
   buildRedirectUri,
   createOAuthState,
   createPkcePair,
+  getRequestOrigin,
   safeReturnTo,
 } from "@/lib/social/oauth-service";
 import type { SocialPlatform } from "@/types";
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
 
-  const origin = new URL(request.url).origin;
+  const origin = getRequestOrigin(request);
   const redirectUri = buildRedirectUri(origin, platform);
   const returnTo = safeReturnTo(body.returnTo);
 

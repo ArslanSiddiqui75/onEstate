@@ -10,8 +10,18 @@ export function createPkcePair() {
   return { codeVerifier, codeChallenge };
 }
 
+export function getRequestOrigin(request: Request): string {
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") || "https";
+  if (host) {
+    return `${proto}://${host}`;
+  }
+  return new URL(request.url).origin;
+}
+
 export function buildRedirectUri(origin: string, platform: SocialPlatform) {
-  return `${origin}/api/social/oauth/callback/${platform}`;
+  const cleanOrigin = origin.replace(/\/+$/, "");
+  return `${cleanOrigin}/api/social/oauth/callback/${platform}`;
 }
 
 export function safeReturnTo(path: unknown) {

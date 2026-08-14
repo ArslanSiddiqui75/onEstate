@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { getProvider } from "@/lib/social/providers";
-import { buildRedirectUri, consumeOAuthState } from "@/lib/social/oauth-service";
+import { buildRedirectUri, consumeOAuthState, getRequestOrigin } from "@/lib/social/oauth-service";
 import { encryptToken } from "@/lib/social/crypto";
 import type { SocialPlatform } from "@/types";
 
@@ -12,15 +12,17 @@ export async function GET(
   const { platform: platformParam } = await params;
   const platform = platformParam as SocialPlatform;
   const url = new URL(request.url);
-  const code = url.searchParams.get("code");
+  const rawCode = url.searchParams.get("code");
+  const code = rawCode ? rawCode.replace(/#_.*$/, "").replace(/#.*$/, "").trim() : null;
   const state = url.searchParams.get("state");
   const providerError = url.searchParams.get("error_description") || url.searchParams.get("error");
 
   const stateRecord = state ? await consumeOAuthState(state) : null;
   const returnTo = stateRecord?.returnTo || "/app/social";
+  const origin = getRequestOrigin(request);
 
   function redirectTo(extra: Record<string, string>) {
-    const target = new URL(returnTo, url.origin);
+    const target = new URL(returnTo, origin);
     for (const [key, value] of Object.entries(extra)) target.searchParams.set(key, value);
     return NextResponse.redirect(target);
   }
@@ -44,7 +46,7 @@ export async function GET(
 
   try {
     const provider = getProvider(platform);
-    const redirectUri = buildRedirectUri(url.origin, platform);
+    const redirectUri = buildRedirectUri(origin, platform);
     const identities = await provider.exchangeCode({
       code,
       redirectUri,
@@ -74,7 +76,7 @@ export async function GET(
         .select("id")
         .single();
       if (upsertError || !account) {
-        throw upsertError || new Error("Could not save the connected account");
+        throw new Error(upsertError?.message || "Could not save the connected account");
       }
 
       const { error: secretError } = await supabase.from("social_account_secrets").upsert({
@@ -84,13 +86,21 @@ export async function GET(
         expires_at: identity.expiresAt || null,
         updated_at: new Date().toISOString(),
       });
-      if (secretError) throw secretError;
+      if (secretError) {
+        throw new Error(secretError.message || "Could not save account secrets");
+      }
     }
 
     return redirectTo({ social_connected: platform, count: String(identities.length) });
   } catch (err) {
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === "object" && err !== null && "message" in err
+          ? String((err as { message: unknown }).message)
+          : `Could not connect ${platform}.`;
     return redirectTo({
-      social_error: err instanceof Error ? err.message : `Could not connect ${platform}.`,
+      social_error: message,
     });
   }
 }
