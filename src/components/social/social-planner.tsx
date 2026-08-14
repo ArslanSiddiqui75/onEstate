@@ -39,6 +39,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/toast";
 import {
   Select,
   SelectContent,
@@ -460,14 +461,30 @@ export function SocialPlanner({
       });
       if (canPublishLive && onPublishNow && createdId) {
         const result = await onPublishNow(createdId);
-        if (!result.ok) setError(result.message);
+        if (!result.ok) {
+          setError(result.message);
+          toast.error(result.message || "Failed to publish post.");
+        } else {
+          toast.success("Post published to your connected account!");
+        }
+      } else {
+        if (status === "published") {
+          toast.success("Post published!");
+        } else if (status === "scheduled") {
+          toast.success("Post scheduled!");
+        } else {
+          toast.success("Draft saved to queue!");
+        }
       }
       setCaption("");
       setMedia([]);
       setLinkUrl("");
       setListingId("__none");
       setScheduleAt(toLocalInputValue());
-      setTab(status === "draft" ? "queue" : "calendar");
+      setTab("queue");
+      if (status === "draft") setQueueFilter("draft");
+      else if (status === "scheduled") setQueueFilter("scheduled");
+      else setQueueFilter("all");
     } finally {
       setBusy(false);
     }
@@ -1528,7 +1545,12 @@ function SelectedPostEditor({
           scheduledFor: new Date().toISOString(),
         });
         const result = await onPublishNow(post.id);
-        if (!result.ok) setPublishError(result.message);
+        if (!result.ok) {
+          setPublishError(result.message);
+          toast.error(result.message || "Failed to publish post.");
+        } else {
+          toast.success("Post published to your connected account!");
+        }
       } else {
         await onSave({
           ...patch,
@@ -1536,6 +1558,7 @@ function SelectedPostEditor({
           scheduledFor: new Date().toISOString(),
           publishedAt: new Date().toISOString(),
         });
+        toast.success("Post published!");
       }
     } finally {
       setPublishing(false);
