@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
@@ -17,8 +17,12 @@ function OAuthReturnBanner() {
     tone: "success" | "danger";
     message: string;
   } | null>(null);
+  const handledRef = useRef(false);
 
   useEffect(() => {
+    if (handledRef.current) return;
+    handledRef.current = true;
+
     const connected = searchParams.get("social_connected");
     const count = searchParams.get("count");
     const error = searchParams.get("social_error");
@@ -41,11 +45,10 @@ function OAuthReturnBanner() {
     // Safely clear the query params and #_ fragment from the URL bar without triggering Next.js routing loops
     if (connected || error || (typeof window !== "undefined" && window.location.hash)) {
       if (typeof window !== "undefined") {
-        window.history.replaceState({}, "", "/app/social");
+        window.history.replaceState(null, "", "/app/social");
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams, refresh]);
 
   if (!banner) return null;
 

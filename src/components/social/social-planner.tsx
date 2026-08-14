@@ -1146,9 +1146,8 @@ function AccountsPanel({
       if (!res.ok || !json.url) {
         throw new Error(json.error || "Could not start the connection");
       }
-      // Open OAuth connection in a new tab so current dashboard stays open
-      window.open(json.url, "_blank");
-      setConnectingPlatform(null);
+      // Top-level direct navigation to OAuth provider (avoids popup-blocker issues and multi-tab memory bloat)
+      window.location.assign(json.url);
     } catch (err) {
       setConnectError(err instanceof Error ? err.message : "Could not start the connection");
       setConnectingPlatform(null);

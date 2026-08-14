@@ -15,9 +15,28 @@ create table if not exists public.social_accounts (
   connected_by uuid references public.profiles (id),
   last_error text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (org_id, platform, external_account_id)
+  updated_at timestamptz not null default now()
 );
+
+-- Ensure all columns exist in case the table was created by a previous partial script
+alter table public.social_accounts
+  add column if not exists org_id uuid references public.organizations (id) on delete cascade,
+  add column if not exists platform text,
+  add column if not exists display_name text,
+  add column if not exists handle text,
+  add column if not exists avatar_url text,
+  add column if not exists external_account_id text,
+  add column if not exists status text default 'connected',
+  add column if not exists scopes jsonb default '[]'::jsonb,
+  add column if not exists connected_at timestamptz,
+  add column if not exists connected_by uuid references public.profiles (id),
+  add column if not exists last_error text,
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists updated_at timestamptz default now();
+
+-- Ensure unique index on org_id + platform + external_account_id for upserts
+create unique index if not exists social_accounts_org_platform_ext_idx
+  on public.social_accounts (org_id, platform, external_account_id);
 
 -- Access/refresh tokens live in a separate table with NO row-level security
 -- policies at all, so only the service-role key (used exclusively by the
@@ -31,6 +50,12 @@ create table if not exists public.social_account_secrets (
   updated_at timestamptz not null default now()
 );
 
+alter table public.social_account_secrets
+  add column if not exists access_token text,
+  add column if not exists refresh_token text,
+  add column if not exists expires_at timestamptz,
+  add column if not exists updated_at timestamptz default now();
+
 -- Short-lived CSRF state for the OAuth redirect round-trip. Also service-role
 -- only; rows are deleted as soon as the callback consumes them.
 create table if not exists public.social_oauth_states (
@@ -42,6 +67,14 @@ create table if not exists public.social_oauth_states (
   code_verifier text,
   created_at timestamptz not null default now()
 );
+
+alter table public.social_oauth_states
+  add column if not exists org_id uuid references public.organizations (id) on delete cascade,
+  add column if not exists user_id uuid references public.profiles (id),
+  add column if not exists platform text,
+  add column if not exists return_to text,
+  add column if not exists code_verifier text,
+  add column if not exists created_at timestamptz default now();
 
 create table if not exists public.social_posts (
   id uuid primary key default gen_random_uuid(),
@@ -60,6 +93,21 @@ create table if not exists public.social_posts (
   updated_at timestamptz not null default now()
 );
 
+alter table public.social_posts
+  add column if not exists org_id uuid references public.organizations (id) on delete cascade,
+  add column if not exists account_ids jsonb default '[]'::jsonb,
+  add column if not exists caption text default '',
+  add column if not exists media jsonb default '[]'::jsonb,
+  add column if not exists link_url text,
+  add column if not exists listing_id uuid references public.listings (id) on delete set null,
+  add column if not exists status text default 'draft',
+  add column if not exists scheduled_for timestamptz,
+  add column if not exists published_at timestamptz,
+  add column if not exists last_error text,
+  add column if not exists created_by uuid references public.profiles (id),
+  add column if not exists created_at timestamptz default now(),
+  add column if not exists updated_at timestamptz default now();
+
 create index if not exists social_accounts_org_id_idx on public.social_accounts (org_id);
 create index if not exists social_posts_org_id_idx on public.social_posts (org_id);
 create index if not exists social_posts_due_idx on public.social_posts (status, scheduled_for);
@@ -74,13 +122,14 @@ alter table public.social_posts enable row level security;
 -- browser: connecting/disconnecting always goes through server routes using
 -- SUPABASE_SERVICE_ROLE_KEY, because that's the only place OAuth client
 -- secrets and access tokens may be used.
+drop policy if exists social_accounts_select on public.social_accounts;
 create policy social_accounts_select on public.social_accounts for select
   using (org_id = (select org_id from public.current_profile()) and public.has_module_access('social', 'view'));
 
+drop policy if exists social_posts_all on public.social_posts;
 create policy social_posts_all on public.social_posts for all
   using (org_id = (select org_id from public.current_profile()) and public.has_module_access('social', 'view'))
   with check (org_id = (select org_id from public.current_profile()) and public.has_module_access('social', 'edit'));
 
--- Deliberately no policies on social_account_secrets or social_oauth_states:
--- row level security with zero policies means anon/authenticated roles get
--- zero rows, and only the service role (which bypasses RLS) can touch them.
+-- Notify PostgREST to immediately refresh its schema cache
+notify pgrst, 'reload schema';
