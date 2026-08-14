@@ -268,6 +268,7 @@ export function SocialPlanner({
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [caption, setCaption] = useState("");
@@ -370,7 +371,7 @@ export function SocialPlanner({
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
     setError(null);
-    setBusy(true);
+    setUploadingMedia(true);
     try {
       const next: SocialMediaItem[] = [...media];
       for (const file of Array.from(files)) {
@@ -378,9 +379,6 @@ export function SocialPlanner({
           setError("You can attach up to 4 media files per post.");
           break;
         }
-        // In live (Supabase) mode upload to Storage so no base64 blob ends up
-        // in the database JSONB column — those can be several MB each and freeze
-        // the browser when serialized/sent in a single JSON request.
         if (live && getAuthToken) {
           next.push(await uploadSocialMediaFile(file, getAuthToken));
         } else {
@@ -391,7 +389,7 @@ export function SocialPlanner({
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
-      setBusy(false);
+      setUploadingMedia(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   }
@@ -426,6 +424,13 @@ export function SocialPlanner({
     if (accountIds.length === 0) {
       setError("Connect and select at least one social account.");
       setTab("accounts");
+      return;
+    }
+    const hasInstagram = connected.some(
+      (a) => accountIds.includes(a.id) && a.platform === "instagram",
+    );
+    if (hasInstagram && media.length === 0) {
+      setError("Instagram requires at least one image or video to publish.");
       return;
     }
     setBusy(true);
@@ -852,9 +857,21 @@ DM us or click the link to schedule a private tour today! ✨
                 </div>
 
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-                    Media
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                      Media
+                    </p>
+                    {uploadingMedia ? (
+                      <span className="text-xs text-[var(--accent)] animate-pulse">
+                        Uploading & preparing media…
+                      </span>
+                    ) : null}
+                  </div>
+                  {error ? (
+                    <div className="rounded-[var(--radius-sm)] border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">
+                      {error}
+                    </div>
+                  ) : null}
                   <input
                     ref={fileRef}
                     type="file"
@@ -865,16 +882,19 @@ DM us or click the link to schedule a private tour today! ✨
                   />
                   <button
                     type="button"
-                    onClick={() => fileRef.current?.click()}
-                    disabled={busy || media.length >= 4}
+                    onClick={() => {
+                      if (fileRef.current) fileRef.current.value = "";
+                      fileRef.current?.click();
+                    }}
+                    disabled={uploadingMedia || busy || media.length >= 4}
                     className="flex w-full flex-col items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--border-strong)] bg-[var(--surface-muted)]/40 px-4 py-8 text-sm text-[var(--muted)] transition hover:border-accent hover:text-[var(--foreground)] disabled:opacity-50"
                   >
-                    <Upload className="size-5" />
+                    <Upload className={cn("size-5", uploadingMedia && "animate-bounce text-[var(--accent)]")} />
                     <span className="font-medium text-[var(--foreground)]">
-                      Upload images or video
+                      {uploadingMedia ? "Uploading to storage…" : "Upload images or video"}
                     </span>
                     <span className="text-xs">
-                      Up to 4 files · images under 6MB · video under 8MB
+                      Up to 4 files · images under 10MB · video under 15MB
                     </span>
                   </button>
                   {media.length > 0 ? (
@@ -1494,6 +1514,10 @@ function SelectedPostEditor({
     media: typeof media;
     linkUrl?: string;
   }) {
+    if (connected.some((a) => accountIds.includes(a.id) && a.platform === "instagram") && patch.media.length === 0) {
+      setPublishError("Instagram requires at least one image or video to publish.");
+      return;
+    }
     setPublishing(true);
     setPublishError(null);
     try {
@@ -1611,7 +1635,6 @@ function SelectedPostEditor({
                 void (async () => {
                   try {
                     setUploadError(null);
-                    // Use Storage upload in live mode to avoid base64 blobs in the DB.
                     const item =
                       live && getAuthToken
                         ? await uploadSocialMediaFile(file, getAuthToken)
@@ -1621,13 +1644,18 @@ function SelectedPostEditor({
                     setUploadError(
                       err instanceof Error ? err.message : "Upload failed",
                     );
+                  } finally {
+                    if (fileRef.current) fileRef.current.value = "";
                   }
                 })();
               }}
             />
             <button
               type="button"
-              onClick={() => fileRef.current?.click()}
+              onClick={() => {
+                if (fileRef.current) fileRef.current.value = "";
+                fileRef.current?.click();
+              }}
               className="flex h-16 w-16 items-center justify-center rounded-md border border-dashed border-[var(--border)] text-[var(--muted)]"
             >
               <Upload className="size-4" />

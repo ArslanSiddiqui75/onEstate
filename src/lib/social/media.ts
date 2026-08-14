@@ -21,51 +21,82 @@ export const PLATFORM_HINT: Record<SocialPlatform, string> = {
   x: "Profile",
 };
 
-const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 15 * 1024 * 1024;
 const MAX_IMAGE_EDGE = 1600;
-const JPEG_QUALITY = 0.72;
+const JPEG_QUALITY = 0.8;
 
 function newMediaId() {
   return `media_${crypto.randomUUID()}`;
 }
 
-function readAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Could not read file"));
-    reader.readAsDataURL(file);
-  });
-}
+/**
+ * Fast, non-blocking in-browser image compression using native canvas.toBlob.
+ * Avoids CPU-locking loops, atob(), or massive base64 allocations.
+ */
+export function compressImageToBlob(file: File): Promise<Blob> {
+  return new Promise((resolve) => {
+    // Non-image files pass through directly
+    if (!file.type.startsWith("image/")) {
+      return resolve(file);
+    }
 
-function loadImage(src: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Could not load image"));
-    img.src = src;
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      try {
+        const origWidth = img.naturalWidth || img.width;
+        const origHeight = img.naturalHeight || img.height;
+
+        if (!origWidth || !origHeight) {
+          return resolve(file);
+        }
+
+        const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(origWidth, origHeight));
+        const width = Math.max(1, Math.round(origWidth * scale));
+        const height = Math.max(1, Math.round(origHeight * scale));
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          return resolve(file);
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          JPEG_QUALITY,
+        );
+      } catch {
+        resolve(file);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+
+    img.src = objectUrl;
   });
 }
 
-async function compressImage(file: File): Promise<{ dataUrl: string; sizeBytes: number; mimeType: string }> {
-  const raw = await readAsDataUrl(file);
-  const img = await loadImage(raw);
-  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(img.width, img.height));
-  const width = Math.max(1, Math.round(img.width * scale));
-  const height = Math.max(1, Math.round(img.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas unavailable");
-  ctx.drawImage(img, 0, 0, width, height);
-  const mimeType = "image/jpeg";
-  const dataUrl = canvas.toDataURL(mimeType, JPEG_QUALITY);
-  const sizeBytes = Math.round((dataUrl.length * 3) / 4);
-  return { dataUrl, sizeBytes, mimeType };
-}
-
+/**
+ * Local / demo fallback that converts a file to a SocialMediaItem.
+ */
 export async function fileToSocialMedia(file: File): Promise<SocialMediaItem> {
   const isImage = file.type.startsWith("image/");
   const isVideo = file.type.startsWith("video/");
@@ -73,26 +104,39 @@ export async function fileToSocialMedia(file: File): Promise<SocialMediaItem> {
     throw new Error("Only images and videos can be uploaded to social posts.");
   }
   if (isImage && file.size > MAX_IMAGE_BYTES) {
-    throw new Error("Images must be under 6MB.");
+    throw new Error("Images must be under 10MB.");
   }
   if (isVideo && file.size > MAX_VIDEO_BYTES) {
-    throw new Error("Videos must be under 8MB for local scheduling.");
+    throw new Error("Videos must be under 15MB.");
   }
 
   if (isImage) {
-    const compressed = await compressImage(file);
+    const blob = await compressImageToBlob(file);
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Could not read image preview"));
+      reader.readAsDataURL(blob);
+    });
+
     return {
       id: newMediaId(),
       kind: "image",
       name: file.name,
-      mimeType: compressed.mimeType,
-      sizeBytes: compressed.sizeBytes,
-      dataUrl: compressed.dataUrl,
+      mimeType: "image/jpeg",
+      sizeBytes: blob.size,
+      dataUrl,
       createdAt: new Date().toISOString(),
     };
   }
 
-  const dataUrl = await readAsDataUrl(file);
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read video preview"));
+    reader.readAsDataURL(file);
+  });
+
   return {
     id: newMediaId(),
     kind: "video",
@@ -105,12 +149,8 @@ export async function fileToSocialMedia(file: File): Promise<SocialMediaItem> {
 }
 
 /**
- * Upload a file to the server's `/api/social/upload-media` route (Supabase Storage)
- * and return a SocialMediaItem whose `dataUrl` is the public storage URL.
- * This avoids storing multi-megabyte base64 blobs in the database JSONB column.
- *
- * @param file      The raw File object chosen by the user.
- * @param getToken  Async function that returns the current auth Bearer token.
+ * Uploads media directly to Supabase Storage via `/api/social/upload-media`.
+ * Never stores heavy base64 strings in the database.
  */
 export async function uploadSocialMediaFile(
   file: File,
@@ -121,33 +161,26 @@ export async function uploadSocialMediaFile(
   if (!isImage && !isVideo) {
     throw new Error("Only images and videos can be uploaded to social posts.");
   }
+  if (isImage && file.size > MAX_IMAGE_BYTES) {
+    throw new Error("Images must be under 10MB.");
+  }
+  if (isVideo && file.size > MAX_VIDEO_BYTES) {
+    throw new Error("Videos must be under 15MB.");
+  }
 
-  // For images, compress first so we send a smaller payload to the server.
-  let blob: Blob;
-  let mimeType: string;
-  let sizeBytes: number;
+  // Fast client-side image compression
+  let uploadBlob: Blob = file;
+  let mimeType = file.type || "application/octet-stream";
 
   if (isImage) {
-    const compressed = await compressImage(file);
-    // Convert the compressed data URL back to a Blob for the multipart upload.
-    const match = /^data:([^;]+);base64,([\s\S]*)$/.exec(compressed.dataUrl);
-    if (!match) throw new Error("Compression produced an unexpected result.");
-    const binary = Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0));
-    blob = new Blob([binary], { type: compressed.mimeType });
-    mimeType = compressed.mimeType;
-    sizeBytes = compressed.sizeBytes;
-  } else {
-    if (file.size > MAX_VIDEO_BYTES) {
-      throw new Error("Videos must be under 8 MB for local scheduling.");
-    }
-    blob = file;
-    mimeType = file.type || "video/mp4";
-    sizeBytes = file.size;
+    uploadBlob = await compressImageToBlob(file);
+    mimeType = "image/jpeg";
   }
 
   const token = await getToken();
   const form = new FormData();
-  form.append("file", blob, file.name);
+  const safeName = isImage ? file.name.replace(/\.[^.]+$/, ".jpg") : file.name;
+  form.append("file", uploadBlob, safeName);
 
   const res = await fetch("/api/social/upload-media", {
     method: "POST",
@@ -161,7 +194,7 @@ export async function uploadSocialMediaFile(
   };
 
   if (!res.ok || !json.publicUrl) {
-    throw new Error(json.error || "Media upload failed.");
+    throw new Error(json.error || `Upload failed (${res.status}: ${res.statusText || "Server error"})`);
   }
 
   return {
@@ -169,7 +202,7 @@ export async function uploadSocialMediaFile(
     kind: isImage ? "image" : "video",
     name: file.name,
     mimeType,
-    sizeBytes,
+    sizeBytes: uploadBlob.size,
     dataUrl: json.publicUrl,
     createdAt: new Date().toISOString(),
   };
