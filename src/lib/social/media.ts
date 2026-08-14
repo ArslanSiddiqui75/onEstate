@@ -104,6 +104,77 @@ export async function fileToSocialMedia(file: File): Promise<SocialMediaItem> {
   };
 }
 
+/**
+ * Upload a file to the server's `/api/social/upload-media` route (Supabase Storage)
+ * and return a SocialMediaItem whose `dataUrl` is the public storage URL.
+ * This avoids storing multi-megabyte base64 blobs in the database JSONB column.
+ *
+ * @param file      The raw File object chosen by the user.
+ * @param getToken  Async function that returns the current auth Bearer token.
+ */
+export async function uploadSocialMediaFile(
+  file: File,
+  getToken: () => Promise<string | null>,
+): Promise<SocialMediaItem> {
+  const isImage = file.type.startsWith("image/");
+  const isVideo = file.type.startsWith("video/");
+  if (!isImage && !isVideo) {
+    throw new Error("Only images and videos can be uploaded to social posts.");
+  }
+
+  // For images, compress first so we send a smaller payload to the server.
+  let blob: Blob;
+  let mimeType: string;
+  let sizeBytes: number;
+
+  if (isImage) {
+    const compressed = await compressImage(file);
+    // Convert the compressed data URL back to a Blob for the multipart upload.
+    const match = /^data:([^;]+);base64,([\s\S]*)$/.exec(compressed.dataUrl);
+    if (!match) throw new Error("Compression produced an unexpected result.");
+    const binary = Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0));
+    blob = new Blob([binary], { type: compressed.mimeType });
+    mimeType = compressed.mimeType;
+    sizeBytes = compressed.sizeBytes;
+  } else {
+    if (file.size > MAX_VIDEO_BYTES) {
+      throw new Error("Videos must be under 8 MB for local scheduling.");
+    }
+    blob = file;
+    mimeType = file.type || "video/mp4";
+    sizeBytes = file.size;
+  }
+
+  const token = await getToken();
+  const form = new FormData();
+  form.append("file", blob, file.name);
+
+  const res = await fetch("/api/social/upload-media", {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+
+  const json = (await res.json().catch(() => ({}) as Record<string, unknown>)) as {
+    publicUrl?: string;
+    error?: string;
+  };
+
+  if (!res.ok || !json.publicUrl) {
+    throw new Error(json.error || "Media upload failed.");
+  }
+
+  return {
+    id: newMediaId(),
+    kind: isImage ? "image" : "video",
+    name: file.name,
+    mimeType,
+    sizeBytes,
+    dataUrl: json.publicUrl,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;

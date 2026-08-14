@@ -67,6 +67,7 @@ import {
   SOCIAL_PLATFORMS,
   fileToSocialMedia,
   formatBytes,
+  uploadSocialMediaFile,
 } from "@/lib/social/media";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -167,6 +168,11 @@ export type SocialPlannerProps = {
   planHint?: string;
   /** True for Supabase-backed orgs — enables real OAuth connect + real publishing. */
   live?: boolean;
+  /**
+   * Returns the current Supabase auth Bearer token. Required in live mode so
+   * media files can be uploaded to Supabase Storage instead of being stored as
+   * base64 blobs in the database (which causes browser/laptop freezes).
+   */
   getAuthToken?: () => Promise<string | null>;
   onPublishNow?: (postId: string) => Promise<{ ok: boolean; message: string }>;
   onUpsertAccount: (
@@ -372,7 +378,14 @@ export function SocialPlanner({
           setError("You can attach up to 4 media files per post.");
           break;
         }
-        next.push(await fileToSocialMedia(file));
+        // In live (Supabase) mode upload to Storage so no base64 blob ends up
+        // in the database JSONB column — those can be several MB each and freeze
+        // the browser when serialized/sent in a single JSON request.
+        if (live && getAuthToken) {
+          next.push(await uploadSocialMediaFile(file, getAuthToken));
+        } else {
+          next.push(await fileToSocialMedia(file));
+        }
       }
       setMedia(next);
     } catch (err) {
@@ -709,6 +722,7 @@ export function SocialPlanner({
                   canEdit={canEdit}
                   busy={busy}
                   live={live}
+                  getAuthToken={getAuthToken}
                   onPublishNow={onPublishNow}
                   onClose={() => setSelectedId(null)}
                   onSave={async (patch) => {
@@ -1424,6 +1438,7 @@ function SelectedPostEditor({
   canEdit,
   busy,
   live,
+  getAuthToken,
   onPublishNow,
   onClose,
   onSave,
@@ -1436,6 +1451,7 @@ function SelectedPostEditor({
   canEdit: boolean;
   busy: boolean;
   live?: boolean;
+  getAuthToken?: () => Promise<string | null>;
   onPublishNow?: (postId: string) => Promise<{ ok: boolean; message: string }>;
   onClose: () => void;
   onSave: (
@@ -1595,7 +1611,11 @@ function SelectedPostEditor({
                 void (async () => {
                   try {
                     setUploadError(null);
-                    const item = await fileToSocialMedia(file);
+                    // Use Storage upload in live mode to avoid base64 blobs in the DB.
+                    const item =
+                      live && getAuthToken
+                        ? await uploadSocialMediaFile(file, getAuthToken)
+                        : await fileToSocialMedia(file);
                     setMedia((prev) => [...prev, item]);
                   } catch (err) {
                     setUploadError(

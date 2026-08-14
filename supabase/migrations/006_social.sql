@@ -34,6 +34,23 @@ alter table public.social_accounts
   add column if not exists created_at timestamptz default now(),
   add column if not exists updated_at timestamptz default now();
 
+-- Handle any legacy NOT NULL columns (e.g. account_name, account_id) from earlier schemas
+do $$
+declare
+  col text;
+begin
+  for col in 
+    select column_name 
+    from information_schema.columns 
+    where table_schema = 'public' 
+      and table_name = 'social_accounts'
+      and is_nullable = 'NO'
+      and column_name not in ('id', 'org_id', 'platform', 'display_name', 'external_account_id', 'status', 'scopes', 'created_at', 'updated_at')
+  loop
+    execute format('alter table public.social_accounts alter column %I drop not null;', col);
+  end loop;
+end $$;
+
 -- Ensure unique index on org_id + platform + external_account_id for upserts
 create unique index if not exists social_accounts_org_platform_ext_idx
   on public.social_accounts (org_id, platform, external_account_id);
@@ -131,5 +148,15 @@ create policy social_posts_all on public.social_posts for all
   using (org_id = (select org_id from public.current_profile()) and public.has_module_access('social', 'view'))
   with check (org_id = (select org_id from public.current_profile()) and public.has_module_access('social', 'edit'));
 
+-- Storage bucket for social media uploads (public so platform APIs can fetch image/video URLs)
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('social-media', 'social-media', true, 10485760)
+on conflict (id) do update set public = true;
+
+drop policy if exists "Social media public read" on storage.objects;
+create policy "Social media public read" on storage.objects for select
+  using (bucket_id = 'social-media');
+
 -- Notify PostgREST to immediately refresh its schema cache
 notify pgrst, 'reload schema';
+
