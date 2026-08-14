@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
-
+  // #hi
   if (parsed.data.consent === "opted_out") {
     return NextResponse.json(
       { error: "Cannot send SMS: contact opted out" },
