@@ -1146,8 +1146,9 @@ function AccountsPanel({
       if (!res.ok || !json.url) {
         throw new Error(json.error || "Could not start the connection");
       }
-      // Full-page navigation — the platform's own login/consent screen, not a mock.
-      window.location.href = json.url;
+      // Open OAuth connection in a new tab so current dashboard stays open
+      window.open(json.url, "_blank");
+      setConnectingPlatform(null);
     } catch (err) {
       setConnectError(err instanceof Error ? err.message : "Could not start the connection");
       setConnectingPlatform(null);

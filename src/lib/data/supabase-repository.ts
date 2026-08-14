@@ -141,18 +141,18 @@ export function createSupabaseRepository(
     async getSnapshot() {
       const [leads, contacts, listings, deals, members, messages, threads, callLogs, sequences, automations, enrollments, tasks] =
         await Promise.all([
-          this.listLeads(),
-          this.listContacts(),
-          this.listListings(),
-          this.listDeals(),
-          this.listMembers(),
-          supabase.from("messages").select("*").eq("org_id", ctx.org.id),
-          supabase.from("conversation_threads").select("*").eq("org_id", ctx.org.id),
-          this.listCallLogs(),
-          this.listSequences(),
-          this.listAutomations(),
-          this.listEnrollments(),
-          this.listOpenTasks(),
+          this.listLeads().catch((e) => { console.warn("listLeads error", e); return []; }),
+          this.listContacts().catch((e) => { console.warn("listContacts error", e); return []; }),
+          this.listListings().catch((e) => { console.warn("listListings error", e); return []; }),
+          this.listDeals().catch((e) => { console.warn("listDeals error", e); return []; }),
+          this.listMembers().catch((e) => { console.warn("listMembers error", e); return []; }),
+          supabase.from("messages").select("*").eq("org_id", ctx.org.id).then(r => r.data || []).catch(() => []),
+          supabase.from("conversation_threads").select("*").eq("org_id", ctx.org.id).then(r => r.data || []).catch(() => []),
+          this.listCallLogs().catch((e) => { console.warn("listCallLogs error", e); return []; }),
+          this.listSequences().catch((e) => { console.warn("listSequences error", e); return []; }),
+          this.listAutomations().catch((e) => { console.warn("listAutomations error", e); return []; }),
+          this.listEnrollments().catch((e) => { console.warn("listEnrollments error", e); return []; }),
+          this.listOpenTasks().catch((e) => { console.warn("listOpenTasks error", e); return []; }),
         ]);
 
       const snapshot: WorkspaceSnapshot = {
@@ -164,7 +164,7 @@ export function createSupabaseRepository(
         contacts,
         listings,
         deals,
-        messages: (messages.data || []).map((m) => ({
+        messages: (messages || []).map((m: any) => ({
           id: String(m.id),
           orgId: String(m.org_id),
           threadId: String(m.thread_id),
@@ -175,7 +175,7 @@ export function createSupabaseRepository(
           providerSid: m.provider_sid || undefined,
           sentAt: String(m.sent_at),
         })),
-        threads: (threads.data || []).map((t) => ({
+        threads: (threads || []).map((t: any) => ({
           id: String(t.id),
           orgId: String(t.org_id),
           leadId: String(t.lead_id),
@@ -187,9 +187,9 @@ export function createSupabaseRepository(
         automations,
         enrollments,
         tasks,
-        website: await this.getWebsite(),
-        socialAccounts: await this.listSocialAccounts(),
-        socialPosts: await this.listSocialPosts(),
+        website: await this.getWebsite().catch(() => null),
+        socialAccounts: await this.listSocialAccounts().catch((e) => { console.warn("listSocialAccounts error", e); return []; }),
+        socialPosts: await this.listSocialPosts().catch((e) => { console.warn("listSocialPosts error", e); return []; }),
       };
       return snapshot;
     },

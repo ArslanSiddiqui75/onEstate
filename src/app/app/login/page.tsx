@@ -58,8 +58,8 @@ export default function AppLoginPage() {
 
   // ── Form state ──
   // Each `useState` hook tracks one piece of state.
-  const [email, setEmail] = useState("owner@certified.local");
-  const [password, setPassword] = useState(DEV_SEED_PASSWORD);
+  const [email, setEmail] = useState(authMode === "local" ? "owner@certified.local" : "");
+  const [password, setPassword] = useState(authMode === "local" ? DEV_SEED_PASSWORD : "");
   const [loading, setLoading] = useState(false);
 
   // ── Validation state ──
@@ -94,14 +94,15 @@ export default function AppLoginPage() {
     try {
       await signIn(email, undefined, password);
 
-      if (authMode === "supabase") {
+      if (authMode === "supabase" && !password) {
         setFormInfo("Check your email for a magic link.");
         toast.success("Magic link sent! Check your inbox.");
       } else {
         toast.success("Signed in successfully!");
-        router.push(redirectTo);
+        // Guard in layout.tsx will auto-redirect once user state is set
       }
     } catch (err) {
+      console.error("[login] Full error:", err);
       const message =
         err instanceof Error ? err.message : "Sign in failed. Please try again.";
       setFormError(message);
@@ -124,7 +125,7 @@ export default function AppLoginPage() {
         </h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
           {authMode === "supabase"
-            ? "We'll email you a magic link."
+            ? "Enter your email and password to sign in."
             : "Use a seed account below, or any email to create a workspace."}
         </p>
 
@@ -146,23 +147,21 @@ export default function AppLoginPage() {
             />
           </FormField>
 
-          {/* Password field — shown for local auth mode */}
-          {showSeedAccounts ? (
-            <FormField label="Password" error={fieldErrors.password} required>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (fieldErrors.password) {
-                    setFieldErrors((prev) => ({ ...prev, password: "" }));
-                  }
-                }}
-                placeholder="Password"
-                autoComplete="current-password"
-              />
-            </FormField>
-          ) : null}
+          {/* Password field */}
+          <FormField label="Password" error={fieldErrors.password} required>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (fieldErrors.password) {
+                  setFieldErrors((prev) => ({ ...prev, password: "" }));
+                }
+              }}
+              placeholder="Password"
+              autoComplete="current-password"
+            />
+          </FormField>
 
           {/* Form-level error alert */}
           {formError && <Alert tone="danger">{formError}</Alert>}

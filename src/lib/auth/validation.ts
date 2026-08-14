@@ -52,6 +52,9 @@ export const signupSchema = z.object({
     .string()
     .min(1, "Email is required")
     .email("Please enter a valid email address"),
+  password: z
+    .string()
+    .min(6, "Password must be at least 6 characters"),
   orgName: z
     .string()
     .min(2, "Brokerage name must be at least 2 characters")

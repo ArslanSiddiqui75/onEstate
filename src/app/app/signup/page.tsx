@@ -56,6 +56,7 @@ export default function AppSignupPage() {
     const formData = {
       name: String(form.get("name")),
       email: String(form.get("email")),
+      password: String(form.get("password")),
       orgName: String(form.get("orgName")),
       plan: String(form.get("plan")),
     };
@@ -74,16 +75,17 @@ export default function AppSignupPage() {
       await signUp({
         name: result.data.name,
         email: result.data.email,
+        password: result.data.password,
         orgName: result.data.orgName,
         plan: result.data.plan as PlanId,
       });
 
-      if (authMode === "supabase") {
+      if (authMode === "supabase" && !result.data.password) {
         setFormInfo("Check your email to verify and finish setup.");
         toast.success("Account created! Check your inbox.");
       } else {
-        toast.success("Workspace created! Redirecting...");
-        router.push("/app");
+        toast.success("Workspace created!");
+        // Guard in layout.tsx will auto-redirect to /app once user state is set
       }
     } catch (err) {
       const message =
@@ -122,6 +124,15 @@ export default function AppSignupPage() {
               type="email"
               placeholder="jane@brokerage.com"
               autoComplete="email"
+            />
+          </FormField>
+
+          <FormField label="Password" error={fieldErrors.password} required>
+            <Input
+              name="password"
+              type="password"
+              placeholder="Min. 6 characters"
+              autoComplete="new-password"
             />
           </FormField>
 

@@ -149,6 +149,7 @@ interface AppState {
   signUp: (input: {
     name: string;
     email: string;
+    password?: string;
     orgName: string;
     plan: PlanId;
   }) => Promise<void>;
@@ -396,7 +397,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
               setUser(null);
               setOrg(null);
               toast.error("Session expired. Please sign in again.");
-            } else if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+            } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
               if (session?.user) {
                 const refreshed = await hydrateSupabaseSession();
                 if (refreshed) {
@@ -439,13 +440,33 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     async (email: string, name?: string, password?: string) => {
       if (authMode === "supabase") {
         const supabase = createBrowserSupabaseClient();
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: {
-            emailRedirectTo: `${window.location.origin}/app`,
-          },
-        });
-        if (error) throw error;
+        if (password) {
+          // Password-based sign in
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          // Hydrate workspace after password login
+          console.log("[signIn] signInWithPassword succeeded, hydrating...");
+          const hydrated = await hydrateSupabaseSession();
+          console.log("[signIn] hydrated result:", hydrated);
+          if (hydrated) {
+            const repo = createSupabaseRepository(hydrated);
+            repoRef.current = repo;
+            await applySnapshot(repo);
+            console.log("[signIn] applySnapshot done, user should now be set");
+          } else {
+            console.error("[signIn] hydrateSupabaseSession returned null — profile row missing?");
+            throw new Error("Login succeeded but your workspace profile was not found. Please contact support.");
+          }
+        } else {
+          // Magic-link fallback
+          const { error } = await supabase.auth.signInWithOtp({
+            email,
+            options: {
+              emailRedirectTo: `${window.location.origin}/app`,
+            },
+          });
+          if (error) throw error;
+        }
         return;
       }
 
@@ -514,25 +535,59 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     async (input: {
       name: string;
       email: string;
+      password?: string;
       orgName: string;
       plan: PlanId;
     }) => {
       if (authMode === "supabase") {
         const supabase = createBrowserSupabaseClient();
-        const { error } = await supabase.auth.signInWithOtp({
-          email: input.email,
-          options: {
-            emailRedirectTo: `${window.location.origin}/app`,
-            data: {
-              name: input.name,
-              org_name: input.orgName,
-              brand: brand.id,
-              market: brand.market,
-              plan: input.plan,
+        if (input.password) {
+          // Password-based signup (instant, no email confirmation needed)
+          const { error } = await supabase.auth.signUp({
+            email: input.email,
+            password: input.password,
+            options: {
+              data: {
+                name: input.name,
+                org_name: input.orgName,
+                brand: brand.id,
+                market: brand.market,
+                plan: input.plan,
+              },
             },
-          },
-        });
-        if (error) throw error;
+          });
+          if (error) throw error;
+          // Wait for the DB trigger (handle_new_user) to create profile + org rows
+          let hydrated = null;
+          for (let attempt = 0; attempt < 10; attempt++) {
+            await new Promise((r) => setTimeout(r, 500));
+            hydrated = await hydrateSupabaseSession();
+            if (hydrated) break;
+          }
+          if (hydrated) {
+            const repo = createSupabaseRepository(hydrated);
+            repoRef.current = repo;
+            await applySnapshot(repo);
+          } else {
+            throw new Error("Account created but workspace setup timed out. Please sign in again.");
+          }
+        } else {
+          // Magic-link fallback
+          const { error } = await supabase.auth.signInWithOtp({
+            email: input.email,
+            options: {
+              emailRedirectTo: `${window.location.origin}/app`,
+              data: {
+                name: input.name,
+                org_name: input.orgName,
+                brand: brand.id,
+                market: brand.market,
+                plan: input.plan,
+              },
+            },
+          });
+          if (error) throw error;
+        }
         return;
       }
 
