@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { publishDuePosts } from "@/lib/social/publish-service";
 
+// Publishing polls each platform's processing status before publishing (see
+// waitForContainerReady in providers.ts), which can take tens of seconds per
+// post. Give the function room instead of letting the platform kill it mid-
+// batch. Raise this further on plans that allow longer function durations.
+export const maxDuration = 60;
+
 // Point an external scheduler (Vercel Cron, GitHub Actions, cron-job.org, …)
 // at this route every few minutes so "Schedule" posts actually go out at
 // their scheduled time — there is no built-in server process otherwise.

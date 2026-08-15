@@ -73,7 +73,49 @@ async function mediaToBlob(media: SocialMediaItem): Promise<Blob> {
   throw new Error("Unsupported media reference");
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const GRAPH_VERSION = "v21.0";
+
+// Instagram fetches and transcodes media asynchronously after container
+// creation. Polls status_code until it's FINISHED (ready to publish),
+// ERROR/EXPIRED (fail fast), or the timeout elapses. Images usually finish in
+// a couple of seconds; videos/Reels can take longer, hence the longer budget.
+async function waitForContainerReady(
+  containerId: string,
+  accessToken: string,
+  // Kept under the Vercel serverless function budget (see maxDuration on the
+  // /api/social/publish and cron routes) so the platform doesn't kill the
+  // request mid-poll before we get a chance to return a clear error.
+  { timeoutMs = 45_000, intervalMs = 2_500 }: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const statusUrl = new URL(`https://graph.instagram.com/${containerId}`);
+    statusUrl.searchParams.set("fields", "status_code");
+    statusUrl.searchParams.set("access_token", accessToken);
+    const res = await fetch(statusUrl.toString());
+    const json = await res.json().catch(() => ({}));
+
+    if (res.ok && json.status_code === "FINISHED") return { ok: true };
+    if (res.ok && json.status_code === "ERROR") {
+      return { ok: false, error: "Instagram failed to process the media (status: ERROR)." };
+    }
+    if (res.ok && json.status_code === "EXPIRED") {
+      return { ok: false, error: "Instagram media container expired before it could be published." };
+    }
+
+    if (Date.now() >= deadline) {
+      return {
+        ok: false,
+        error: "Timed out waiting for Instagram to finish processing the media. Try again shortly.",
+      };
+    }
+    await sleep(intervalMs);
+  }
+}
 
 const facebookProvider: SocialProvider = {
   platform: "facebook",
@@ -286,8 +328,16 @@ const instagramProvider: SocialProvider = {
         caption: input.caption,
         access_token: target.accessToken,
       };
-      if (media.kind === "video") body.video_url = media.dataUrl;
-      else body.image_url = media.dataUrl;
+      // Video containers must declare a media_type — Instagram no longer
+      // accepts a bare video_url without it (container creation silently
+      // fails, or the post never actually appears). Feed videos are published
+      // as Reels since Instagram deprecated the plain "video" post type.
+      if (media.kind === "video") {
+        body.video_url = media.dataUrl;
+        body.media_type = "REELS";
+      } else {
+        body.image_url = media.dataUrl;
+      }
 
       const createRes = await fetch(
         `https://graph.instagram.com/${GRAPH_VERSION}/${target.externalAccountId}/media`,
@@ -300,6 +350,17 @@ const instagramProvider: SocialProvider = {
       const createJson = await createRes.json();
       if (!createRes.ok || !createJson.id) {
         throw new Error(createJson.error?.message || "Instagram media creation failed");
+      }
+
+      // Instagram processes the fetched media asynchronously. Calling
+      // media_publish before the container reaches FINISHED reliably fails
+      // (commonly with "Media ID is not available") — this is why posts with
+      // real media were silently never showing up. Poll status_code first, as
+      // Meta's own docs recommend (~once per minute, up to 5 minutes; we poll
+      // faster since most images/short videos finish in a few seconds).
+      const ready = await waitForContainerReady(createJson.id, target.accessToken);
+      if (!ready.ok) {
+        return { ok: false, error: ready.error };
       }
 
       const publishRes = await fetch(

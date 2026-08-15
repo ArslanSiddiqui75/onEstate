@@ -911,7 +911,7 @@ DM us or click the link to schedule a private tour today! ✨
                       {uploadingMedia ? "Uploading to storage…" : "Upload images or video"}
                     </span>
                     <span className="text-xs">
-                      Up to 4 files · images under 10MB · video under 15MB
+                      Up to 4 files · images and video under 10MB
                     </span>
                   </button>
                   {media.length > 0 ? (
