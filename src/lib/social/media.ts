@@ -30,16 +30,6 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGE_EDGE = 1600;
 const JPEG_QUALITY = 0.8;
-// Hard safety net against runaway memory use / tab crashes: real estate
-// photography (drone shots, panoramas) often compresses to a modest file
-// size while still being 50-100+ megapixels. Decoding that at full
-// resolution before downscaling can allocate hundreds of MB to a few GB for
-// a single photo, which is what was crashing the browser/OS on selection.
-const MAX_SOURCE_MEGAPIXELS = 40_000_000;
-// Guards against a decode that never fires onload/onerror (e.g. an
-// unsupported/corrupt file) so the upload flow can't hang forever with the
-// file input stuck disabled.
-const IMAGE_DECODE_TIMEOUT_MS = 20_000;
 // Vercel serverless functions enforce their own hard request timeout, but a
 // dropped/stalled connection on the client side otherwise has no ceiling.
 const UPLOAD_TIMEOUT_MS = 45_000;
@@ -56,6 +46,100 @@ function targetDimensions(origWidth: number, origHeight: number) {
   };
 }
 
+type Dimensions = { width: number; height: number };
+
+// --- Header-only dimension sniffing --------------------------------------
+// IMPORTANT: we must know an image's pixel dimensions *before* calling
+// createImageBitmap/decoding it, so we can pass resize hints on the very
+// first (and only) decode call. Calling createImageBitmap(file) without
+// resize options — even just to read .width/.height — forces the browser to
+// decode at full native resolution, which is exactly the memory spike that
+// crashes the tab for huge real-estate photos (drone/panorama shots with a
+// modest file size but 50-100+ megapixels). Reading a few bytes of the file
+// header is essentially free by comparison.
+
+function sniffPngDimensions(view: DataView, bytes: Uint8Array): Dimensions | null {
+  if (bytes.length < 24) return null;
+  if (bytes[0] !== 0x89 || bytes[1] !== 0x50 || bytes[2] !== 0x4e || bytes[3] !== 0x47) return null;
+  return { width: view.getUint32(16, false), height: view.getUint32(20, false) };
+}
+
+function sniffGifDimensions(bytes: Uint8Array, view: DataView): Dimensions | null {
+  if (bytes.length < 10) return null;
+  const sig = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]);
+  if (sig !== "GIF87a" && sig !== "GIF89a") return null;
+  return { width: view.getUint16(6, true), height: view.getUint16(8, true) };
+}
+
+function sniffWebpDimensions(bytes: Uint8Array, view: DataView): Dimensions | null {
+  if (bytes.length < 30) return null;
+  if (String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]) !== "RIFF") return null;
+  if (String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]) !== "WEBP") return null;
+  const fourcc = String.fromCharCode(bytes[12], bytes[13], bytes[14], bytes[15]);
+  if (fourcc === "VP8 ") {
+    return { width: view.getUint16(26, true) & 0x3fff, height: view.getUint16(28, true) & 0x3fff };
+  }
+  if (fourcc === "VP8L") {
+    const b0 = bytes[21], b1 = bytes[22], b2 = bytes[23], b3 = bytes[24];
+    const width = 1 + (((b1 & 0x3f) << 8) | b0);
+    const height = 1 + (((b3 & 0x0f) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6));
+    return { width, height };
+  }
+  if (fourcc === "VP8X") {
+    const width = 1 + (bytes[24] | (bytes[25] << 8) | (bytes[26] << 16));
+    const height = 1 + (bytes[27] | (bytes[28] << 8) | (bytes[29] << 16));
+    return { width, height };
+  }
+  return null;
+}
+
+function sniffJpegDimensions(bytes: Uint8Array, view: DataView): Dimensions | null {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
+  let offset = 2;
+  while (offset + 4 <= bytes.length) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+    const marker = bytes[offset + 1];
+    // Padding byte or standalone marker with no length/payload.
+    if (marker === 0xff) {
+      offset += 1;
+      continue;
+    }
+    if (marker === 0xd8 || marker === 0xd9 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
+      offset += 2;
+      continue;
+    }
+    if (marker === 0xda) break; // Start of Scan — no more headers before pixel data
+    if (offset + 4 > bytes.length) break;
+    const segmentLength = view.getUint16(offset + 2, false);
+    const isSof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+    if (isSof) {
+      if (offset + 9 > bytes.length) return null;
+      return { height: view.getUint16(offset + 5, false), width: view.getUint16(offset + 7, false) };
+    }
+    offset += 2 + segmentLength;
+  }
+  return null;
+}
+
+async function sniffImageDimensions(file: File): Promise<Dimensions | null> {
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const dims =
+      sniffPngDimensions(view, bytes) ||
+      sniffGifDimensions(bytes, view) ||
+      sniffWebpDimensions(bytes, view) ||
+      sniffJpegDimensions(bytes, view);
+    if (!dims || !dims.width || !dims.height) return null;
+    return dims;
+  } catch {
+    return null;
+  }
+}
+
 function canvasToJpegBlob(source: CanvasImageSource, width: number, height: number): Promise<Blob | null> {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -67,101 +151,57 @@ function canvasToJpegBlob(source: CanvasImageSource, width: number, height: numb
 }
 
 /**
- * Decode + downscale using createImageBitmap's resize options where
- * available. Browsers implement this with scaled/streaming decoders (e.g.
- * libjpeg-turbo's scaled IDCT), so a huge source image is never fully
- * materialized in memory at native resolution — unlike an <img> + canvas
- * pipeline, which must decode at full size before it can draw anything.
+ * Decode + downscale using createImageBitmap's resize-on-decode. Crucially,
+ * resize hints are passed on the *first and only* createImageBitmap call —
+ * using dimensions sniffed from the file's header without decoding — so
+ * browsers can use scaled decode paths (e.g. libjpeg's scaled IDCT) instead
+ * of ever materializing the full-resolution bitmap in memory. A prior
+ * version of this function called createImageBitmap(file) once *without*
+ * resize options just to read width/height, which forces a full-resolution
+ * decode anyway and defeats the entire point — that was the actual cause of
+ * the browser/OS crashing on large real-estate photos.
  */
 async function compressViaImageBitmap(file: File): Promise<Blob | null> {
   if (typeof createImageBitmap !== "function") return null;
-  let full: ImageBitmap;
+
+  const sniffed = await sniffImageDimensions(file);
+  if (!sniffed) {
+    // Unknown/unsniffable format (e.g. HEIC, BMP, TIFF) — we have no safe way
+    // to know the pixel dimensions without a full decode, so don't attempt
+    // compression at all rather than risk decoding an unbounded image.
+    return null;
+  }
+  // Sanity cap against corrupt/adversarial headers claiming absurd
+  // dimensions (a "decompression bomb") — resize-on-decode makes normal
+  // large photos safe, but there's no reason to trust arbitrary values.
+  if (sniffed.width * sniffed.height > 500_000_000) return null;
+
+  const { width, height } = targetDimensions(sniffed.width, sniffed.height);
+  let bitmap: ImageBitmap;
   try {
-    full = await createImageBitmap(file);
+    bitmap = await createImageBitmap(file, { resizeWidth: width, resizeHeight: height, resizeQuality: "medium" });
   } catch {
     return null;
   }
   try {
-    // createImageBitmap's resize options don't require materializing the
-    // full-resolution bitmap first, so even absurdly large sources are safe
-    // to downscale here (unlike the <img>+canvas fallback below).
-    const { width, height } = targetDimensions(full.width, full.height);
-    let resized: ImageBitmap;
-    try {
-      resized = await createImageBitmap(file, { resizeWidth: width, resizeHeight: height, resizeQuality: "medium" });
-    } catch {
-      resized = full;
-    }
-    try {
-      const blob = await canvasToJpegBlob(resized, resized.width, resized.height);
-      return blob;
-    } finally {
-      resized.close();
-    }
+    return await canvasToJpegBlob(bitmap, bitmap.width, bitmap.height);
   } finally {
-    full.close();
+    bitmap.close();
   }
 }
 
-/** Fallback path for browsers without createImageBitmap resize support. */
-function compressViaImageElement(file: File): Promise<Blob | null> {
-  return new Promise((resolve) => {
-    const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
-    let settled = false;
-
-    const finish = (result: Blob | null) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      URL.revokeObjectURL(objectUrl);
-      resolve(result);
-    };
-
-    const timer = setTimeout(() => finish(null), IMAGE_DECODE_TIMEOUT_MS);
-
-    img.onload = () => {
-      void (async () => {
-        try {
-          const origWidth = img.naturalWidth || img.width;
-          const origHeight = img.naturalHeight || img.height;
-          if (!origWidth || !origHeight) return finish(null);
-          if (origWidth * origHeight > MAX_SOURCE_MEGAPIXELS) {
-            // Too large to safely decode/draw at native resolution in this
-            // fallback path (no resize-on-decode available) — bail out to the
-            // original file rather than risk crashing the tab.
-            return finish(null);
-          }
-          const { width, height } = targetDimensions(origWidth, origHeight);
-          const blob = await canvasToJpegBlob(img, width, height);
-          finish(blob);
-        } catch {
-          finish(null);
-        }
-      })();
-    };
-    img.onerror = () => finish(null);
-    img.src = objectUrl;
-  });
-}
-
 /**
- * Fast, non-blocking in-browser image compression. Prefers
- * createImageBitmap's native resize-on-decode (memory-safe for huge source
- * images); falls back to an <img>+canvas pipeline with a hard megapixel cap
- * and decode timeout so a pathological file can't hang or crash the tab.
- * Avoids CPU-locking loops, atob(), or massive base64 allocations.
+ * Fast, non-blocking in-browser image compression via createImageBitmap's
+ * resize-on-decode (memory-safe even for huge source images). If the format
+ * can't be safely sized up front, or the browser lacks support, the original
+ * file is uploaded unmodified rather than risking an unbounded full-resolution
+ * decode. Avoids CPU-locking loops, atob(), or massive base64 allocations.
  */
 export async function compressImageToBlob(file: File): Promise<Blob> {
   if (!file.type.startsWith("image/")) return file;
 
-  const viaBitmap = await compressViaImageBitmap(file);
-  if (viaBitmap) return viaBitmap;
-
-  const viaElement = await compressViaImageElement(file);
-  if (viaElement) return viaElement;
-
-  return file;
+  const compressed = await compressViaImageBitmap(file);
+  return compressed || file;
 }
 
 /**
