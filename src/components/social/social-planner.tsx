@@ -459,22 +459,27 @@ export function SocialPlanner({
         scheduledFor,
         publishedAt: status === "published" && !canPublishLive ? now : undefined,
       });
-      if (canPublishLive && onPublishNow && createdId) {
+      if (canPublishLive && onPublishNow) {
+        if (!createdId) {
+          setError("Post was saved but no id came back — cannot publish.");
+          toast.error("Post was saved but no id came back — cannot publish.");
+          return;
+        }
         const result = await onPublishNow(createdId);
         if (!result.ok) {
           setError(result.message);
           toast.error(result.message || "Failed to publish post.");
-        } else {
-          toast.success("Post published to your connected account!");
+          setTab("queue");
+          setQueueFilter("failed");
+          return;
         }
+        toast.success("Post published to your connected account!");
+      } else if (status === "published") {
+        toast.success("Post published!");
+      } else if (status === "scheduled") {
+        toast.success("Post scheduled!");
       } else {
-        if (status === "published") {
-          toast.success("Post published!");
-        } else if (status === "scheduled") {
-          toast.success("Post scheduled!");
-        } else {
-          toast.success("Draft saved to queue!");
-        }
+        toast.success("Draft saved to queue!");
       }
       setCaption("");
       setMedia([]);
@@ -485,6 +490,11 @@ export function SocialPlanner({
       if (status === "draft") setQueueFilter("draft");
       else if (status === "scheduled") setQueueFilter("scheduled");
       else setQueueFilter("all");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not save the post.";
+      setError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }

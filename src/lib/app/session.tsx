@@ -1142,7 +1142,9 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
 
   const createSocialPost = useCallback(
     async (post: Omit<SocialPost, "id" | "createdAt" | "orgId">) => {
-      if (!repoRef.current || !org) return undefined;
+      if (!repoRef.current || !org) {
+        throw new Error("Workspace is not loaded. Refresh and try again.");
+      }
       const created = await repoRef.current.createSocialPost({
         ...post,
         orgId: org.id,
