@@ -389,23 +389,44 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
             await applySnapshot(repo);
           }
 
-          // Register session expiry & refresh listener
-          const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+          // Register session expiry & refresh listener.
+          //
+          // Two hard rules here (both were violated before and caused the
+          // Social planner freezes):
+          // 1. Never call other supabase-js methods inside this callback —
+          //    it runs while the auth client holds its internal lock, so a
+          //    nested getUser()/getSession() (which hydrateSupabaseSession
+          //    does) can deadlock every future auth call in the tab. Any work
+          //    is deferred out of the callback with setTimeout.
+          // 2. Never re-hydrate + refetch the entire workspace on
+          //    TOKEN_REFRESHED or on every SIGNED_IN — supabase-js fires
+          //    SIGNED_IN on every tab focus, and a refreshed token is picked
+          //    up transparently by the (singleton) client. Only hydrate when
+          //    we don't have a repository yet.
+          const { data } = supabase.auth.onAuthStateChange((event, session) => {
             if (cancelled) return;
             if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !session)) {
               repoRef.current = null;
               setUser(null);
               setOrg(null);
               toast.error("Session expired. Please sign in again.");
-            } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-              if (session?.user) {
-                const refreshed = await hydrateSupabaseSession();
-                if (refreshed) {
+              return;
+            }
+            const needsHydration =
+              (event === "SIGNED_IN" || event === "USER_UPDATED") &&
+              session?.user &&
+              !repoRef.current;
+            if (needsHydration) {
+              setTimeout(() => {
+                void (async () => {
+                  if (cancelled || repoRef.current) return;
+                  const refreshed = await hydrateSupabaseSession();
+                  if (cancelled || !refreshed) return;
                   const repo = createSupabaseRepository(refreshed);
                   repoRef.current = repo;
                   await applySnapshot(repo);
-                }
-              }
+                })();
+              }, 0);
             }
           });
           authSubscription = data.subscription;
@@ -1135,10 +1156,15 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   const getAuthToken = useCallback(async () => {
     if (authMode !== "supabase") return null;
     const supabase = createBrowserSupabaseClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    return session?.access_token || null;
+    // getSession() waits on the shared auth lock. If that lock is ever stuck
+    // (e.g. another tab hung mid-refresh), fail after 10s so callers surface
+    // an error instead of leaving the UI frozen on "Uploading…"/"Saving…".
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000)),
+    ]);
+    if (!result) return null;
+    return result.data.session?.access_token || null;
   }, [authMode]);
 
   const publishSocialPostNow = useCallback(
@@ -1162,11 +1188,22 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         return { ok: false, message: "Authentication token required for server publishing." };
       }
       try {
-        const res = await fetch("/api/social/publish", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ postId }),
-        });
+        // The publish route polls Instagram's container status and can run up
+        // to its 60s maxDuration — but the client must never wait forever if
+        // the connection stalls, or the Compose buttons stay disabled.
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 90_000);
+        let res: Response;
+        try {
+          res = await fetch("/api/social/publish", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ postId }),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeout);
+        }
         const json = (await res.json().catch(() => ({}))) as {
           ok?: boolean;
           message?: string;
@@ -1175,6 +1212,13 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         await refresh();
         return { ok: Boolean(json.ok), message: json.message || json.error || "Publish failed" };
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return {
+            ok: false,
+            message:
+              "Publishing timed out. It may still complete on the server — check the queue in a minute before retrying.",
+          };
+        }
         return { ok: false, message: err instanceof Error ? err.message : "Publish failed" };
       }
     },
