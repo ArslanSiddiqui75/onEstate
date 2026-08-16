@@ -190,7 +190,18 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
    - Secondary risk: `getSnapshot()` swallows `listSocialAccounts` errors and returns `[]`, so a real load failure looks identical to “not connected”.  
    - Fix direction: show current **org name** in the app shell; avoid creating duplicate orgs on re-login; surface social-account fetch errors; optional org switcher / “use existing workspace”; don’t fail silent to empty list.
 
-Key files: `src/lib/supabase/client.ts`, `src/lib/app/session.tsx`, `src/components/social/social-planner.tsx`, `src/lib/social/{media,providers,publish-service}.ts`, `supabase/migrations/006_social.sql`, `007_social_posts_schema_align.sql`
+2. **Upload failed (413: Server error) for ~6MB `.MOV` (reported 2026-08-16)**  
+   - Symptom: Compose media upload of a 6MB MOV returns `Upload failed (413: Server error)`.  
+   - Likely cause: file goes through `/api/social/upload-media` on **Vercel**, whose serverless **request body limit is ~4.5MB** — below our 10MB UI/bucket limit — so Vercel rejects before Supabase Storage.  
+   - Client/bucket allow 10MB; server route `MAX_BYTES` is also 10MB, so the 413 is almost certainly the platform limit, not our check.  
+   - Fix direction: **direct-to-Supabase upload** (signed URL or browser client → `social-media` bucket) so large media never hits the Next.js/Vercel body ceiling; improve error copy (“file too large for this upload path”); optionally reject MOV earlier with a clear size/format message; consider compressing or converting video client-side for Instagram Reels.
+
+3. **Scheduled posts never auto-publish (reported 2026-08-16)**  
+   - Symptom: post scheduled for 15:43 PKT stayed `scheduled` at 15:46+; nothing on Instagram. DB row `269bf703-…` correct (`scheduled_for` 10:43 UTC).  
+   - Root cause: **no scheduler was hitting** `/api/social/cron/publish` — no `vercel.json` cron; Compose “Schedule” only writes the row.  
+   - Fix: add `vercel.json` cron every 5 min; accept Vercel `Authorization: Bearer CRON_SECRET` as well as `SOCIAL_CRON_SECRET`. Ensure `SOCIAL_CRON_SECRET` (and ideally `CRON_SECRET`) set on Vercel. Note: **Vercel Hobby** may only allow daily crons — use Pro or an external ping (cron-job.org) for every-few-minutes.  
+
+Key files: `src/lib/supabase/client.ts`, `src/lib/app/session.tsx`, `src/components/social/social-planner.tsx`, `src/lib/social/{media,providers,publish-service}.ts`, `src/app/api/social/upload-media/route.ts`, `src/app/api/social/cron/publish/route.ts`, `vercel.json`, `supabase/migrations/006_social.sql`, `007_social_posts_schema_align.sql`
 
 ---
 
@@ -203,10 +214,11 @@ Checklist:
 - [ ] Post visible on `@son.ion_kebab`
 - [ ] No browser freeze; file input reusable after upload
 - [ ] **Same connected accounts visible across browsers when logged into the same org** (blocked by open bug #1)
+- [ ] **Video upload ≤10MB works on Vercel** (blocked by open bug #2 — 6MB MOV → 413)
 
 Preflight (checked): IG `@son.ion_kebab` connected on org **`tp`** + secrets present; token expires ~2026-10-13; prior published row `16d2555d` (caption "hi") already in DB.
 
-**Smoke test instruction:** use the browser where Accounts already shows connected (or sign into the **`tp`** workspace), preferably https://on-estate.vercel.app/app/social — not a fresh signup in Cursor’s browser.
+**Smoke test instruction:** use the browser where Accounts already shows connected (or sign into the **`tp`** workspace), preferably https://on-estate.vercel.app/app/social — not a fresh signup in Cursor’s browser. For media, prefer a **small JPG** until bug #2 is fixed (avoid >~4.5MB videos on Vercel).
 
 ### 2. Website Template System & Domain Connection (Aug 2026)
 Building 8 pre-made templates (template picker UI, domain verification flow, DNS status tracking).
