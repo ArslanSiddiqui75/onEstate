@@ -1,7 +1,7 @@
 # 0nEstate (CertifiedUK / CertifiedUS) — Project Context
 
 > **Purpose**: This file preserves project context across model switches and chat sessions.
-> **Last updated**: 2026-08-02
+> **Last updated**: 2026-08-16
 
 ---
 
@@ -158,19 +158,40 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 - Migration 007 — billing columns on organizations
 - **Needs**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`
 
-### Social Media — ✅ Code Complete
+### Social Media — ✅ Instagram publish path working (Aug 2026)
 - `src/lib/social/providers.ts` — Facebook, Instagram, LinkedIn, X (all 4 with real OAuth + publish)
 - `src/lib/social/publish-service.ts` — Manual + scheduled cron publisher
-- `/api/social/` — 5 endpoints (accounts, cron, oauth, publish, status)
+- `/api/social/` — accounts, cron, oauth, publish, status, upload-media
 - Token encryption at rest, auto-refresh
-- **Needs**: `META_APP_ID`, `META_APP_SECRET`, etc. per platform
+- Public `social-media` Storage bucket (10MB) for Instagram Graph URL fetches
+- **Needs**: `META_APP_ID`, `META_APP_SECRET`, `INSTAGRAM_APP_*`, etc. per platform
 - **Decision**: n8n/Zapier NOT needed for MVP — direct API is already built
+
+#### Social bug hunt log (2026-08-15 → 2026-08-16)
+| Symptom | Root cause | Fix | Commit / migration |
+|---|---|---|---|
+| Browser freeze/crash on media select or Publish | `createBrowserSupabaseClient()` created a **new client every call** → auth lock contention + memory spiral; auth listener also re-hydrated full workspace on every tab focus / token refresh | Singleton browser client; defer auth work; only hydrate when no repo yet; timeouts on `getAuthToken` + publish fetch | On `main` (included in earlier social commits / FABLE PLEASE) |
+| Publish shows "Saving…" then buttons return; no IG post; **zero** `social_posts` rows | Live DB still had legacy `content NOT NULL` with **no default**; app inserts `caption` only → insert failed; Compose had **no catch** so error was silent | Migration: `content` default `''`; Compose catch + toasts; throw if workspace missing | `b308fe8` + Supabase migration `007_social_posts_schema_align` (applied live) |
+
+**Verified in DB**: post `16d2555d-…` status `published`, caption `"hi"`, `published_at` 2026-08-15 17:50 UTC — Compose → Instagram path works.
+
+**Still open (social)**:
+- Confirm that published post visible on `@son.ion_kebab` (and any later posts)
+- Live-test Facebook / LinkedIn / X (same planner, different providers)
+- Cron scheduled publish end-to-end (`/api/social/cron/publish` + `SOCIAL_CRON_SECRET`)
+- Optional cleanup: drop unused legacy cols on `social_posts` (`content`, `scheduled_at`, `target_account_ids`, `error_message`) once confident
+- Repo habit: **commit + push to GitHub after every fix** (user request)
+
+Key files: `src/lib/supabase/client.ts`, `src/lib/app/session.tsx`, `src/components/social/social-planner.tsx`, `src/lib/social/{media,providers,publish-service}.ts`, `supabase/migrations/006_social.sql`, `007_social_posts_schema_align.sql`
 
 ---
 
 ## Current Work In Progress
 
-### Website Template System & Domain Connection (Aug 2026)
+### 1. Social — smoke / harden (just fixed Instagram publish)
+See open items under Social Media above. Next human check: publish another image from `/app/social` and confirm it on Instagram.
+
+### 2. Website Template System & Domain Connection (Aug 2026)
 Building 8 pre-made templates (template picker UI, domain verification flow, DNS status tracking).
 
 New/modified files:
