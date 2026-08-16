@@ -1,7 +1,59 @@
 # 0nEstate (CertifiedUK / CertifiedUS) — Project Context
 
 > **Purpose**: This file preserves project context across model switches and chat sessions.
-> **Last updated**: 2026-08-16
+> **Last updated**: 2026-08-16 (social handoff — cron-job.org verified)
+
+---
+
+## Chat handoff — Social module (2026-08-16)
+
+Use this block when starting a **new Cursor chat**. Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.app
+
+### What works now
+- **Publish now** (Compose → Instagram Graph) after media upload
+- **Media upload** via **signed URL** → Supabase Storage (avoids Vercel ~4.5MB body 413)
+- **Scheduled posts** via **cron-job.org** every 1–5 min hitting `/api/social/cron/publish`
+  - Auth: header **`X-Cron-Secret: <SOCIAL_CRON_SECRET>`** (preferred). Query `?secret=` breaks if the secret contains `&` / special chars
+  - Verified test run **200 OK**: `{"processed":1,"published":1,"failed":0}` (2026-08-16 ~13:20 UTC)
+- Also: opening `/app/social` calls **`POST /api/social/publish-due`** (flushes due posts for signed-in org) — Hobby workaround
+- Vercel **Hobby**: platform cron is **daily only** (`vercel.json` → `0 12 * * *`). Do **not** put `*/5` in `vercel.json` (deploy fails)
+
+### Critical data gotcha — duplicate `tp` orgs
+Several orgs are named `tp`. Instagram `@son.ion_kebab` is only on:
+
+| Org id prefix | Connected IG? | Sign-in emails |
+|---|---|---|
+| `c3d7bf08…` | **Yes** | `bilalsiddiqui3k3@gmail.com`, `i253101@isb.nu.edu.pk` |
+| `d9b54dd8…` | No | `arslansiddiqui2k5@gmail.com` |
+| other `tp` | No | empty / other |
+
+UI shows **Workspace** name + short org id in the shell. Wrong email = empty Accounts.
+
+### Env (Vercel Production + Preview)
+- Supabase: `NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`
+- `SOCIAL_TOKEN_ENCRYPTION_KEY`
+- `SOCIAL_CRON_SECRET` + **`CRON_SECRET` (same value)** for Vercel Cron bearer
+- `INSTAGRAM_APP_ID` / `INSTAGRAM_APP_SECRET` (and Meta/etc. as needed)
+- App URL / OAuth redirects for production domain
+
+### Bug → fix log (commits on `main`)
+| Issue | Fix | Notes |
+|---|---|---|
+| Tab freeze on upload/publish | Browser Supabase client **singleton**; auth listener no nested deadlock / no full refetch every focus | `src/lib/supabase/client.ts`, `session.tsx` |
+| Publish → Saving… then nothing | Legacy `social_posts.content` NOT NULL no default | Migration `007_social_posts_schema_align`; Compose error toasts |
+| Accounts empty in other browser | Different user/org; duplicate `tp` names | Shell workspace id; Accounts copy; toast on load fail |
+| 6MB MOV → 413 | Signed upload URL; `uploadToSignedUrl` | `upload-media/route.ts`, `media.ts` — `abe68d6` / later |
+| Schedule never fires on Hobby | Daily Vercel cron + cron-job.org + page flush | `vercel.json`, `publish-due`, Social `DuePostsFlusher` — `7069954` |
+
+### Still open / next product work
+- [ ] Live-test Facebook / LinkedIn / X
+- [ ] Org switcher (pick among user’s orgs) — optional
+- [ ] Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe
+- [ ] **Website Builder** — public multi-tenant rendering (main unfinished module)
+- Repo habit: **commit + push after every fix**
+
+### Key paths
+`src/lib/social/{media,providers,publish-service,crypto}.ts` · `src/components/social/social-planner.tsx` · `src/components/shell/app-shell.tsx` · `src/app/api/social/**` · `src/lib/supabase/client.ts` · `src/lib/app/session.tsx` · `vercel.json` · `supabase/migrations/006_social.sql`, `007_social_posts_schema_align.sql`
 
 ---
 
@@ -158,72 +210,29 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 - Migration 007 — billing columns on organizations
 - **Needs**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`
 
-### Social Media — ✅ Instagram publish path working (Aug 2026)
-- `src/lib/social/providers.ts` — Facebook, Instagram, LinkedIn, X (all 4 with real OAuth + publish)
-- `src/lib/social/publish-service.ts` — Manual + scheduled cron publisher
-- `/api/social/` — accounts, cron, oauth, publish, status, upload-media
-- Token encryption at rest, auto-refresh
-- Public `social-media` Storage bucket (10MB) for Instagram Graph URL fetches
-- **Needs**: `META_APP_ID`, `META_APP_SECRET`, `INSTAGRAM_APP_*`, etc. per platform
-- **Decision**: n8n/Zapier NOT needed for MVP — direct API is already built
-
-#### Social bug hunt log (2026-08-15 → 2026-08-16)
-| Symptom | Root cause | Fix | Commit / migration |
-|---|---|---|---|
-| Browser freeze/crash on media select or Publish | `createBrowserSupabaseClient()` created a **new client every call** → auth lock contention + memory spiral; auth listener also re-hydrated full workspace on every tab focus / token refresh | Singleton browser client; defer auth work; only hydrate when no repo yet; timeouts on `getAuthToken` + publish fetch | On `main` (included in earlier social commits / FABLE PLEASE) |
-| Publish shows "Saving…" then buttons return; no IG post; **zero** `social_posts` rows | Live DB still had legacy `content NOT NULL` with **no default**; app inserts `caption` only → insert failed; Compose had **no catch** so error was silent | Migration: `content` default `''`; Compose catch + toasts; throw if workspace missing | `b308fe8` + Supabase migration `007_social_posts_schema_align` (applied live) |
-
-**Verified in DB**: post `16d2555d-…` status `published`, caption `"hi"`, `published_at` 2026-08-15 17:50 UTC — Compose → Instagram path works.
-
-**Still open (social)**:
-- Confirm that published post visible on `@son.ion_kebab` (and any later posts)
-- **Cross-browser / wrong workspace: connected IG missing in Cursor browser** (see open bugs below)
-- Live-test Facebook / LinkedIn / X (same planner, different providers)
-- Cron scheduled publish end-to-end (`/api/social/cron/publish` + `SOCIAL_CRON_SECRET`)
-- Optional cleanup: drop unused legacy cols on `social_posts` (`content`, `scheduled_at`, `target_account_ids`, `error_message`) once confident
-- Repo habit: **commit + push to GitHub after every fix** (user request)
-
-#### Open bugs to fix
-1. **Connected social accounts not visible in another browser (reported 2026-08-16)** — **mitigated 2026-08-16**  
-   - Symptom: Cursor browser session on `on-estate.vercel.app/app/social` shows Instagram **not** connected; user’s usual browser shows `@son.ion_kebab` connected.  
-   - Likely cause: **different auth user / org**. IG lives only on org **`tp`**. Signup in a second browser creates a blank workspace.  
-   - Secondary risk: `getSnapshot()` swallowed `listSocialAccounts` errors → empty list looked like “not connected”.  
-   - Fix shipped: prominent **Workspace** name in sidebar + header; Accounts tab explains per-workspace accounts + warning when none connected; toast on social-account load failure; login/signup copy steers users to Sign in instead of new signup. Full org switcher still future work.
-
-2. **Upload failed (413: Server error) for ~6MB `.MOV` (reported 2026-08-16)** — **fixed 2026-08-16**  
-   - Symptom: Compose media upload of a 6MB MOV returns `Upload failed (413: Server error)`.  
-   - Cause: multipart upload through `/api/social/upload-media` hit **Vercel’s ~4.5MB body limit**.  
-   - Fix: API now only returns a **signed upload URL**; browser uploads bytes via `uploadToSignedUrl` straight to Supabase Storage (bucket still 10MB).
-
-3. **Scheduled posts never auto-publish (reported 2026-08-16, still failing after vercel.json)** — **Hobby-aware fix 2026-08-16**  
-   - Symptom: schedules stay `scheduled` past due time; `abe68d6` deploy failed: Hobby cannot use `*/5` crons (once/day only, ±59 min).  
-   - Fixes:  
-     1. `vercel.json` cron set to **daily** `0 12 * * *` so deploys succeed on Hobby.  
-     2. Auth for Vercel Cron (`x-vercel-cron` / `CRON_SECRET`).  
-     3. **`POST /api/social/publish-due`** (signed-in) + Social page auto-flush on open — due posts for that org publish without Pro/every-5-min cron.  
-   - For hands-off every-5-min without opening the app: Pro Vercel, or cron-job.org → `/api/social/cron/publish?secret=…`.  
-   - Immediate unblock for stuck row: open `/app/social` (flush) or click **Publish** on the post.  
-
-Key files: `src/lib/supabase/client.ts`, `src/lib/app/session.tsx`, `src/components/social/social-planner.tsx`, `src/lib/social/{media,providers,publish-service}.ts`, `src/app/api/social/upload-media/route.ts`, `src/app/api/social/cron/publish/route.ts`, `vercel.json`, `supabase/migrations/006_social.sql`, `007_social_posts_schema_align.sql`
+### Social Media — ✅ Instagram publish + schedule (Hobby + cron-job.org) — Aug 2026
+- Providers: Facebook, Instagram, LinkedIn, X (OAuth + publish)
+- Publish engine: `publish-service.ts` (manual, cron, org flush)
+- Routes: accounts, cron/publish, publish, publish-due, oauth, status, upload-media
+- Storage: public bucket `social-media` (10MB); uploads via **signed URL**
+- Schedule ops: cron-job.org + `X-Cron-Secret`; Vercel daily cron; Social page auto-flush
+- See **Chat handoff — Social module** at top of this file for full bug log + org map
 
 ---
 
 ## Current Work In Progress
 
-### 1. Social — smoke / harden (IN PROGRESS — 2026-08-16)
+### 1. Social — smoke / harden (MOSTLY DONE — 2026-08-16)
 Checklist:
-- [ ] Publish image + caption from `/app/social` Compose → see toast success
-- [ ] Queue shows status `published`
-- [ ] Post visible on `@son.ion_kebab`
-- [ ] No browser freeze; file input reusable after upload
-- [x] **Same connected accounts visible across browsers when logged into the same org** (workspace name + Accounts guidance shipped; user must Sign in to org `tp`)
-- [x] **Video upload ≤10MB works on Vercel** (signed URL → Storage; avoids Vercel 4.5MB body limit)
+- [x] Publish image + caption from Compose (DB + IG path verified earlier)
+- [x] Queue can show `published`
+- [x] Cron-job.org test: `processed:1, published:1`
+- [x] Workspace identity / duplicate `tp` guidance
+- [x] Video ≤10MB upload path (signed URL) — re-test on production after deploy
+- [ ] Facebook / LinkedIn / X live publish
+- [ ] Optional org switcher
 
-Preflight (checked): IG `@son.ion_kebab` connected on org **`tp`** + secrets present; token expires ~2026-10-13; prior published row `16d2555d` (caption "hi") already in DB.
-
-**Smoke test instruction:** use the browser where Accounts already shows connected (or sign into the **`tp`** workspace), preferably https://on-estate.vercel.app/app/social — not a fresh signup in Cursor’s browser. For media, prefer a **small JPG** until bug #2 is fixed (avoid >~4.5MB videos on Vercel).
-
-### 2. Website Template System & Domain Connection (Aug 2026)
+### 2. Website Template System & Domain Connection (NEXT MAJOR)
 Building 8 pre-made templates (template picker UI, domain verification flow, DNS status tracking).
 
 New/modified files:
@@ -244,7 +253,7 @@ All documented in `.env.example`. Key groups:
 - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`
 - Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
 - Social: `META_APP_ID`, `META_APP_SECRET`, `INSTAGRAM_APP_*`, `LINKEDIN_CLIENT_*`, `X_CLIENT_*`
-- Social infra: `SOCIAL_TOKEN_ENCRYPTION_KEY`, `SOCIAL_CRON_SECRET`
+- Social infra: `SOCIAL_TOKEN_ENCRYPTION_KEY`, `SOCIAL_CRON_SECRET`, `CRON_SECRET` (same value as SOCIAL_CRON_SECRET on Vercel)
 
 ---
 
