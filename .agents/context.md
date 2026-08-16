@@ -195,14 +195,14 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
    - Cause: multipart upload through `/api/social/upload-media` hit **Vercel’s ~4.5MB body limit**.  
    - Fix: API now only returns a **signed upload URL**; browser uploads bytes via `uploadToSignedUrl` straight to Supabase Storage (bucket still 10MB).
 
-3. **Scheduled posts never auto-publish (reported 2026-08-16, still failing after vercel.json)**  
-   - Symptom: user schedules for a near time; minutes later still nothing on Instagram unless they hit **Publish** manually.  
-   - Confirmed: rows can sit `scheduled` until manual Publish; after manual Publish they become `published` (e.g. `caption no.2`, `scheduled post`) — Graph/publish path works.  
-   - Root causes (compounded):  
-     1. Initially **no cron** hit `/api/social/cron/publish` (fixed: `vercel.json` `*/5 * * * *`).  
-     2. **Auth mismatch**: `SOCIAL_CRON_SECRET` is set on Vercel, but Vercel Cron does **not** send that secret — only `x-vercel-cron: 1` and, if `CRON_SECRET` is set, `Authorization: Bearer …`. Cron runs were **401 Unauthorized**.  
-     3. **Vercel Hobby** may only allow **1 cron/day**; `*/5` may not run every 5 minutes on Hobby.  
-   - Fix (2026-08-16 follow-up): accept `x-vercel-cron: 1`; document setting `CRON_SECRET` = `SOCIAL_CRON_SECRET` on Vercel; if Hobby still won’t tick often enough, use cron-job.org → `GET /api/social/cron/publish?secret=…` every 5 min.  
+3. **Scheduled posts never auto-publish (reported 2026-08-16, still failing after vercel.json)** — **Hobby-aware fix 2026-08-16**  
+   - Symptom: schedules stay `scheduled` past due time; `abe68d6` deploy failed: Hobby cannot use `*/5` crons (once/day only, ±59 min).  
+   - Fixes:  
+     1. `vercel.json` cron set to **daily** `0 12 * * *` so deploys succeed on Hobby.  
+     2. Auth for Vercel Cron (`x-vercel-cron` / `CRON_SECRET`).  
+     3. **`POST /api/social/publish-due`** (signed-in) + Social page auto-flush on open — due posts for that org publish without Pro/every-5-min cron.  
+   - For hands-off every-5-min without opening the app: Pro Vercel, or cron-job.org → `/api/social/cron/publish?secret=…`.  
+   - Immediate unblock for stuck row: open `/app/social` (flush) or click **Publish** on the post.  
 
 Key files: `src/lib/supabase/client.ts`, `src/lib/app/session.tsx`, `src/components/social/social-planner.tsx`, `src/lib/social/{media,providers,publish-service}.ts`, `src/app/api/social/upload-media/route.ts`, `src/app/api/social/cron/publish/route.ts`, `vercel.json`, `supabase/migrations/006_social.sql`, `007_social_posts_schema_align.sql`
 

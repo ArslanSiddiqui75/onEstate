@@ -123,16 +123,22 @@ export async function publishSocialPost(postId: string, orgId: string): Promise<
   return { ok: allOk, message, results };
 }
 
-export async function publishDuePosts(limit = 25) {
+export async function publishDuePosts(limit = 25, orgId?: string) {
   const supabase = createServiceSupabaseClient();
   if (!supabase) return { processed: 0, published: 0, failed: 0 };
 
-  const { data: due } = await supabase
+  let query = supabase
     .from("social_posts")
     .select("id, org_id")
     .eq("status", "scheduled")
     .lte("scheduled_for", new Date().toISOString())
     .limit(limit);
+
+  if (orgId) {
+    query = query.eq("org_id", orgId);
+  }
+
+  const { data: due } = await query;
 
   let published = 0;
   let failed = 0;

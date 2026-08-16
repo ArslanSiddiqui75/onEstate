@@ -10,6 +10,42 @@ import { PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 import { PLATFORM_LABEL } from "@/lib/social/media";
 import type { SocialPlatform } from "@/types";
 
+/** Hobby Vercel can't run every-few-minutes crons — flush due posts when Social opens. */
+function DuePostsFlusher() {
+  const { persistence, getAuthToken, refresh } = useAppSession();
+  const ranRef = useRef(false);
+
+  useEffect(() => {
+    if (persistence !== "supabase" || ranRef.current) return;
+    ranRef.current = true;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await getAuthToken();
+        if (!token || cancelled) return;
+        const res = await fetch("/api/social/publish-due", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok || cancelled) return;
+        const json = (await res.json().catch(() => ({}))) as { processed?: number };
+        if ((json.processed || 0) > 0 && !cancelled) {
+          await refresh();
+        }
+      } catch {
+        // Non-fatal — manual Publish / external cron still work
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [persistence, getAuthToken, refresh]);
+
+  return null;
+}
+
 function OAuthReturnBanner() {
   const searchParams = useSearchParams();
   const { refresh } = useAppSession();
@@ -106,6 +142,7 @@ export default function AppSocialPage() {
 
   return (
     <div className="space-y-4">
+      <DuePostsFlusher />
       <Suspense fallback={null}>
         <OAuthReturnBanner />
       </Suspense>
@@ -121,8 +158,8 @@ export default function AppSocialPage() {
         onPublishNow={publishSocialPostNow}
         planHint={
           flags.autoListingPosts
-            ? "Auto listing-to-post is enabled on your plan."
-            : "Manual scheduling on your plan — upgrade for auto listing-to-post."
+            ? "Auto listing-to-post is enabled on your plan. On Vercel Hobby, due schedules also flush when you open this page (or use an external 5‑min ping)."
+            : "Manual scheduling on your plan — upgrade for auto listing-to-post. On Vercel Hobby, due schedules flush when you open this page."
         }
         onUpsertAccount={upsertSocialAccount}
         onDeleteAccount={deleteSocialAccount}
