@@ -177,10 +177,18 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 
 **Still open (social)**:
 - Confirm that published post visible on `@son.ion_kebab` (and any later posts)
+- **Cross-browser / wrong workspace: connected IG missing in Cursor browser** (see open bugs below)
 - Live-test Facebook / LinkedIn / X (same planner, different providers)
 - Cron scheduled publish end-to-end (`/api/social/cron/publish` + `SOCIAL_CRON_SECRET`)
 - Optional cleanup: drop unused legacy cols on `social_posts` (`content`, `scheduled_at`, `target_account_ids`, `error_message`) once confident
 - Repo habit: **commit + push to GitHub after every fix** (user request)
+
+#### Open bugs to fix
+1. **Connected social accounts not visible in another browser (reported 2026-08-16)**  
+   - Symptom: Cursor browser session on `on-estate.vercel.app/app/social` shows Instagram **not** connected; user’s usual browser (where OAuth was done) shows `@son.ion_kebab` connected.  
+   - Likely cause: **different auth user / org**. IG lives only on org **`tp`** (`c3d7bf08-…`). DB has several orgs/profiles for “Arslan” (`tp`, another `tp`, `arshi`, `owner Realty`) — signing up or signing into a different workspace creates an empty Accounts tab.  
+   - Secondary risk: `getSnapshot()` swallows `listSocialAccounts` errors and returns `[]`, so a real load failure looks identical to “not connected”.  
+   - Fix direction: show current **org name** in the app shell; avoid creating duplicate orgs on re-login; surface social-account fetch errors; optional org switcher / “use existing workspace”; don’t fail silent to empty list.
 
 Key files: `src/lib/supabase/client.ts`, `src/lib/app/session.tsx`, `src/components/social/social-planner.tsx`, `src/lib/social/{media,providers,publish-service}.ts`, `supabase/migrations/006_social.sql`, `007_social_posts_schema_align.sql`
 
@@ -188,8 +196,17 @@ Key files: `src/lib/supabase/client.ts`, `src/lib/app/session.tsx`, `src/compone
 
 ## Current Work In Progress
 
-### 1. Social — smoke / harden (just fixed Instagram publish)
-See open items under Social Media above. Next human check: publish another image from `/app/social` and confirm it on Instagram.
+### 1. Social — smoke / harden (IN PROGRESS — 2026-08-16)
+Checklist:
+- [ ] Publish image + caption from `/app/social` Compose → see toast success
+- [ ] Queue shows status `published`
+- [ ] Post visible on `@son.ion_kebab`
+- [ ] No browser freeze; file input reusable after upload
+- [ ] **Same connected accounts visible across browsers when logged into the same org** (blocked by open bug #1)
+
+Preflight (checked): IG `@son.ion_kebab` connected on org **`tp`** + secrets present; token expires ~2026-10-13; prior published row `16d2555d` (caption "hi") already in DB.
+
+**Smoke test instruction:** use the browser where Accounts already shows connected (or sign into the **`tp`** workspace), preferably https://on-estate.vercel.app/app/social — not a fresh signup in Cursor’s browser.
 
 ### 2. Website Template System & Domain Connection (Aug 2026)
 Building 8 pre-made templates (template picker UI, domain verification flow, DNS status tracking).
