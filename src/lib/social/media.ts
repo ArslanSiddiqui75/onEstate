@@ -1,4 +1,5 @@
 import type { SocialMediaItem, SocialPlatform } from "@/types";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { compressImageBlob } from "./image-compress-core";
 
 export const SOCIAL_PLATFORMS: SocialPlatform[] = [
@@ -24,14 +25,11 @@ export const PLATFORM_HINT: Record<SocialPlatform, string> = {
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 // Kept in sync with the "social-media" Supabase Storage bucket's
-// file_size_limit (10MB) and /api/social/upload-media's MAX_BYTES. A larger
-// client-side limit here would let a video pass the Compose form's check and
-// then fail (or hang past Vercel's serverless request body ceiling) at
-// upload time, leaving the UI stuck.
+// file_size_limit (10MB). Uploads go straight to Storage via a signed URL
+// (not through the Vercel function body), so the old ~4.5MB edge limit no
+// longer applies — but the bucket itself still caps at 10MB.
 const MAX_VIDEO_BYTES = 10 * 1024 * 1024;
-// Vercel serverless functions enforce their own hard request timeout, but a
-// dropped/stalled connection on the client side otherwise has no ceiling.
-const UPLOAD_TIMEOUT_MS = 45_000;
+const UPLOAD_TIMEOUT_MS = 90_000;
 
 function newMediaId() {
   return `media_${crypto.randomUUID()}`;
@@ -116,8 +114,10 @@ export async function fileToSocialMedia(file: File): Promise<SocialMediaItem> {
 }
 
 /**
- * Uploads media directly to Supabase Storage via `/api/social/upload-media`.
- * Never stores heavy base64 strings in the database.
+ * Uploads media to Supabase Storage using a signed URL.
+ * The file bytes go browser → Storage (never through the Next.js/Vercel
+ * function body), which avoids Vercel's ~4.5MB request limit that caused
+ * 413s on mid-size videos.
  */
 export async function uploadSocialMediaFile(
   file: File,
@@ -135,7 +135,6 @@ export async function uploadSocialMediaFile(
     throw new Error("Videos must be under 10MB.");
   }
 
-  // Fast client-side image compression
   let uploadBlob: Blob = file;
   let mimeType = file.type || "application/octet-stream";
 
@@ -144,52 +143,84 @@ export async function uploadSocialMediaFile(
     if (wasCompressed(uploadBlob)) mimeType = "image/jpeg";
   }
 
-  const token = await getToken();
-  const form = new FormData();
-  const safeName = isImage && wasCompressed(uploadBlob) ? file.name.replace(/\.[^.]+$/, ".jpg") : file.name;
-  form.append("file", uploadBlob, safeName);
+  if (uploadBlob.size > MAX_IMAGE_BYTES) {
+    throw new Error("File exceeds the 10 MB upload limit after processing.");
+  }
 
-  // A stalled request (dropped connection, oversized body silently held open
-  // by an intermediary, etc.) must not hang the Compose form forever with the
-  // file input disabled and the button stuck on "Uploading…".
+  const token = await getToken();
+  if (!token) {
+    throw new Error("Sign in required to upload media.");
+  }
+
+  const safeName =
+    isImage && wasCompressed(uploadBlob)
+      ? file.name.replace(/\.[^.]+$/, ".jpg")
+      : file.name;
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
 
-  let res: Response;
   try {
-    res = await fetch("/api/social/upload-media", {
+    const signRes = await fetch("/api/social/upload-media", {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: form,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        mimeType,
+        fileName: safeName,
+        sizeBytes: uploadBlob.size,
+      }),
       signal: controller.signal,
     });
+
+    const signed = (await signRes.json().catch(() => ({}))) as {
+      path?: string;
+      token?: string;
+      signedUrl?: string;
+      publicUrl?: string;
+      error?: string;
+    };
+
+    if (!signRes.ok || !signed.path || !signed.token || !signed.publicUrl) {
+      throw new Error(
+        signed.error ||
+          `Upload failed (${signRes.status}: ${signRes.statusText || "Server error"})`,
+      );
+    }
+
+    // Browser → Storage directly (official signed-upload API). File bytes never
+    // touch the Vercel function body.
+    const supabase = createBrowserSupabaseClient();
+    const { error: putError } = await supabase.storage
+      .from("social-media")
+      .uploadToSignedUrl(signed.path, signed.token, uploadBlob, {
+        contentType: mimeType,
+      });
+
+    if (putError) {
+      throw new Error(putError.message || "Storage upload failed. Try a smaller file.");
+    }
+
+    return {
+      id: newMediaId(),
+      kind: isImage ? "image" : "video",
+      name: file.name,
+      mimeType,
+      sizeBytes: uploadBlob.size,
+      dataUrl: signed.publicUrl,
+      createdAt: new Date().toISOString(),
+    };
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error("Upload timed out. Check your connection and try again.");
     }
-    throw new Error(err instanceof Error ? err.message : "Upload failed. Check your connection and try again.");
+    if (err instanceof Error) throw err;
+    throw new Error("Upload failed. Check your connection and try again.");
   } finally {
     clearTimeout(timeout);
   }
-
-  const json = (await res.json().catch(() => ({}) as Record<string, unknown>)) as {
-    publicUrl?: string;
-    error?: string;
-  };
-
-  if (!res.ok || !json.publicUrl) {
-    throw new Error(json.error || `Upload failed (${res.status}: ${res.statusText || "Server error"})`);
-  }
-
-  return {
-    id: newMediaId(),
-    kind: isImage ? "image" : "video",
-    name: file.name,
-    mimeType,
-    sizeBytes: uploadBlob.size,
-    dataUrl: json.publicUrl,
-    createdAt: new Date().toISOString(),
-  };
 }
 
 export function formatBytes(bytes: number) {

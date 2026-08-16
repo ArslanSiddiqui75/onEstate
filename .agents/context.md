@@ -190,11 +190,10 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
    - Secondary risk: `getSnapshot()` swallowed `listSocialAccounts` errors → empty list looked like “not connected”.  
    - Fix shipped: prominent **Workspace** name in sidebar + header; Accounts tab explains per-workspace accounts + warning when none connected; toast on social-account load failure; login/signup copy steers users to Sign in instead of new signup. Full org switcher still future work.
 
-2. **Upload failed (413: Server error) for ~6MB `.MOV` (reported 2026-08-16)**  
+2. **Upload failed (413: Server error) for ~6MB `.MOV` (reported 2026-08-16)** — **fixed 2026-08-16**  
    - Symptom: Compose media upload of a 6MB MOV returns `Upload failed (413: Server error)`.  
-   - Likely cause: file goes through `/api/social/upload-media` on **Vercel**, whose serverless **request body limit is ~4.5MB** — below our 10MB UI/bucket limit — so Vercel rejects before Supabase Storage.  
-   - Client/bucket allow 10MB; server route `MAX_BYTES` is also 10MB, so the 413 is almost certainly the platform limit, not our check.  
-   - Fix direction: **direct-to-Supabase upload** (signed URL or browser client → `social-media` bucket) so large media never hits the Next.js/Vercel body ceiling; improve error copy (“file too large for this upload path”); optionally reject MOV earlier with a clear size/format message; consider compressing or converting video client-side for Instagram Reels.
+   - Cause: multipart upload through `/api/social/upload-media` hit **Vercel’s ~4.5MB body limit**.  
+   - Fix: API now only returns a **signed upload URL**; browser uploads bytes via `uploadToSignedUrl` straight to Supabase Storage (bucket still 10MB).
 
 3. **Scheduled posts never auto-publish (reported 2026-08-16, still failing after vercel.json)**  
    - Symptom: user schedules for a near time; minutes later still nothing on Instagram unless they hit **Publish** manually.  
@@ -218,7 +217,7 @@ Checklist:
 - [ ] Post visible on `@son.ion_kebab`
 - [ ] No browser freeze; file input reusable after upload
 - [x] **Same connected accounts visible across browsers when logged into the same org** (workspace name + Accounts guidance shipped; user must Sign in to org `tp`)
-- [ ] **Video upload ≤10MB works on Vercel** (blocked by open bug #2 — 6MB MOV → 413)
+- [x] **Video upload ≤10MB works on Vercel** (signed URL → Storage; avoids Vercel 4.5MB body limit)
 
 Preflight (checked): IG `@son.ion_kebab` connected on org **`tp`** + secrets present; token expires ~2026-10-13; prior published row `16d2555d` (caption "hi") already in DB.
 
