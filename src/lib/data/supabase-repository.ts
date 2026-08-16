@@ -480,6 +480,9 @@ export function createSupabaseRepository(
           (row.listing_portal_syncs || []).map((p: Record<string, unknown>) => ({
             portal: p.portal as Listing["portals"][number]["portal"],
             status: p.status as Listing["portals"][number]["status"],
+            lastError: p.last_error ? String(p.last_error) : undefined,
+            lastMessage: p.last_message ? String(p.last_message) : undefined,
+            lastSyncedAt: p.last_synced_at ? String(p.last_synced_at) : undefined,
           })),
           (row.listing_compliance_issues || [])
             .filter((i: Record<string, unknown>) => !i.resolved)
@@ -563,8 +566,11 @@ export function createSupabaseRepository(
               org_id: ctx.org.id,
               portal: portal.portal,
               status: portal.status,
+              last_error: portal.lastError || null,
+              last_message: portal.lastMessage || null,
               last_synced_at:
-                portal.status === "synced" ? new Date().toISOString() : null,
+                portal.lastSyncedAt ||
+                (portal.status === "synced" ? new Date().toISOString() : null),
             },
             { onConflict: "listing_id,portal" },
           );

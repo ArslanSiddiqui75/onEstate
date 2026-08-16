@@ -46,6 +46,29 @@ export type PortalId =
   | "mls";
 
 export type SyncStatus = "synced" | "pending" | "error" | "not_connected";
+
+/** Per-org portal feed credentials (branch/network). Live APIs need partner access. */
+export interface PortalConnection {
+  portal: PortalId;
+  connected: boolean;
+  /** Branch / office id issued by the portal network */
+  branchId?: string;
+  /** Network / group id when the portal requires it */
+  networkId?: string;
+  /** True when the user saved an API/feed key (value stored locally, not in DB) */
+  apiKeyConfigured?: boolean;
+  connectedAt?: string;
+  lastVerifiedAt?: string;
+  notes?: string;
+}
+
+export interface ListingPortalSync {
+  portal: PortalId;
+  status: SyncStatus;
+  lastError?: string;
+  lastMessage?: string;
+  lastSyncedAt?: string;
+}
 export type Priority = "low" | "medium" | "high" | "urgent";
 export type ContactSource =
   | "website"
@@ -133,7 +156,7 @@ export interface Listing {
   tenure?: "freehold" | "leasehold";
   mlsDisclosureComplete?: boolean;
   agentId: string;
-  portals: { portal: PortalId; status: SyncStatus }[];
+  portals: ListingPortalSync[];
   imageUrl: string;
   description: string;
   complianceIssues?: string[];

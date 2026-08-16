@@ -3,7 +3,17 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, Edit, ExternalLink, Eye, LayoutGrid, Search, ShieldAlert, ShieldCheck, X } from "lucide-react";
+import {
+  Building2,
+  Download,
+  Edit,
+  Eye,
+  LayoutGrid,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
@@ -19,17 +29,35 @@ import { toast } from "@/components/ui/toast";
 import { formatMoney } from "@/lib/utils";
 import { getIntegrationStack } from "@/lib/integrations/registry";
 import { fadeUp, staggerContainer } from "@/lib/motion";
-import type { Listing, ListingStatus } from "@/types";
+import { PORTAL_LABEL } from "@/lib/portals/connections";
+import {
+  buildPortalFeedPayload,
+  downloadPortalFeedPayload,
+} from "@/lib/portals/payload";
+import type { Listing, ListingStatus, PortalConnection, PortalId } from "@/types";
 
 export default function AppListingsPage() {
-  const { user, org, listings, addListing, updateListingStatus, queuePortalSync, market } =
-    useAppSession();
+  const {
+    user,
+    org,
+    listings,
+    addListing,
+    updateListingStatus,
+    queuePortalSync,
+    listPortalConnections,
+    savePortalConnection,
+    market,
+  } = useAppSession();
   const [showForm, setShowForm] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [portalLogListing, setPortalLogListing] = useState<Listing | null>(null);
+  const [connectionDrafts, setConnectionDrafts] = useState<
+    Record<string, { branchId: string; networkId: string; apiKey: string }>
+  >({});
+  const [connectionsTick, setConnectionsTick] = useState(0);
 
   const marketListings = useMemo(
     () => {
@@ -46,6 +74,11 @@ export default function AppListingsPage() {
     [listings, org, market, searchQuery],
   );
 
+  const portalConnections = useMemo(() => {
+    void connectionsTick;
+    return listPortalConnections();
+  }, [listPortalConnections, connectionsTick, market]);
+
   if (!user || !org) return null;
 
   const allowed = hasModuleAccess(user.role, org.plan, "listings", "view");
@@ -53,6 +86,69 @@ export default function AppListingsPage() {
   const deliveryProviders = getIntegrationStack(market).filter(
     (provider) => provider.category === "portal" || provider.category === "mls",
   );
+
+  function draftFor(portal: PortalId) {
+    const saved = portalConnections.find((c) => c.portal === portal);
+    return (
+      connectionDrafts[portal] || {
+        branchId: saved?.branchId || "",
+        networkId: saved?.networkId || "",
+        apiKey: "",
+      }
+    );
+  }
+
+  function setDraft(
+    portal: PortalId,
+    patch: Partial<{ branchId: string; networkId: string; apiKey: string }>,
+  ) {
+    setConnectionDrafts((prev) => ({
+      ...prev,
+      [portal]: { ...draftFor(portal), ...patch },
+    }));
+  }
+
+  function connectPortal(portal: PortalId) {
+    const draft = draftFor(portal);
+    if (!draft.branchId.trim()) {
+      toast.error("Branch / office ID is required");
+      return;
+    }
+    if (!draft.apiKey.trim()) {
+      toast.error("Feed / API key is required to mark this portal connected");
+      return;
+    }
+    const connection: PortalConnection = {
+      portal,
+      connected: true,
+      branchId: draft.branchId.trim(),
+      networkId: draft.networkId.trim() || undefined,
+      apiKeyConfigured: true,
+      connectedAt: new Date().toISOString(),
+      lastVerifiedAt: new Date().toISOString(),
+      notes: "Credentials stored in this browser. Live portal APIs need a commercial partnership.",
+    };
+    savePortalConnection(connection);
+    setConnectionsTick((t) => t + 1);
+    toast.success(`${PORTAL_LABEL[portal]} connected (export-ready)`);
+  }
+
+  function disconnectPortal(portal: PortalId) {
+    savePortalConnection({
+      portal,
+      connected: false,
+      branchId: undefined,
+      networkId: undefined,
+      apiKeyConfigured: false,
+    });
+    setConnectionDrafts((prev) => {
+      const next = { ...prev };
+      delete next[portal];
+      return next;
+    });
+    setConnectionsTick((t) => t + 1);
+    toast.success(`${PORTAL_LABEL[portal]} disconnected`);
+  }
 
   if (!allowed) {
     return (
@@ -176,23 +272,103 @@ export default function AppListingsPage() {
         </TabsBar>
 
         <TabsContent value="portals" className="mt-4">
+          <Alert tone="warning" className="mb-4">
+            Live Rightmove / Zoopla / OnTheMarket / MLS publish needs a commercial
+            portal partnership. Connect branch IDs here to validate listings, prepare
+            feed JSON exports, and track per-portal status. Partner HTTP/FTP transport
+            plugs in later without changing this UI.
+          </Alert>
           <motion.div
             variants={staggerContainer}
             initial="hidden"
             animate="show"
-            className="grid gap-3 md:grid-cols-3"
+            className="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
           >
-            {deliveryProviders.map((provider) => (
-              <motion.div key={provider.id} variants={fadeUp}>
-                <Card hover>
-                  <p className="text-sm font-medium">{provider.name}</p>
-                  <p className="mt-1 text-xs text-[var(--muted)]">{provider.summary}</p>
-                  <p className="mt-3 text-[11px] uppercase tracking-[0.12em] text-[var(--muted)]">
-                    {provider.credentialOwner}
-                  </p>
-                </Card>
-              </motion.div>
-            ))}
+            {portalConnections.map((connection) => {
+              const provider = deliveryProviders.find((p) => p.id === connection.portal);
+              const draft = draftFor(connection.portal);
+              return (
+                <motion.div key={connection.portal} variants={fadeUp}>
+                  <Card hover className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {PORTAL_LABEL[connection.portal]}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">
+                          {provider?.summary || "Listing distribution feed"}
+                        </p>
+                      </div>
+                      <Badge
+                        tone={connection.connected ? "success" : "neutral"}
+                      >
+                        {connection.connected ? "Connected" : "Not connected"}
+                      </Badge>
+                    </div>
+                    {canEdit ? (
+                      <div className="grid gap-2">
+                        <Input
+                          placeholder="Branch / office ID"
+                          value={draft.branchId}
+                          onChange={(e) =>
+                            setDraft(connection.portal, { branchId: e.target.value })
+                          }
+                          disabled={connection.connected}
+                        />
+                        <Input
+                          placeholder="Network ID (optional)"
+                          value={draft.networkId}
+                          onChange={(e) =>
+                            setDraft(connection.portal, { networkId: e.target.value })
+                          }
+                          disabled={connection.connected}
+                        />
+                        <Input
+                          type="password"
+                          placeholder={
+                            connection.apiKeyConfigured
+                              ? "Feed key saved in this browser"
+                              : "Feed / API key"
+                          }
+                          value={draft.apiKey}
+                          onChange={(e) =>
+                            setDraft(connection.portal, { apiKey: e.target.value })
+                          }
+                          disabled={connection.connected}
+                        />
+                        {connection.connected ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => disconnectPortal(connection.portal)}
+                          >
+                            Disconnect
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => connectPortal(connection.portal)}
+                          >
+                            Save connection
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[var(--muted)]">
+                        {connection.connected
+                          ? `Branch ${connection.branchId}`
+                          : "Ask an editor to connect this portal."}
+                      </p>
+                    )}
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--muted)]">
+                      {provider?.credentialOwner || "Brokerage portal account"}
+                    </p>
+                  </Card>
+                </motion.div>
+              );
+            })}
           </motion.div>
         </TabsContent>
 
@@ -311,8 +487,19 @@ export default function AppListingsPage() {
                     onClick={() => setPortalLogListing(listing)}
                     title="Click for portal sync status detail"
                   >
-                    <Badge className="cursor-pointer hover:opacity-80">
-                      {p.portal} · {p.status.replace("_", " ")}
+                    <Badge
+                      tone={
+                        p.status === "synced"
+                          ? "success"
+                          : p.status === "error"
+                            ? "danger"
+                            : p.status === "pending"
+                              ? "warning"
+                              : "neutral"
+                      }
+                      className="cursor-pointer hover:opacity-80 capitalize"
+                    >
+                      {PORTAL_LABEL[p.portal] || p.portal} · {p.status.replace("_", " ")}
                     </Badge>
                   </button>
                 ))}
@@ -342,7 +529,7 @@ export default function AppListingsPage() {
                       setSyncingId(listing.id);
                       try {
                         const msg = await queuePortalSync(listing.id);
-                        toast.success(msg || "Sync queued successfully");
+                        toast.success(msg || "Portal sync finished");
                       } catch (err) {
                         toast.error(err instanceof Error ? err.message : "Sync failed");
                       } finally {
@@ -350,7 +537,7 @@ export default function AppListingsPage() {
                       }
                     }}
                   >
-                    {syncingId === listing.id ? "Queuing…" : "Validate & queue portal sync"}
+                    {syncingId === listing.id ? "Syncing…" : "Validate & sync portals"}
                   </Button>
                   {listing.status !== "under_offer" ? (
                     <Button
@@ -391,28 +578,86 @@ export default function AppListingsPage() {
       {/* Portal Log Modal */}
       {portalLogListing ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="surface-panel w-full max-w-md rounded-[1.75rem] p-6 shadow-2xl space-y-4">
+          <div className="surface-panel w-full max-w-lg rounded-[1.75rem] p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Portal Sync Logs</h2>
               <button type="button" onClick={() => setPortalLogListing(null)} className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-muted)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <p className="text-xs text-[var(--muted)]">Sync status for <strong>{portalLogListing.title}</strong> across target channels.</p>
+            <p className="text-xs text-[var(--muted)]">
+              Sync status for <strong>{portalLogListing.title}</strong>. Connected
+              portals get a downloadable feed JSON until live partner transport is wired.
+            </p>
             <div className="space-y-2">
-              {portalLogListing.portals.map((p) => (
-                <div key={p.portal} className="flex items-center justify-between p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]">
-                  <div>
-                    <p className="font-medium text-sm capitalize">{p.portal}</p>
-                    <p className="text-xs text-[var(--muted)]">Last synced: {portalLogListing.lastSyncAt ? new Date(portalLogListing.lastSyncAt).toLocaleString() : "Recently"}</p>
+              {portalLogListing.portals.map((p) => {
+                const connection = portalConnections.find((c) => c.portal === p.portal);
+                return (
+                  <div
+                    key={p.portal}
+                    className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-sm">
+                          {PORTAL_LABEL[p.portal] || p.portal}
+                        </p>
+                        <p className="text-xs text-[var(--muted)]">
+                          {p.lastSyncedAt
+                            ? `Last sync: ${new Date(p.lastSyncedAt).toLocaleString()}`
+                            : portalLogListing.lastSyncAt
+                              ? `Last attempt: ${new Date(portalLogListing.lastSyncAt).toLocaleString()}`
+                              : "Not synced yet"}
+                        </p>
+                      </div>
+                      <Badge
+                        tone={
+                          p.status === "synced"
+                            ? "success"
+                            : p.status === "error"
+                              ? "danger"
+                              : "neutral"
+                        }
+                        className="capitalize"
+                      >
+                        {p.status.replace("_", " ")}
+                      </Badge>
+                    </div>
+                    {p.lastMessage || p.lastError ? (
+                      <p className="text-xs text-[var(--muted)]">
+                        {p.lastError || p.lastMessage}
+                      </p>
+                    ) : null}
+                    {p.status === "synced" || connection?.connected ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="w-full"
+                        onClick={() => {
+                          const payload = buildPortalFeedPayload(
+                            portalLogListing,
+                            p.portal,
+                            {
+                              branchId: connection?.branchId,
+                              networkId: connection?.networkId,
+                            },
+                          );
+                          downloadPortalFeedPayload(payload);
+                          toast.success(`Downloaded ${PORTAL_LABEL[p.portal]} feed JSON`);
+                        }}
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Download feed JSON
+                      </Button>
+                    ) : null}
                   </div>
-                  <Badge tone={p.status === "synced" ? "success" : p.status === "error" ? "danger" : "neutral"} className="capitalize">
-                    {p.status.replace("_", " ")}
-                  </Badge>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            <Button className="w-full" onClick={() => setPortalLogListing(null)}>Close</Button>
+            <Button className="w-full" onClick={() => setPortalLogListing(null)}>
+              Close
+            </Button>
           </div>
         </div>
       ) : null}

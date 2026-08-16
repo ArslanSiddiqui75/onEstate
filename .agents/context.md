@@ -1,13 +1,49 @@
 # 0nEstate (CertifiedUK / CertifiedUS) — Project Context
 
 > **Purpose**: This file preserves project context across model switches and chat sessions.
-> **Last updated**: 2026-08-16 (social handoff — cron-job.org verified)
+> **Last updated**: 2026-08-16 (Website Builder next — section-based redesign)
+
+---
+
+## Chat handoff — NEXT: Website Builder (2026-08-16)
+
+Use this block when starting a **new Cursor chat**. Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.app
+
+### Pick up here
+Social is mostly done (IG publish + schedule verified; FB/LI/X live-test deferred). **Next major work = Website Builder redesign.**
+
+Arslan will provide components + UI details. Scope is a **curated section/block builder**, not freeform Webflow.
+
+### Website Builder backlog (ordered)
+- [ ] **Redo templates/layouts** from provided components/UI (current themes are placeholders — replace)
+- [ ] **Section/block model** — edit copy, show/hide, reorder, remove (not only 3 toggles)
+- [ ] **Section palette** — add curated blocks + per-block style variants
+- [ ] **Public multi-tenant renderer** — host/domain → org `WebsiteSite` + listings
+- [ ] **Domain path** — CNAME verify → `sites.0nestate.app` + SSL status (API stub exists)
+
+Out of scope for v1: free canvas, custom HTML/CSS, full CMS / multi-page IA.
+
+### Existing website files (to evolve / replace)
+`src/app/app/website/page.tsx` · `src/lib/website/templates.ts` · `src/app/api/website/domain/verify/route.ts` · `WebsiteSite` in `src/types/index.ts`
+
+### Deferred (not blocking Website Builder)
+- [ ] Live-test Facebook / LinkedIn / X publish
+- [ ] Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe
+- Org switcher — **skip** (duplicate `tp` orgs were test-only)
+
+### Portal sync foundation (2026-08-17)
+Honest multi-portal sync (not fake in-memory worker):
+- Connect branch ID + feed key under Listings → **Portal connections**
+- **Validate & sync portals** runs all market adapters (Rightmove/Zoopla/OTM or MLS)
+- Builds downloadable feed JSON; marks connected portals `synced` (export-ready)
+- Live HTTP to real portals still needs commercial partner APIs
+- Files: `src/lib/portals/{adapters,connections,payload,readiness}.ts`, listings page, migration `008_portal_sync_status.sql`
 
 ---
 
 ## Chat handoff — Social module (2026-08-16)
 
-Use this block when starting a **new Cursor chat**. Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.app
+Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.app
 
 ### What works now
 - **Publish now** (Compose → Instagram Graph) after media upload
@@ -46,14 +82,13 @@ UI shows **Workspace** name + short org id in the shell. Wrong email = empty Acc
 | Schedule never fires on Hobby | Daily Vercel cron + cron-job.org + page flush | `vercel.json`, `publish-due`, Social `DuePostsFlusher` — `7069954` |
 
 ### Still open / next product work
-- [ ] Live-test Facebook / LinkedIn / X
-- [ ] Org switcher (pick among user’s orgs) — optional
+- [ ] **Website Builder** — see top handoff (themes redo → blocks → public render) — **START HERE NEXT**
+- [ ] Live-test Facebook / LinkedIn / X (deferred)
 - [ ] Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe
-- [ ] **Website Builder** — public multi-tenant rendering (main unfinished module)
-- Repo habit: **commit + push after every fix**
+- Repo habit: **commit + push major changes automatically** (see `.cursor/rules/git-auto-push.mdc`)
 
 ### Key paths
-`src/lib/social/{media,providers,publish-service,crypto}.ts` · `src/components/social/social-planner.tsx` · `src/components/shell/app-shell.tsx` · `src/app/api/social/**` · `src/lib/supabase/client.ts` · `src/lib/app/session.tsx` · `vercel.json` · `supabase/migrations/006_social.sql`, `007_social_posts_schema_align.sql`
+`src/lib/social/{media,providers,publish-service,crypto}.ts` · `src/components/social/social-planner.tsx` · `src/components/shell/app-shell.tsx` · `src/app/api/social/**` · `src/lib/supabase/client.ts` · `src/lib/app/session.tsx` · `vercel.json` · `supabase/migrations/006_social.sql`, `007_social_posts_schema_align.sql` · `src/app/app/website/page.tsx` · `src/lib/website/templates.ts`
 
 ---
 
@@ -232,16 +267,15 @@ Checklist:
 - [ ] Facebook / LinkedIn / X live publish
 - [ ] Optional org switcher
 
-### 2. Website Template System & Domain Connection (NEXT MAJOR)
-Building 8 pre-made templates (template picker UI, domain verification flow, DNS status tracking).
+### 2. Website Builder — section-based redesign (NEXT SESSION)
+Current picker/templates are placeholders. Plan:
+1. Redo themes from Arslan-provided components/UI
+2. Move `WebsiteSite` toward ordered `sections[]` (edit / hide / reorder / remove)
+3. Section palette + variants
+4. Public multi-tenant renderer by domain
+5. Domain CNAME + SSL status
 
-New/modified files:
-- `src/lib/website/templates.ts` — [NEW] Template definitions
-- `src/types/index.ts` — Added `templateId`, `domainStatus`, `domainVerifiedAt`, `sslStatus` to `WebsiteSite`
-- `src/app/app/website/page.tsx` — Template picker + domain verification UI
-- `src/app/api/website/domain/verify/route.ts` — [NEW] DNS verification endpoint
-
-Public website rendering (server-side multi-tenant) is NOT built yet — that's Phase 2 of this feature.
+Existing stubs: `templates.ts`, website `page.tsx`, `api/website/domain/verify`.
 
 ---
 

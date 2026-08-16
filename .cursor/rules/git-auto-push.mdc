@@ -1,0 +1,29 @@
+---
+description: Auto commit and push major feature/fix work to GitHub
+alwaysApply: true
+---
+
+# Git: commit & push major changes
+
+When a **major** change set is finished (new feature, foundation rewrite, multi-file fix that should hit production):
+
+1. **Commit** with a concise message focused on why (1–2 sentences).
+2. **Push** to `origin` on the current branch (`git push -u origin HEAD` if needed).
+3. Do **not** wait for the user to ask again if they already set this habit (this rule).
+
+## What counts as major
+- New modules / foundations (e.g. portal sync, website builder phases)
+- Multi-file bug fixes already verified or ready for deploy
+- Schema migrations + matching app code
+- Handoff / context updates bundled with the same work
+
+## Still ask first / skip
+- Trivial one-liners or WIP the user is still iterating on mid-turn
+- Secrets (`.env`, credentials) — never commit
+- Destructive git (`force` push, hard reset) — never unless explicitly requested
+- Don't amend pushed commits unless the user explicitly asks and amend rules allow it
+
+## Style
+- Follow the repo’s existing commit message style
+- Prefer PowerShell-safe commit messages on Windows (multiple `-m` flags, not bash heredoc)
+- After push, briefly confirm the commit hash / that remote is updated

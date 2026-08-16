@@ -54,7 +54,13 @@ import {
 } from "@/lib/dev/seed-accounts";
 import { syncWorkspaceToPlatformRegistry } from "@/lib/admin/sync-workspace";
 import { setTenantPlan } from "@/lib/admin/registry";
-import { getAdaptersForMarket } from "@/lib/portals/adapters";
+import { syncListingToPortals } from "@/lib/portals/adapters";
+import {
+  loadPortalConnections,
+  mergeConnectionsWithDefaults,
+  upsertPortalConnection,
+} from "@/lib/portals/connections";
+import type { PortalConnection } from "@/types";
 import {
   loadWorkspace,
   newId,
@@ -191,6 +197,8 @@ interface AppState {
   ) => Promise<void>;
   updateListingStatus: (id: string, status: Listing["status"]) => Promise<void>;
   queuePortalSync: (listingId: string) => Promise<string>;
+  listPortalConnections: () => PortalConnection[];
+  savePortalConnection: (connection: PortalConnection) => void;
   createDealFromListing: (listingId: string) => Promise<void>;
   updateDealChecklistItem: (
     dealId: string,
@@ -896,34 +904,46 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       const snap = await repoRef.current.getSnapshot();
       const listing = snap?.listings.find((l) => l.id === listingId);
       if (!listing) return "Listing not found";
-      const adapters = getAdaptersForMarket(listing.market);
-      const primary = adapters[0];
-      const result = primary.validate(listing);
-      if (!result.ok) {
-        await repoRef.current.updateListing(listingId, {
-          complianceIssues: result.errors,
-          syncReadiness: Math.max(20, (listing.syncReadiness || 0) - 10),
-          nextMilestone: "Resolve validation errors",
-        });
-        await refresh();
-        return `Validation failed: ${result.errors.join(", ")}`;
-      }
-      const sync = await primary.publish(listing.id);
-      const portals = listing.portals.map((p) =>
-        p.portal === primary.id ? { ...p, status: sync.status } : p,
+      if (!org?.id) return "Workspace unavailable";
+
+      const connections = loadPortalConnections(org.id);
+      const { portals, results, readiness, summary } = syncListingToPortals(
+        listing,
+        connections,
       );
+
+      const allErrors = results
+        .filter((r) => r.status === "error")
+        .flatMap((r) => (r.message ? r.message.split("; ") : []));
+
       await repoRef.current.updateListing(listingId, {
         portals,
-        complianceIssues: [],
-        syncReadiness: Math.min(95, (listing.syncReadiness || 40) + 20),
+        complianceIssues: allErrors,
+        syncReadiness: readiness.score,
         lastSyncAt: new Date().toISOString(),
-        nextMilestone: sync.nextAction || "Await portal confirmation",
-        status: listing.status === "draft" ? "active" : listing.status,
+        nextMilestone:
+          results.find((r) => r.nextAction)?.nextAction || readiness.nextMilestone,
+        status: listing.status === "draft" && results.some((r) => r.status === "synced")
+          ? "active"
+          : listing.status,
       });
       await refresh();
-      return `${sync.message}${sync.nextAction ? ` ${sync.nextAction}` : ""}`;
+      return summary;
     },
-    [refresh],
+    [refresh, org?.id],
+  );
+
+  const listPortalConnections = useCallback((): PortalConnection[] => {
+    if (!org) return [];
+    return mergeConnectionsWithDefaults(brand.market, loadPortalConnections(org.id));
+  }, [org, brand.market]);
+
+  const savePortalConnection = useCallback(
+    (connection: PortalConnection) => {
+      if (!org) return;
+      upsertPortalConnection(org.id, connection);
+    },
+    [org],
   );
 
   const createDealFromListing = useCallback(
@@ -1296,6 +1316,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       addListing,
       updateListingStatus,
       queuePortalSync,
+      listPortalConnections,
+      savePortalConnection,
       createDealFromListing,
       updateDealChecklistItem,
       updateDealMeta,
@@ -1348,6 +1370,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       addListing,
       updateListingStatus,
       queuePortalSync,
+      listPortalConnections,
+      savePortalConnection,
       createDealFromListing,
       updateDealChecklistItem,
       updateDealMeta,
