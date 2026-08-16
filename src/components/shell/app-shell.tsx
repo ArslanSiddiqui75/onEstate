@@ -242,6 +242,14 @@ export function AppShell({
                 </p>
               </div>
             </div>
+            <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
+                Workspace
+              </p>
+              <p className="mt-0.5 truncate text-sm font-semibold text-white" title={orgName}>
+                {orgName}
+              </p>
+            </div>
             <div className="mt-3 flex flex-col gap-2">
               <p className="text-[11px] text-white/45">
                 {PLANS[plan].name} · {brand.name}
@@ -303,7 +311,10 @@ export function AppShell({
             </div>
 
             <div className="hidden text-right lg:block">
-              <p className="truncate text-xs font-semibold tracking-tight">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                Workspace
+              </p>
+              <p className="truncate text-xs font-semibold tracking-tight" title={orgName}>
                 {orgName}
               </p>
               <p className="truncate text-[11px] text-[var(--muted)]">

@@ -110,7 +110,12 @@ export default function AppSignupPage() {
         </h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
           You&apos;re joining {brand.name} for {brand.localeLabel}. Market rules
-          are applied automatically.
+          are applied automatically. Already connected social accounts live on
+          an existing workspace —{" "}
+          <Link href="/app/login" className="font-semibold text-[var(--accent)]">
+            sign in
+          </Link>{" "}
+          instead of creating another one.
         </p>
 
         <form onSubmit={onSubmit} className="mt-7 grid gap-3 sm:grid-cols-2">

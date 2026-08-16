@@ -125,7 +125,7 @@ export default function AppLoginPage() {
         </h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
           {authMode === "supabase"
-            ? "Enter your email and password to sign in."
+            ? "Sign in with the same email you used before. A new Sign up creates a separate workspace — connected Instagram accounts won’t carry over."
             : "Use a seed account below, or any email to create a workspace."}
         </p>
 

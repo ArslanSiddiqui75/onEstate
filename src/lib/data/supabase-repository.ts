@@ -19,6 +19,7 @@ import type { WorkspaceRepository } from "@/lib/data/repository";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { WorkspaceOrg, WorkspaceSnapshot, WorkspaceUser } from "@/lib/data/workspace-store";
 import { newId } from "@/lib/data/workspace-store";
+import { toast } from "@/components/ui/toast";
 
 function mapLead(row: Record<string, unknown>, phones: Lead["phones"] = []): Lead {
   return {
@@ -188,8 +189,17 @@ export function createSupabaseRepository(
         enrollments,
         tasks,
         website: await this.getWebsite().catch(() => null),
-        socialAccounts: await this.listSocialAccounts().catch((e) => { console.warn("listSocialAccounts error", e); return []; }),
-        socialPosts: await this.listSocialPosts().catch((e) => { console.warn("listSocialPosts error", e); return []; }),
+        socialAccounts: await this.listSocialAccounts().catch((e) => {
+          console.warn("listSocialAccounts error", e);
+          const message =
+            e instanceof Error ? e.message : "Could not load connected social accounts.";
+          toast.error(`Social accounts: ${message}`);
+          return [];
+        }),
+        socialPosts: await this.listSocialPosts().catch((e) => {
+          console.warn("listSocialPosts error", e);
+          return [];
+        }),
       };
       return snapshot;
     },

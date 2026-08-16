@@ -1244,7 +1244,27 @@ function AccountsPanel({
             ? "Authorize each network so it can publish on your behalf — you'll sign in and grant access on the platform's own site."
             : "Demo mode: connecting here simulates authorization so you can try the scheduler. Real publishing needs a Supabase-backed workspace with platform credentials configured (see .env.example)."}
         </p>
+        {live ? (
+          <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-muted)]/50 px-3 py-2 text-xs text-[var(--muted)]">
+            Workspace:{" "}
+            <span className="font-semibold text-[var(--foreground)]">{orgName}</span>
+            . Connected accounts belong to this workspace only — a different
+            browser or Sign up creates another workspace and won&apos;t show
+            accounts connected elsewhere. Use{" "}
+            <span className="font-medium text-[var(--foreground)]">Sign in</span>{" "}
+            with the same email, or connect again here.
+          </p>
+        ) : null}
       </div>
+
+      {live && accounts.filter((a) => a.status === "connected").length === 0 ? (
+        <div className="rounded-[var(--radius-sm)] border border-[var(--warning)]/30 bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
+          No connected accounts in <strong>{orgName}</strong>. If Instagram was
+          connected before, you may be signed into a different workspace —
+          check the workspace name in the sidebar, then sign out and sign in
+          with the original account.
+        </div>
+      ) : null}
 
       {connectError ? (
         <div className="rounded-[var(--radius-sm)] border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">
