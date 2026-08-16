@@ -394,7 +394,7 @@ const instagramProvider: SocialProvider = {
   },
 };
 
-const LINKEDIN_VERSION = "202401";
+const LINKEDIN_VERSION = "202604";
 
 const linkedinProvider: SocialProvider = {
   platform: "linkedin",

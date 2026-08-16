@@ -31,6 +31,33 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 10 * 1024 * 1024;
 const UPLOAD_TIMEOUT_MS = 90_000;
 
+const EXT_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  heic: "image/heic",
+  heif: "image/heif",
+  bmp: "image/bmp",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  m4v: "video/x-m4v",
+};
+
+function mimeFromFileName(fileName: string): string | undefined {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  if (!ext) return undefined;
+  return EXT_MIME[ext];
+}
+
+/** Windows / some pickers leave File.type empty — fall back to extension. */
+function resolveMimeType(file: File): string {
+  if (file.type) return file.type;
+  return mimeFromFileName(file.name) || "application/octet-stream";
+}
+
 function newMediaId() {
   return `media_${crypto.randomUUID()}`;
 }
@@ -48,7 +75,8 @@ function newMediaId() {
  * decode. Avoids CPU-locking loops, atob(), or massive base64 allocations.
  */
 export async function compressImageToBlob(file: File): Promise<Blob> {
-  if (!file.type.startsWith("image/")) return file;
+  const type = resolveMimeType(file);
+  if (!type.startsWith("image/")) return file;
 
   const compressed = await compressImageBlob(file);
   return compressed || file;
@@ -63,8 +91,9 @@ function wasCompressed(blob: Blob): boolean {
  * Local / demo fallback that converts a file to a SocialMediaItem.
  */
 export async function fileToSocialMedia(file: File): Promise<SocialMediaItem> {
-  const isImage = file.type.startsWith("image/");
-  const isVideo = file.type.startsWith("video/");
+  const resolvedType = resolveMimeType(file);
+  const isImage = resolvedType.startsWith("image/");
+  const isVideo = resolvedType.startsWith("video/");
   if (!isImage && !isVideo) {
     throw new Error("Only images and videos can be uploaded to social posts.");
   }
@@ -88,7 +117,7 @@ export async function fileToSocialMedia(file: File): Promise<SocialMediaItem> {
       id: newMediaId(),
       kind: "image",
       name: file.name,
-      mimeType: wasCompressed(blob) ? "image/jpeg" : file.type || "application/octet-stream",
+      mimeType: wasCompressed(blob) ? "image/jpeg" : resolvedType,
       sizeBytes: blob.size,
       dataUrl,
       createdAt: new Date().toISOString(),
@@ -106,7 +135,7 @@ export async function fileToSocialMedia(file: File): Promise<SocialMediaItem> {
     id: newMediaId(),
     kind: "video",
     name: file.name,
-    mimeType: file.type || "video/mp4",
+    mimeType: resolvedType || "video/mp4",
     sizeBytes: file.size,
     dataUrl,
     createdAt: new Date().toISOString(),
@@ -123,8 +152,9 @@ export async function uploadSocialMediaFile(
   file: File,
   getToken: () => Promise<string | null>,
 ): Promise<SocialMediaItem> {
-  const isImage = file.type.startsWith("image/");
-  const isVideo = file.type.startsWith("video/");
+  const resolvedType = resolveMimeType(file);
+  const isImage = resolvedType.startsWith("image/");
+  const isVideo = resolvedType.startsWith("video/");
   if (!isImage && !isVideo) {
     throw new Error("Only images and videos can be uploaded to social posts.");
   }
@@ -136,11 +166,15 @@ export async function uploadSocialMediaFile(
   }
 
   let uploadBlob: Blob = file;
-  let mimeType = file.type || "application/octet-stream";
+  let mimeType = resolvedType;
 
   if (isImage) {
     uploadBlob = await compressImageToBlob(file);
     if (wasCompressed(uploadBlob)) mimeType = "image/jpeg";
+  }
+
+  if (!mimeType || mimeType === "application/octet-stream") {
+    mimeType = mimeFromFileName(file.name) || (isImage ? "image/jpeg" : "video/mp4");
   }
 
   if (uploadBlob.size > MAX_IMAGE_BYTES) {
@@ -166,10 +200,11 @@ export async function uploadSocialMediaFile(
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        Accept: "application/json",
       },
       body: JSON.stringify({
         mimeType,
-        fileName: safeName,
+        fileName: safeName || (isImage ? "upload.jpg" : "upload.mp4"),
         sizeBytes: uploadBlob.size,
       }),
       signal: controller.signal,
