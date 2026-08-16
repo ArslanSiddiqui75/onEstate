@@ -1248,11 +1248,12 @@ function AccountsPanel({
           <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-muted)]/50 px-3 py-2 text-xs text-[var(--muted)]">
             Workspace:{" "}
             <span className="font-semibold text-[var(--foreground)]">{orgName}</span>
-            . Connected accounts belong to this workspace only — a different
-            browser or Sign up creates another workspace and won&apos;t show
-            accounts connected elsewhere. Use{" "}
+            . Connected accounts belong to this workspace only. There can be
+            several workspaces with the same name — check the short workspace id
+            in the sidebar. Use{" "}
             <span className="font-medium text-[var(--foreground)]">Sign in</span>{" "}
-            with the same email, or connect again here.
+            with the email that originally connected Instagram, or connect again
+            here.
           </p>
         ) : null}
       </div>

@@ -111,6 +111,8 @@ interface AppShellProps {
   plan: PlanId;
   userName: string;
   orgName?: string;
+  /** Distinguishes duplicate org names (e.g. multiple "tp" workspaces). */
+  orgId?: string;
   basePath?: "/app";
   onSignOut?: () => void;
   /** Subtle status meta shown in the header (e.g. persistence · auth · plan). */
@@ -123,6 +125,7 @@ export function AppShell({
   plan,
   userName,
   orgName = "Workspace",
+  orgId,
   basePath = "/app",
   onSignOut,
   headerMeta,
@@ -249,6 +252,14 @@ export function AppShell({
               <p className="mt-0.5 truncate text-sm font-semibold text-white" title={orgName}>
                 {orgName}
               </p>
+              {orgId ? (
+                <p
+                  className="mt-0.5 truncate font-mono text-[10px] text-white/35"
+                  title={orgId}
+                >
+                  id · {orgId.slice(0, 8)}
+                </p>
+              ) : null}
             </div>
             <div className="mt-3 flex flex-col gap-2">
               <p className="text-[11px] text-white/45">
@@ -317,9 +328,15 @@ export function AppShell({
               <p className="truncate text-xs font-semibold tracking-tight" title={orgName}>
                 {orgName}
               </p>
-              <p className="truncate text-[11px] text-[var(--muted)]">
-                {ROLE_LABELS[role]}
-              </p>
+              {orgId ? (
+                <p className="truncate font-mono text-[10px] text-[var(--muted)]" title={orgId}>
+                  {orgId.slice(0, 8)}
+                </p>
+              ) : (
+                <p className="truncate text-[11px] text-[var(--muted)]">
+                  {ROLE_LABELS[role]}
+                </p>
+              )}
             </div>
 
             <ThemeToggle />

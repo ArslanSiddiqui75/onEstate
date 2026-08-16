@@ -50,8 +50,9 @@ function Guard({ children }: { children: React.ReactNode }) {
       plan={org.plan}
       userName={user.name}
       orgName={org.name}
+      orgId={org.id}
       onSignOut={() => signOut()}
-      headerMeta={`${org.name} · ${brand.name} · ${persistence} · ${org.plan}`}
+      headerMeta={`${org.name} · ${org.id.slice(0, 8)} · ${brand.name} · ${persistence}`}
     >
       <ErrorBoundary>{children}</ErrorBoundary>
     </AppShell>
