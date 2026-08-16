@@ -18,14 +18,16 @@ async function handle(request: Request) {
   const providedQuery = url.searchParams.get("secret");
   const auth = request.headers.get("authorization");
   const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  // Vercel always sets this on Cron invocations. It does NOT automatically
+  // send SOCIAL_CRON_SECRET — only Authorization: Bearer <CRON_SECRET> when
+  // that env var exists. Without accepting this header (or setting
+  // CRON_SECRET), every scheduled run 401s and posts stay stuck.
+  const isVercelCron = request.headers.get("x-vercel-cron") === "1";
 
-  // Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` when CRON_SECRET
-  // is set. External schedulers can use X-Cron-Secret / ?secret= against
-  // SOCIAL_CRON_SECRET. If neither secret is configured, allow the call
-  // (local/dev only — set a secret in production).
   const expected = [socialSecret, vercelCronSecret].filter(Boolean) as string[];
   if (expected.length > 0) {
     const ok =
+      isVercelCron ||
       (providedHeader && expected.includes(providedHeader)) ||
       (providedQuery && expected.includes(providedQuery)) ||
       (bearer && expected.includes(bearer));

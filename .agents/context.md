@@ -196,10 +196,14 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
    - Client/bucket allow 10MB; server route `MAX_BYTES` is also 10MB, so the 413 is almost certainly the platform limit, not our check.  
    - Fix direction: **direct-to-Supabase upload** (signed URL or browser client → `social-media` bucket) so large media never hits the Next.js/Vercel body ceiling; improve error copy (“file too large for this upload path”); optionally reject MOV earlier with a clear size/format message; consider compressing or converting video client-side for Instagram Reels.
 
-3. **Scheduled posts never auto-publish (reported 2026-08-16)**  
-   - Symptom: post scheduled for 15:43 PKT stayed `scheduled` at 15:46+; nothing on Instagram. DB row `269bf703-…` correct (`scheduled_for` 10:43 UTC).  
-   - Root cause: **no scheduler was hitting** `/api/social/cron/publish` — no `vercel.json` cron; Compose “Schedule” only writes the row.  
-   - Fix: add `vercel.json` cron every 5 min; accept Vercel `Authorization: Bearer CRON_SECRET` as well as `SOCIAL_CRON_SECRET`. Ensure `SOCIAL_CRON_SECRET` (and ideally `CRON_SECRET`) set on Vercel. Note: **Vercel Hobby** may only allow daily crons — use Pro or an external ping (cron-job.org) for every-few-minutes.  
+3. **Scheduled posts never auto-publish (reported 2026-08-16, still failing after vercel.json)**  
+   - Symptom: user schedules for a near time; minutes later still nothing on Instagram unless they hit **Publish** manually.  
+   - Confirmed: rows can sit `scheduled` until manual Publish; after manual Publish they become `published` (e.g. `caption no.2`, `scheduled post`) — Graph/publish path works.  
+   - Root causes (compounded):  
+     1. Initially **no cron** hit `/api/social/cron/publish` (fixed: `vercel.json` `*/5 * * * *`).  
+     2. **Auth mismatch**: `SOCIAL_CRON_SECRET` is set on Vercel, but Vercel Cron does **not** send that secret — only `x-vercel-cron: 1` and, if `CRON_SECRET` is set, `Authorization: Bearer …`. Cron runs were **401 Unauthorized**.  
+     3. **Vercel Hobby** may only allow **1 cron/day**; `*/5` may not run every 5 minutes on Hobby.  
+   - Fix (2026-08-16 follow-up): accept `x-vercel-cron: 1`; document setting `CRON_SECRET` = `SOCIAL_CRON_SECRET` on Vercel; if Hobby still won’t tick often enough, use cron-job.org → `GET /api/social/cron/publish?secret=…` every 5 min.  
 
 Key files: `src/lib/supabase/client.ts`, `src/lib/app/session.tsx`, `src/components/social/social-planner.tsx`, `src/lib/social/{media,providers,publish-service}.ts`, `src/app/api/social/upload-media/route.ts`, `src/app/api/social/cron/publish/route.ts`, `vercel.json`, `supabase/migrations/006_social.sql`, `007_social_posts_schema_align.sql`
 
