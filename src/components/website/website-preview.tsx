@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Send } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { formatMoney } from "@/lib/utils";
 import { getTemplate } from "@/lib/website/templates";
 import { hydrateWebsiteSite } from "@/lib/website/defaults";
@@ -52,6 +52,19 @@ export function WebsiteCanvas({
   const activeListings = listings.filter((l) => l.market === market);
   const listingCount = template.listingLayout === "grid-3" ? 3 : 2;
   const patch = (field: WebsiteField, value: string) => onChange?.(field, value);
+  const isDark = template.id === "luxury-dark";
+  const isSplit = template.heroLayout === "split";
+
+  const pill = {
+    backgroundColor: tc.accent,
+    color: tc.accentText,
+    borderRadius: 9999,
+  };
+  const ghostPill = {
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.35)" : tc.border}`,
+    borderRadius: 9999,
+    color: isDark ? "#fff" : tc.text,
+  };
 
   return (
     <div
@@ -62,70 +75,60 @@ export function WebsiteCanvas({
         fontFamily: template.fonts.body,
       }}
     >
-      <header
-        className="flex items-center justify-between px-6 py-4 md:px-12"
-        style={{ borderBottom: `1px solid ${tc.border}` }}
-      >
-        <p className="text-sm font-semibold tracking-tight" style={{ fontFamily: template.fonts.heading }}>
-          {orgName}
-        </p>
-        <div className="hidden gap-6 text-xs md:flex" style={{ color: tc.muted }}>
-          <span>Homes</span>
-          <span>About</span>
-          <span>Contact</span>
-        </div>
-        <span
-          className="rounded-full px-3 py-1.5 text-xs font-semibold"
-          style={{ backgroundColor: tc.accent, color: tc.accentText }}
-        >
-          {hydrated.primaryCta}
-        </span>
-      </header>
+      {isSplit ? (
+        <header className="flex items-center justify-between px-6 py-5 md:px-10">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em]">{orgName}</p>
+          <nav className="hidden gap-8 text-[12px] md:flex" style={{ color: tc.muted }}>
+            <span>Home</span>
+            <span>Properties</span>
+            <span>About</span>
+            <span>Contact</span>
+          </nav>
+          <span className="px-4 py-2 text-[11px] font-medium" style={ghostPill}>
+            {hydrated.primaryCta}
+          </span>
+        </header>
+      ) : null}
 
       {showHero ? (
-        template.heroLayout === "split" ? (
-          <section className="grid md:grid-cols-2">
+        isSplit ? (
+          <section className="grid items-stretch gap-5 px-5 pb-8 md:grid-cols-[1.1fr_0.9fr] md:px-8">
             <div
-              className="flex min-h-[70vh] flex-col justify-center px-6 py-16 md:px-12"
-              style={{ backgroundColor: tc.heroFrom, color: "#fff" }}
+              className="flex min-h-[62vh] flex-col justify-between rounded-[2rem] px-8 py-10 md:px-12"
+              style={{ backgroundColor: tc.surface, color: tc.text }}
             >
-              <p className="text-xs uppercase tracking-[0.22em] opacity-80">{orgName}</p>
+              <EditableText
+                as="p"
+                enabled={editable}
+                value={hydrated.tagline}
+                onChange={(v) => patch("tagline", v)}
+                placeholder="Short line above the headline"
+                className="text-center text-xs tracking-wide"
+                style={{ color: tc.muted }}
+              />
               <EditableText
                 as="h1"
                 enabled={editable}
                 value={hydrated.headline}
                 onChange={(v) => patch("headline", v)}
                 placeholder="Your headline"
-                className="mt-4 max-w-xl text-4xl font-semibold leading-tight md:text-5xl"
-                style={{ fontFamily: template.fonts.heading }}
+                className="text-center text-4xl font-semibold leading-[1.1] tracking-tight md:text-5xl"
               />
-              <EditableText
-                as="p"
-                enabled={editable}
-                value={hydrated.tagline}
-                onChange={(v) => patch("tagline", v)}
-                placeholder="Your tagline"
-                className="mt-4 max-w-lg text-base opacity-90"
-              />
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="flex items-center justify-between gap-4">
                 <EditableText
                   enabled={editable}
                   value={hydrated.primaryCta}
                   onChange={(v) => patch("primaryCta", v)}
                   placeholder="Primary button"
-                  className="inline-flex px-5 py-2.5 text-sm font-semibold"
-                  style={{
-                    backgroundColor: "#fff",
-                    color: tc.heroFrom,
-                    borderRadius: "9999px",
-                  }}
+                  className="inline-flex px-5 py-2.5 text-sm font-medium"
+                  style={pill}
                 />
                 <EditableText
                   enabled={editable}
                   value={hydrated.secondaryCta || ""}
                   onChange={(v) => patch("secondaryCta", v)}
-                  placeholder="Secondary button"
-                  className="inline-flex px-5 py-2.5 text-sm opacity-90"
+                  placeholder="Secondary link"
+                  className="inline-flex items-center gap-1 text-sm"
                 />
               </div>
             </div>
@@ -133,112 +136,134 @@ export function WebsiteCanvas({
               enabled={editable}
               uploading={uploadingHero}
               onPickFile={(file) => onHeroFile?.(file)}
-              className="min-h-[320px] bg-cover bg-center md:min-h-[70vh]"
+              className="min-h-[360px] overflow-hidden rounded-[2rem] bg-cover bg-center md:min-h-[62vh]"
               style={{ backgroundImage: `url(${heroImage})` }}
             >
-              <div className="h-full min-h-[320px] md:min-h-[70vh]" />
+              <div className="h-full min-h-[360px] md:min-h-[62vh]" />
             </EditableImage>
           </section>
         ) : (
-          <EditableImage
-            enabled={editable}
-            uploading={uploadingHero}
-            onPickFile={(file) => onHeroFile?.(file)}
-            className="relative min-h-[75vh] bg-cover bg-center"
-            style={{ backgroundImage: `url(${heroImage})` }}
-          >
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  template.heroLayout === "overlay"
-                    ? "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.72) 100%)"
-                    : "linear-gradient(90deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.15) 75%)",
-              }}
-            />
-            <div
-              className={`relative z-10 flex min-h-[75vh] flex-col justify-end px-6 py-16 text-white md:px-12 ${
-                template.heroLayout === "left-aligned" ? "items-start text-left" : "items-center text-center"
+          <section className="relative">
+            <EditableImage
+              enabled={editable}
+              uploading={uploadingHero}
+              onPickFile={(file) => onHeroFile?.(file)}
+              className={`relative overflow-hidden bg-cover bg-center ${
+                template.heroLayout === "overlay" ? "mx-0 min-h-[86vh] rounded-b-[2.5rem]" : "mx-4 mt-4 min-h-[78vh] rounded-[2.5rem] md:mx-6"
               }`}
+              style={{ backgroundImage: `url(${heroImage})` }}
             >
-              <p className="text-xs uppercase tracking-[0.22em] opacity-80">{orgName}</p>
-              <EditableText
-                as="h1"
-                enabled={editable}
-                value={hydrated.headline}
-                onChange={(v) => patch("headline", v)}
-                placeholder="Your headline"
-                className="mt-4 max-w-3xl text-4xl font-semibold leading-tight md:text-6xl"
-                style={{ fontFamily: template.fonts.heading }}
-              />
-              <EditableText
-                as="p"
-                enabled={editable}
-                value={hydrated.tagline}
-                onChange={(v) => patch("tagline", v)}
-                placeholder="Your tagline"
-                className="mt-4 max-w-xl text-base opacity-90 md:text-lg"
-              />
-              <EditableText
-                enabled={editable}
-                value={hydrated.primaryCta}
-                onChange={(v) => patch("primaryCta", v)}
-                placeholder="Primary button"
-                className="mt-8 inline-flex px-6 py-2.5 text-sm font-semibold"
+              <div
+                className="absolute inset-0"
                 style={{
-                  backgroundColor: tc.accent,
-                  color: tc.accentText,
-                  borderRadius: "9999px",
+                  background:
+                    template.heroLayout === "left-aligned"
+                      ? "linear-gradient(90deg, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.12) 70%)"
+                      : "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.7) 100%)",
                 }}
               />
-            </div>
-          </EditableImage>
+              <header className="relative z-10 flex items-center justify-between px-6 py-5 text-white md:px-10">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em]">{orgName}</p>
+                <nav className="hidden gap-8 text-[12px] text-white/80 md:flex">
+                  <span>Home</span>
+                  <span>Properties</span>
+                  <span>About</span>
+                  <span>Contact</span>
+                </nav>
+                <span className="rounded-full border border-white/40 px-4 py-2 text-[11px] font-medium">
+                  {hydrated.phone || hydrated.email || hydrated.primaryCta}
+                </span>
+              </header>
+              <div
+                className={`relative z-10 flex min-h-[68vh] flex-col px-6 pb-14 text-white md:px-12 ${
+                  template.heroLayout === "left-aligned"
+                    ? "items-start justify-end text-left"
+                    : "items-start justify-end md:max-w-3xl"
+                }`}
+              >
+                <EditableText
+                  as="h1"
+                  enabled={editable}
+                  value={hydrated.headline}
+                  onChange={(v) => patch("headline", v)}
+                  placeholder="Your headline"
+                  className="max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl"
+                />
+                <EditableText
+                  as="p"
+                  enabled={editable}
+                  value={hydrated.tagline}
+                  onChange={(v) => patch("tagline", v)}
+                  placeholder="Your tagline"
+                  className="mt-5 max-w-md text-sm leading-relaxed text-white/80 md:text-base"
+                />
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <EditableText
+                    enabled={editable}
+                    value={hydrated.primaryCta}
+                    onChange={(v) => patch("primaryCta", v)}
+                    placeholder="Primary button"
+                    className="inline-flex px-6 py-2.5 text-sm font-medium"
+                    style={{ backgroundColor: "#fff", color: "#111", borderRadius: 9999 }}
+                  />
+                  <EditableText
+                    enabled={editable}
+                    value={hydrated.secondaryCta || ""}
+                    onChange={(v) => patch("secondaryCta", v)}
+                    placeholder="Secondary"
+                    className="inline-flex items-center px-5 py-2.5 text-sm text-white/90"
+                  />
+                </div>
+              </div>
+            </EditableImage>
+          </section>
         )
-      ) : null}
+      ) : (
+        <header className="flex items-center justify-between px-6 py-5 md:px-10">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em]">{orgName}</p>
+        </header>
+      )}
 
       {showListings ? (
-        <section className="px-6 py-16 md:px-12">
-          <div className="mb-8 flex items-end justify-between gap-4">
-            <EditableText
-              as="h2"
-              enabled={editable}
-              value={hydrated.listingsHeading || ""}
-              onChange={(v) => patch("listingsHeading", v)}
-              placeholder="Featured properties"
-              className="text-2xl font-semibold"
-              style={{ fontFamily: template.fonts.heading }}
-            />
-            <span className="text-xs" style={{ color: tc.muted }}>
-              {activeListings.length} live
-            </span>
+        <section className="px-6 py-20 md:px-10">
+          <div className="mb-10 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-light" style={{ color: tc.muted }}>
+                /
+              </span>
+              <EditableText
+                as="h2"
+                enabled={editable}
+                value={hydrated.listingsHeading || ""}
+                onChange={(v) => patch("listingsHeading", v)}
+                placeholder="Featured properties"
+                className="text-3xl font-semibold tracking-tight md:text-4xl"
+              />
+            </div>
+            <p className="max-w-sm text-sm leading-relaxed" style={{ color: tc.muted }}>
+              {activeListings.length} live {activeListings.length === 1 ? "home" : "homes"} from your listings.
+            </p>
           </div>
           <div
-            className={`grid gap-5 ${template.listingLayout === "grid-3" ? "md:grid-cols-3" : "md:grid-cols-2"}`}
+            className={`grid gap-6 ${template.listingLayout === "grid-3" ? "md:grid-cols-3" : "md:grid-cols-2 lg:grid-cols-3"}`}
           >
-            {activeListings.slice(0, listingCount).map((item) => (
-              <article
-                key={item.id}
-                className="overflow-hidden"
-                style={{
-                  backgroundColor: tc.surface,
-                  border: `1px solid ${tc.border}`,
-                  borderRadius: 16,
-                }}
-              >
+            {activeListings.slice(0, Math.max(listingCount, 3)).map((item) => (
+              <article key={item.id} className="group">
                 <div
-                  className="h-52 w-full bg-cover bg-center"
+                  className="h-72 w-full bg-cover bg-center"
                   style={{
                     backgroundImage: `url(${item.imageUrl || template.defaultHeroImage})`,
+                    borderRadius: 18,
                   }}
                 />
-                <div className="space-y-1 p-4">
-                  <h3 className="text-sm font-semibold">{item.title}</h3>
-                  <p className="text-xs" style={{ color: tc.muted }}>
-                    {item.city}
-                  </p>
-                  <p className="text-lg font-semibold" style={{ color: tc.accent }}>
-                    {formatMoney(item.price, market)}
-                  </p>
+                <div className="mt-3 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">{item.title}</h3>
+                    <p className="mt-0.5 text-xs" style={{ color: tc.muted }}>
+                      {item.city}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold">{formatMoney(item.price, market)}</p>
                 </div>
               </article>
             ))}
@@ -252,111 +277,129 @@ export function WebsiteCanvas({
       ) : null}
 
       {showAgentBio ? (
-        <section className="px-6 py-8 md:px-12">
+        <section className="px-6 py-8 md:px-10">
           <div
-            className="mx-auto max-w-3xl space-y-3 p-8"
-            style={{
-              backgroundColor: tc.surface,
-              border: `1px solid ${tc.border}`,
-              borderRadius: 20,
-            }}
+            className="grid gap-10 rounded-[2rem] px-8 py-12 md:grid-cols-2 md:px-12"
+            style={{ backgroundColor: tc.surface }}
           >
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Building2 className="h-4 w-4" />
-              <EditableText
-                enabled={editable}
-                value={hydrated.aboutHeading || ""}
-                onChange={(v) => patch("aboutHeading", v)}
-                placeholder="About"
-              />
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-light" style={{ color: tc.muted }}>
+                  /
+                </span>
+                <EditableText
+                  as="h2"
+                  enabled={editable}
+                  value={hydrated.aboutHeading || ""}
+                  onChange={(v) => patch("aboutHeading", v)}
+                  placeholder="About"
+                  className="text-3xl font-semibold tracking-tight"
+                />
+              </div>
             </div>
-            <EditableText
-              as="p"
-              multiline
-              enabled={editable}
-              value={hydrated.aboutBio || ""}
-              onChange={(v) => patch("aboutBio", v)}
-              placeholder="Tell visitors about the agency…"
-              className="text-sm leading-relaxed"
-              style={{ color: tc.muted }}
-            />
+            <div className="space-y-6">
+              <EditableText
+                as="p"
+                multiline
+                enabled={editable}
+                value={hydrated.aboutBio || ""}
+                onChange={(v) => patch("aboutBio", v)}
+                placeholder="Tell visitors about the agency…"
+                className="text-sm leading-7"
+                style={{ color: tc.muted }}
+              />
+              <span className="inline-flex items-center gap-1 text-sm font-medium">
+                Learn more <ArrowUpRight className="h-3.5 w-3.5" />
+              </span>
+            </div>
           </div>
         </section>
       ) : null}
 
       {showContactForm ? (
-        <section className="px-6 py-12 md:px-12">
+        <section className="px-6 py-16 md:px-10">
+          <div className="mb-8 flex items-baseline gap-2">
+            <span className="text-3xl font-light" style={{ color: tc.muted }}>
+              /
+            </span>
+            <EditableText
+              as="h2"
+              enabled={editable}
+              value={hydrated.contactHeading || ""}
+              onChange={(v) => patch("contactHeading", v)}
+              placeholder="Get in touch"
+              className="text-3xl font-semibold tracking-tight"
+            />
+          </div>
           <div
-            className="mx-auto max-w-xl space-y-4 p-8"
-            style={{
-              backgroundColor: tc.surface,
-              border: `1px solid ${tc.border}`,
-              borderRadius: 20,
-            }}
+            className="grid gap-3 rounded-[1.75rem] p-3 sm:grid-cols-[1fr_1fr_auto]"
+            style={{ backgroundColor: isDark ? tc.surface : "#ececec" }}
           >
-            <h3 className="flex items-center gap-2 text-lg font-semibold">
-              <Send className="h-4 w-4" style={{ color: tc.accent }} />
-              <EditableText
-                enabled={editable}
-                value={hydrated.contactHeading || ""}
-                onChange={(v) => patch("contactHeading", v)}
-                placeholder="Get in touch"
-              />
-            </h3>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div
-                className="rounded-xl p-3 text-sm"
-                style={{ border: `1px solid ${tc.border}`, color: tc.muted }}
-              >
-                Your name
-              </div>
-              <div
-                className="rounded-xl p-3 text-sm"
-                style={{ border: `1px solid ${tc.border}`, color: tc.muted }}
-              >
-                Email / phone
-              </div>
+            <div
+              className="rounded-2xl px-4 py-3 text-sm"
+              style={{ backgroundColor: tc.surface, color: tc.muted }}
+            >
+              Your name
             </div>
             <div
-              className="h-24 rounded-xl p-3 text-sm"
-              style={{ border: `1px solid ${tc.border}`, color: tc.muted }}
+              className="rounded-2xl px-4 py-3 text-sm"
+              style={{ backgroundColor: tc.surface, color: tc.muted }}
             >
-              How can we help?
+              Email / phone
             </div>
+            <span className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium" style={pill}>
+              {hydrated.primaryCta}
+            </span>
           </div>
         </section>
       ) : null}
 
       <footer
-        className="flex flex-wrap items-center justify-center gap-2 px-6 py-10 text-xs md:px-12"
-        style={{ color: tc.muted, borderTop: `1px solid ${tc.border}` }}
+        className="mt-8 grid gap-8 px-6 py-12 md:grid-cols-3 md:px-10"
+        style={{
+          color: isDark ? "#d6d3d1" : tc.muted,
+          backgroundColor: isDark ? "#080807" : tc.surface,
+          borderTop: `1px solid ${tc.border}`,
+        }}
       >
-        <EditableText
-          enabled={editable}
-          value={hydrated.phone || ""}
-          onChange={(v) => patch("phone", v)}
-          placeholder="Phone"
-        />
-        <span>·</span>
-        <EditableText
-          enabled={editable}
-          value={hydrated.email || ""}
-          onChange={(v) => patch("email", v)}
-          placeholder="Email"
-        />
-        <span>·</span>
-        <EditableText
-          enabled={editable}
-          value={hydrated.footerNote || ""}
-          onChange={(v) => patch("footerNote", v)}
-          placeholder="Footer note"
-        />
+        <div className="space-y-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: tc.text }}>
+            {orgName}
+          </p>
+          <EditableText
+            enabled={editable}
+            value={hydrated.footerNote || ""}
+            onChange={(v) => patch("footerNote", v)}
+            placeholder="Short footer line"
+            className="text-sm"
+          />
+        </div>
+        <div className="space-y-2 text-sm">
+          <p className="text-[11px] uppercase tracking-[0.18em]">Get in touch</p>
+          <EditableText
+            enabled={editable}
+            value={hydrated.email || ""}
+            onChange={(v) => patch("email", v)}
+            placeholder="Email"
+          />
+          <EditableText
+            enabled={editable}
+            value={hydrated.phone || ""}
+            onChange={(v) => patch("phone", v)}
+            placeholder="Phone"
+          />
+        </div>
+        <div className="space-y-2 text-sm md:text-right">
+          <p>Home</p>
+          <p>Properties</p>
+          <p>About</p>
+          <p>Contact</p>
+        </div>
       </footer>
     </div>
   );
 }
 
-/** @deprecated Use WebsiteCanvas — kept so old imports don't break mid-refactor */
 export function WebsitePreview(props: {
   site: WebsiteSite;
   orgName: string;
