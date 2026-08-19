@@ -15,8 +15,8 @@ Social is mostly done (IG publish + schedule verified; FB/LI/X live-test deferre
 Arslan will provide components + UI details. Scope is a **curated section/block builder**, not freeform Webflow.
 
 ### Website Builder backlog (ordered)
-- [ ] **Redo templates/layouts** from provided components/UI (current themes are placeholders — replace)
-- [ ] **Section/block model** — edit copy, show/hide, reorder, remove (not only 3 toggles)
+- [ ] **Redo templates/layouts** from provided components/UI (current 4 themes stay until Arslan supplies new UIs)
+- [x] **Visual editor** — full-page canvas; hover text to edit, hover hero to change image
 - [ ] **Section palette** — add curated blocks + per-block style variants
 - [ ] **Public multi-tenant renderer** — host/domain → org `WebsiteSite` + listings
 - [ ] **Domain path** — CNAME verify → `sites.0nestate.app` + SSL status (API stub exists)
