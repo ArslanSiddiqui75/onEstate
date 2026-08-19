@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Globe,
@@ -9,15 +9,14 @@ import {
   Eye,
   CheckCircle2,
   ExternalLink,
-  Building2,
   UserCheck,
-  Send,
   Sparkles,
   ShieldCheck,
   AlertCircle,
   Loader2,
   Check,
   Monitor,
+  ImagePlus,
 } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
@@ -31,8 +30,10 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { toast } from "@/components/ui/toast";
-import { formatMoney } from "@/lib/utils";
-import { WEBSITE_TEMPLATES, getTemplate } from "@/lib/website/templates";
+import { FEATURED_TEMPLATES, getTemplate } from "@/lib/website/templates";
+import { hydrateWebsiteSite } from "@/lib/website/defaults";
+import { WebsitePreview } from "@/components/website/website-preview";
+import { fileToSocialMedia, uploadSocialMediaFile } from "@/lib/social/media";
 import type { WebsiteTemplateId, DomainStatus, SslStatus } from "@/types";
 
 const DOMAIN_STATUS_META: Record<
@@ -54,11 +55,18 @@ const SSL_STATUS_META: Record<SslStatus, { label: string; tone: "success" | "war
 };
 
 export default function AppWebsitePage() {
-  const { user, org, website, saveWebsite, listings, market } = useAppSession();
+  const { user, org, website, saveWebsite, listings, market, getAuthToken, persistence } =
+    useAppSession();
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState(website);
   const [previewTab, setPreviewTab] = useState<"website" | "client_portal">("website");
   const [verifying, setVerifying] = useState(false);
+  const [uploadingHero, setUploadingHero] = useState(false);
+  const heroFileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (website) setDraft(website);
+  }, [website]);
 
   if (!user || !org) return null;
   if (!hasModuleAccess(user.role, org.plan, "website", "view")) {
@@ -82,15 +90,15 @@ export default function AppWebsitePage() {
 
   const canEdit = hasModuleAccess(user.role, org.plan, "website", "edit");
   const activeListings = listings.filter((l) => l.market === market);
-  const template = getTemplate(site.templateId);
+  const hydrated = hydrateWebsiteSite(site, org.name);
+  const template = getTemplate(hydrated.templateId);
 
   const customDomain = site.customDomain || `${org.name.toLowerCase().replace(/\s+/g, "")}.0nestate.app`;
-  const showHero = site.showHero ?? true;
-  const showListings = site.showListings ?? true;
-  const showClientPortal = site.showClientPortal ?? true;
-  const showContactForm = site.showContactForm ?? true;
-  const showAgentBio = site.showAgentBio ?? true;
-  const aboutBio = site.aboutBio || "Premier real estate brokerage delivering tailored properties, market intelligence, and seamless closing experiences.";
+  const showHero = hydrated.showHero ?? true;
+  const showListings = hydrated.showListings ?? true;
+  const showClientPortal = hydrated.showClientPortal ?? true;
+  const showContactForm = hydrated.showContactForm ?? true;
+  const showAgentBio = hydrated.showAgentBio ?? true;
   const domainStatus = site.domainStatus || "none";
   const sslStatus = site.sslStatus || "none";
 
@@ -109,9 +117,36 @@ export default function AppWebsitePage() {
 
   const handleSelectTemplate = (templateId: WebsiteTemplateId) => {
     if (!canEdit) return;
-    const next = { ...site, templateId };
+    const nextTemplate = getTemplate(templateId);
+    const next = {
+      ...site,
+      templateId,
+      heroImageUrl:
+        !site.heroImageUrl || site.heroImageUrl === getTemplate(site.templateId).defaultHeroImage
+          ? nextTemplate.defaultHeroImage
+          : site.heroImageUrl,
+    };
     setDraft(next);
     void handleSave(next);
+  };
+
+  const handleHeroFile = async (file: File) => {
+    if (!canEdit) return;
+    setUploadingHero(true);
+    try {
+      const item =
+        persistence === "supabase"
+          ? await uploadSocialMediaFile(file, getAuthToken)
+          : await fileToSocialMedia(file);
+      const next = { ...site, heroImageUrl: item.dataUrl };
+      setDraft(next);
+      toast.success("Hero image updated — save to keep it.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update hero image");
+    } finally {
+      setUploadingHero(false);
+      if (heroFileRef.current) heroFileRef.current.value = "";
+    }
   };
 
   const handleVerifyDomain = async () => {
@@ -237,8 +272,8 @@ export default function AppWebsitePage() {
                   <p className="text-xs text-[var(--muted)] mt-0.5">Select a pre-built design for your public website. Each theme includes colour palette, typography, and layout presets.</p>
                 </div>
                 <div className="grid gap-3 grid-cols-2">
-                  {WEBSITE_TEMPLATES.map((tmpl) => {
-                    const isActive = site.templateId === tmpl.id || (!site.templateId && tmpl.id === "modern-minimal");
+                  {FEATURED_TEMPLATES.map((tmpl) => {
+                    const isActive = hydrated.templateId === tmpl.id;
                     return (
                       <button
                         key={tmpl.id}
@@ -285,11 +320,69 @@ export default function AppWebsitePage() {
 
             {/* Content & Copy Tab */}
             <TabsContent value="content" className="mt-4">
-              <Card className="space-y-4 p-5">
-                <h3 className="font-semibold text-sm">Hero & Brand Messaging</h3>
+              <Card className="space-y-5 p-5">
+                <div>
+                  <h3 className="font-semibold text-sm">Hero image</h3>
+                  <p className="mt-0.5 text-xs text-[var(--muted)]">
+                    This photo sits behind your headline. Paste a URL or upload a file.
+                  </p>
+                </div>
+                <div
+                  className="relative h-36 overflow-hidden rounded-xl border border-[var(--border)] bg-cover bg-center"
+                  style={{
+                    backgroundImage: `url(${hydrated.heroImageUrl || template.defaultHeroImage})`,
+                  }}
+                >
+                  <div className="absolute inset-0 bg-black/35" />
+                  <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-2">
+                    <input
+                      ref={heroFileRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleHeroFile(file);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      disabled={!canEdit || uploadingHero}
+                      onClick={() => heroFileRef.current?.click()}
+                    >
+                      <ImagePlus className="h-3.5 w-3.5" />
+                      {uploadingHero ? "Uploading…" : "Upload photo"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={!canEdit}
+                      onClick={() =>
+                        setDraft({ ...site, heroImageUrl: template.defaultHeroImage })
+                      }
+                    >
+                      Use theme default
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-[var(--muted)]">Hero image URL</label>
+                  <Input
+                    value={site.heroImageUrl || ""}
+                    disabled={!canEdit}
+                    onChange={(e) => setDraft({ ...site, heroImageUrl: e.target.value })}
+                    placeholder="https://…"
+                    className="mt-1"
+                  />
+                </div>
+
+                <h3 className="font-semibold text-sm">Hero copy</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-medium text-[var(--muted)]">Site Headline</label>
+                    <label className="text-xs font-medium text-[var(--muted)]">Headline</label>
                     <Input
                       value={site.headline}
                       disabled={!canEdit}
@@ -308,23 +401,76 @@ export default function AppWebsitePage() {
                       className="mt-1"
                     />
                   </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="text-xs font-medium text-[var(--muted)]">Primary button</label>
+                      <Input
+                        value={site.primaryCta}
+                        disabled={!canEdit}
+                        onChange={(e) => setDraft({ ...site, primaryCta: e.target.value })}
+                        placeholder="Book a valuation"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-[var(--muted)]">Secondary button</label>
+                      <Input
+                        value={site.secondaryCta || ""}
+                        disabled={!canEdit}
+                        onChange={(e) => setDraft({ ...site, secondaryCta: e.target.value })}
+                        placeholder="View listings"
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <h3 className="font-semibold text-sm">About & listings</h3>
+                <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-medium text-[var(--muted)]">Primary Call to Action</label>
+                    <label className="text-xs font-medium text-[var(--muted)]">About heading</label>
                     <Input
-                      value={site.primaryCta}
+                      value={hydrated.aboutHeading}
                       disabled={!canEdit}
-                      onChange={(e) => setDraft({ ...site, primaryCta: e.target.value })}
-                      placeholder="e.g. Request Valuation / View Listings"
+                      onChange={(e) => setDraft({ ...site, aboutHeading: e.target.value })}
                       className="mt-1"
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-[var(--muted)]">Brokerage Bio / About Text</label>
+                    <label className="text-xs font-medium text-[var(--muted)]">About text</label>
                     <Textarea
-                      value={aboutBio}
+                      value={hydrated.aboutBio}
                       disabled={!canEdit}
                       onChange={(e) => setDraft({ ...site, aboutBio: e.target.value })}
-                      rows={3}
+                      rows={4}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--muted)]">Listings heading</label>
+                    <Input
+                      value={hydrated.listingsHeading}
+                      disabled={!canEdit}
+                      onChange={(e) => setDraft({ ...site, listingsHeading: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--muted)]">Contact heading</label>
+                    <Input
+                      value={hydrated.contactHeading}
+                      disabled={!canEdit}
+                      onChange={(e) => setDraft({ ...site, contactHeading: e.target.value })}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-[var(--muted)]">Footer note</label>
+                    <Input
+                      value={site.footerNote || ""}
+                      disabled={!canEdit}
+                      onChange={(e) => setDraft({ ...site, footerNote: e.target.value })}
+                      placeholder="Registered office · company number"
                       className="mt-1"
                     />
                   </div>
@@ -589,177 +735,12 @@ export default function AppWebsitePage() {
             {/* Live Content Area */}
             <div className="min-h-[480px] max-h-[560px] overflow-y-auto scrollbar-thin p-6 space-y-6">
               {previewTab === "website" ? (
-                <>
-                  {/* Hero Banner */}
-                  {showHero && (
-                    <div
-                      className="relative rounded-2xl p-6 text-center"
-                      style={{
-                        background: `linear-gradient(135deg, ${tc.heroFrom}, ${tc.heroTo})`,
-                        color: "#ffffff",
-                        borderRadius: template.radius === "sharp" ? "8px" : template.radius === "pill" ? "24px" : "16px",
-                      }}
-                    >
-                      <Badge tone="accent" className="mx-auto mb-3">
-                        {org.name}
-                      </Badge>
-                      <h1
-                        className="text-3xl font-bold tracking-tight"
-                        style={{
-                          fontFamily: template.fonts.heading,
-                          textAlign: template.heroLayout === "left-aligned" ? "left" : "center",
-                        }}
-                      >
-                        {site.headline}
-                      </h1>
-                      <p
-                        className="mt-2 text-sm opacity-80"
-                        style={{
-                          textAlign: template.heroLayout === "left-aligned" ? "left" : "center",
-                        }}
-                      >
-                        {site.tagline}
-                      </p>
-                      <div style={{ textAlign: template.heroLayout === "left-aligned" ? "left" : "center" }}>
-                        <button
-                          type="button"
-                          className="mt-4 inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold shadow-lg transition hover:opacity-90"
-                          style={{
-                            backgroundColor: tc.accentText === "#ffffff" ? "#ffffff" : tc.accent,
-                            color: tc.accentText === "#ffffff" ? tc.heroFrom : tc.accentText,
-                            borderRadius: template.radius === "sharp" ? "6px" : template.radius === "pill" ? "9999px" : "12px",
-                          }}
-                        >
-                          {site.primaryCta}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Featured Listings Embed */}
-                  {showListings && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3
-                          className="text-xs uppercase tracking-wider font-semibold flex items-center gap-1.5"
-                          style={{ color: tc.muted }}
-                        >
-                          <Building2 className="h-3.5 w-3.5" /> Featured Properties
-                        </h3>
-                        <span className="text-[11px]" style={{ color: tc.muted }}>
-                          {activeListings.length} Active
-                        </span>
-                      </div>
-                      <div className={`grid gap-3 ${template.listingLayout === "grid-3" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-                        {activeListings.slice(0, template.listingLayout === "grid-3" ? 3 : 2).map((item) => (
-                          <div
-                            key={item.id}
-                            className="p-3 space-y-2"
-                            style={{
-                              backgroundColor: tc.surface,
-                              border: `1px solid ${tc.border}`,
-                              borderRadius: template.radius === "sharp" ? "8px" : template.radius === "pill" ? "20px" : "12px",
-                            }}
-                          >
-                            <div
-                              className="h-24 w-full flex items-center justify-center text-xs"
-                              style={{
-                                backgroundColor: `${tc.text}08`,
-                                color: tc.muted,
-                                borderRadius: template.radius === "sharp" ? "6px" : "8px",
-                              }}
-                            >
-                              {item.imageUrl ? "Property Image" : "Listing Photo"}
-                            </div>
-                            <h4
-                              className="font-semibold text-xs truncate"
-                              style={{ color: tc.text }}
-                            >
-                              {item.title}
-                            </h4>
-                            <p
-                              className="text-sm font-bold"
-                              style={{ color: tc.accent }}
-                            >
-                              {formatMoney(item.price, market)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Client Portal Link Banner */}
-                  {showClientPortal && (
-                    <div
-                      className="p-4 flex items-center justify-between"
-                      style={{
-                        backgroundColor: tc.surface,
-                        border: `1px solid ${tc.border}`,
-                        borderRadius: template.radius === "sharp" ? "8px" : "12px",
-                      }}
-                    >
-                      <div>
-                        <p className="text-xs font-semibold" style={{ color: tc.text }}>Client Portal Access</p>
-                        <p className="text-[11px]" style={{ color: tc.muted }}>Buyers & Sellers view live deal checklists</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="px-3 py-1.5 text-xs font-medium transition hover:opacity-80"
-                        style={{
-                          backgroundColor: `${tc.accent}20`,
-                          color: tc.accent,
-                          borderRadius: template.radius === "sharp" ? "6px" : "8px",
-                        }}
-                        onClick={() => setPreviewTab("client_portal")}
-                      >
-                        Portal Login →
-                      </button>
-                    </div>
-                  )}
-
-                  {/* About & Bio */}
-                  {showAgentBio && (
-                    <div
-                      className="p-4 space-y-1.5"
-                      style={{
-                        backgroundColor: tc.surface,
-                        border: `1px solid ${tc.border}`,
-                        borderRadius: template.radius === "sharp" ? "8px" : "12px",
-                      }}
-                    >
-                      <h4 className="text-xs font-semibold" style={{ color: tc.text }}>About {org.name}</h4>
-                      <p className="text-xs leading-relaxed" style={{ color: tc.muted }}>{aboutBio}</p>
-                    </div>
-                  )}
-
-                  {/* Contact Form */}
-                  {showContactForm && (
-                    <div
-                      className="p-4 space-y-3"
-                      style={{
-                        backgroundColor: tc.surface,
-                        border: `1px solid ${tc.border}`,
-                        borderRadius: template.radius === "sharp" ? "8px" : "12px",
-                      }}
-                    >
-                      <h4 className="text-xs font-semibold flex items-center gap-1.5" style={{ color: tc.text }}>
-                        <Send className="h-3.5 w-3.5" style={{ color: tc.accent }} /> Send an Inquiry
-                      </h4>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="p-2" style={{ backgroundColor: `${tc.text}05`, border: `1px solid ${tc.border}`, borderRadius: "8px", color: tc.muted }}>Your Name</div>
-                        <div className="p-2" style={{ backgroundColor: `${tc.text}05`, border: `1px solid ${tc.border}`, borderRadius: "8px", color: tc.muted }}>Email / Phone</div>
-                      </div>
-                      <div className="p-2 text-xs h-16" style={{ backgroundColor: `${tc.text}05`, border: `1px solid ${tc.border}`, borderRadius: "8px", color: tc.muted }}>
-                        How can we help with your property needs?
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="text-center pt-2 text-[11px]" style={{ color: tc.muted }}>
-                    {[site.phone, site.email].filter(Boolean).join(" · ")}
-                  </div>
-                </>
+                <WebsitePreview
+                  site={hydrated}
+                  orgName={org.name}
+                  listings={activeListings}
+                  market={market}
+                />
               ) : (
                 /* Client Portal Mode Preview */
                 <div className="space-y-4">

@@ -267,15 +267,10 @@ Checklist:
 - [ ] Facebook / LinkedIn / X live publish
 - [ ] Optional org switcher
 
-### 2. Website Builder — section-based redesign (NEXT SESSION)
-Current picker/templates are placeholders. Plan:
-1. Redo themes from Arslan-provided components/UI
-2. Move `WebsiteSite` toward ordered `sections[]` (edit / hide / reorder / remove)
-3. Section palette + variants
-4. Public multi-tenant renderer by domain
-5. Domain CNAME + SSL status
-
-Existing stubs: `templates.ts`, website `page.tsx`, `api/website/domain/verify`.
+### 2. Website Builder — templates + editable copy (IN PROGRESS)
+Four live themes: Modern Minimal, Luxury Dark, Classic Agency, Coastal Living.
+Users can edit hero image (URL or upload), headline, tagline, CTAs, about, listings heading, contact heading, footer.
+Settings persist in `public.websites` (jsonb payload). Public multi-tenant render still TODO.
 
 ---
 

@@ -14,6 +14,7 @@ import type {
   SocialMediaItem,
   SocialPost,
   TransactionDeal,
+  WebsiteSite,
 } from "@/types";
 import type { WorkspaceRepository } from "@/lib/data/repository";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
@@ -1040,16 +1041,10 @@ export function createSupabaseRepository(
     },
 
     async getWebsite() {
-      // Stored in organizations metadata until dedicated table ships in later migration.
-      const { data } = await supabase
-        .from("organizations")
-        .select("name")
-        .eq("id", ctx.org.id)
-        .maybeSingle();
-      return {
+      const fallback: WebsiteSite = {
         id: ctx.org.id,
         orgId: ctx.org.id,
-        headline: String(data?.name || ctx.org.name),
+        headline: ctx.org.name,
         tagline: "Find your next home with a team that actually follows through.",
         primaryCta: "Book a valuation",
         phone: "",
@@ -1057,10 +1052,36 @@ export function createSupabaseRepository(
         published: false,
         updatedAt: new Date().toISOString(),
       };
+
+      const { data, error } = await supabase
+        .from("websites")
+        .select("payload, updated_at")
+        .eq("org_id", ctx.org.id)
+        .maybeSingle();
+      if (error || !data?.payload) return fallback;
+
+      const payload = data.payload as Partial<WebsiteSite>;
+      return {
+        ...fallback,
+        ...payload,
+        id: ctx.org.id,
+        orgId: ctx.org.id,
+        updatedAt: String(data.updated_at || fallback.updatedAt),
+      };
     },
 
     async saveWebsite(site) {
-      return site;
+      const payload = { ...site, orgId: ctx.org.id, id: ctx.org.id };
+      const { error } = await supabase.from("websites").upsert(
+        {
+          org_id: ctx.org.id,
+          payload,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "org_id" },
+      );
+      if (error) throw error;
+      return { ...payload, updatedAt: new Date().toISOString() };
     },
 
     async listSocialAccounts() {

@@ -370,6 +370,13 @@ export interface WebsiteSite {
   showContactForm?: boolean;
   showAgentBio?: boolean;
   aboutBio?: string;
+  aboutHeading?: string;
+  listingsHeading?: string;
+  contactHeading?: string;
+  secondaryCta?: string;
+  footerNote?: string;
+  /** Full-bleed hero photo (https URL or uploaded storage URL) */
+  heroImageUrl?: string;
   /** Selected website template/theme */
   templateId?: WebsiteTemplateId;
   /** Domain connection status */

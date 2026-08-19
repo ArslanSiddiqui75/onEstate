@@ -4,227 +4,151 @@ export interface WebsiteTemplate {
   id: WebsiteTemplateId;
   name: string;
   description: string;
-  /** Short marketing tagline */
   tagline: string;
-  /** CSS variables that override the default dark preview theme */
+  featured: boolean;
+  defaultHeroImage: string;
   colors: {
-    /** Primary background */
     bg: string;
-    /** Secondary / card surface */
     surface: string;
-    /** Primary text */
     text: string;
-    /** Muted/secondary text */
     muted: string;
-    /** Accent / CTA color */
     accent: string;
-    /** Accent text on accent background */
     accentText: string;
-    /** Border/separator color */
     border: string;
-    /** Hero gradient from */
     heroFrom: string;
-    /** Hero gradient to */
     heroTo: string;
   };
-  /** Typography pairing */
   fonts: {
     heading: string;
     body: string;
   };
-  /** Layout variant for the hero section */
   heroLayout: "centered" | "left-aligned" | "split" | "overlay";
-  /** Listing grid style */
   listingLayout: "grid-2" | "grid-3" | "cards" | "masonry";
-  /** Border radius scale */
   radius: "sharp" | "rounded" | "pill";
-  /** Thumbnail gradient for the template picker card */
   thumbnailGradient: string;
 }
+
+/** Older picker IDs map onto the four live themes. */
+const TEMPLATE_ALIASES: Record<string, WebsiteTemplateId> = {
+  "bold-vibrant": "coastal-living",
+  "heritage-estate": "classic-agency",
+  "tech-forward": "modern-minimal",
+  "urban-edge": "luxury-dark",
+};
 
 export const WEBSITE_TEMPLATES: WebsiteTemplate[] = [
   {
     id: "modern-minimal",
     name: "Modern Minimal",
-    description: "Clean lines, generous whitespace, and a crisp monochrome palette. Lets your listings speak for themselves.",
-    tagline: "Less is more",
+    featured: true,
+    description: "Light, airy, and image-led. Headline over a full-bleed hero.",
+    tagline: "Clean and contemporary",
+    defaultHeroImage:
+      "https://images.unsplash.com/photo-1600596542813-85a1c2dae59e?auto=format&fit=crop&w=1600&q=80",
     colors: {
       bg: "#ffffff",
-      surface: "#f8f9fa",
-      text: "#111111",
-      muted: "#6b7280",
-      accent: "#111111",
+      surface: "#f7f7f5",
+      text: "#171717",
+      muted: "#737373",
+      accent: "#171717",
       accentText: "#ffffff",
-      border: "#e5e7eb",
-      heroFrom: "#f8f9fa",
-      heroTo: "#ffffff",
+      border: "#e5e5e5",
+      heroFrom: "#111111",
+      heroTo: "#404040",
     },
-    fonts: { heading: "Inter", body: "Inter" },
-    heroLayout: "centered",
+    fonts: { heading: "Georgia, 'Times New Roman', serif", body: "Inter, system-ui, sans-serif" },
+    heroLayout: "overlay",
     listingLayout: "grid-2",
     radius: "rounded",
-    thumbnailGradient: "linear-gradient(135deg, #f8f9fa 0%, #e5e7eb 50%, #ffffff 100%)",
+    thumbnailGradient: "linear-gradient(135deg, #fafafa 0%, #d4d4d4 100%)",
   },
   {
     id: "luxury-dark",
     name: "Luxury Dark",
-    description: "Deep blacks with gold accents. Premium feel for high-end brokerages and luxury property portfolios.",
-    tagline: "Refined elegance",
+    featured: true,
+    description: "Night palette with gold accents. Built for high-end stock.",
+    tagline: "Quiet luxury",
+    defaultHeroImage:
+      "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1600&q=80",
     colors: {
-      bg: "#0a0a0a",
-      surface: "#141414",
-      text: "#f5f5f5",
-      muted: "#a1a1aa",
-      accent: "#d4a853",
-      accentText: "#0a0a0a",
-      border: "#27272a",
-      heroFrom: "#141414",
-      heroTo: "#0a0a0a",
+      bg: "#0c0c0b",
+      surface: "#161614",
+      text: "#f5f0e6",
+      muted: "#a8a29e",
+      accent: "#c6a15b",
+      accentText: "#0c0c0b",
+      border: "#2a2824",
+      heroFrom: "#0c0c0b",
+      heroTo: "#1c1917",
     },
-    fonts: { heading: "Playfair Display", body: "Inter" },
+    fonts: { heading: "Georgia, 'Times New Roman', serif", body: "Inter, system-ui, sans-serif" },
     heroLayout: "overlay",
     listingLayout: "cards",
     radius: "rounded",
-    thumbnailGradient: "linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #d4a853 100%)",
+    thumbnailGradient: "linear-gradient(135deg, #0c0c0b 0%, #c6a15b 100%)",
   },
   {
     id: "classic-agency",
     name: "Classic Agency",
-    description: "Traditional navy and white with serif headings. Trusted, established, professional — the Savills look.",
-    tagline: "Time-honoured trust",
+    featured: true,
+    description: "Navy split layout. Text on one side, photography on the other.",
+    tagline: "Established and trusted",
+    defaultHeroImage:
+      "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1600&q=80",
     colors: {
-      bg: "#ffffff",
-      surface: "#f0f4f8",
-      text: "#1a2332",
-      muted: "#64748b",
+      bg: "#f8f6f1",
+      surface: "#ffffff",
+      text: "#1b2430",
+      muted: "#5c6b7a",
       accent: "#1e3a5f",
       accentText: "#ffffff",
-      border: "#cbd5e1",
+      border: "#ddd6c8",
       heroFrom: "#1e3a5f",
       heroTo: "#0f2440",
     },
-    fonts: { heading: "Playfair Display", body: "Source Sans Pro" },
-    heroLayout: "left-aligned",
+    fonts: { heading: "Georgia, 'Times New Roman', serif", body: "Inter, system-ui, sans-serif" },
+    heroLayout: "split",
     listingLayout: "grid-3",
     radius: "rounded",
-    thumbnailGradient: "linear-gradient(135deg, #1e3a5f 0%, #0f2440 50%, #ffffff 100%)",
-  },
-  {
-    id: "bold-vibrant",
-    name: "Bold & Vibrant",
-    description: "High-energy gradients, vibrant colours, and dynamic layouts. Stands out in crowded markets.",
-    tagline: "Make a statement",
-    colors: {
-      bg: "#0f0f1a",
-      surface: "#1a1a2e",
-      text: "#ffffff",
-      muted: "#94a3b8",
-      accent: "#8b5cf6",
-      accentText: "#ffffff",
-      border: "#334155",
-      heroFrom: "#8b5cf6",
-      heroTo: "#ec4899",
-    },
-    fonts: { heading: "Outfit", body: "Inter" },
-    heroLayout: "split",
-    listingLayout: "cards",
-    radius: "pill",
-    thumbnailGradient: "linear-gradient(135deg, #8b5cf6 0%, #ec4899 50%, #0f0f1a 100%)",
+    thumbnailGradient: "linear-gradient(135deg, #1e3a5f 0%, #f8f6f1 100%)",
   },
   {
     id: "coastal-living",
     name: "Coastal Living",
-    description: "Breezy teals and warm sands. Perfect for coastal, resort, and vacation property specialists.",
-    tagline: "Life by the water",
+    featured: true,
+    description: "Soft teal and sand. Left-aligned copy over a bright coastal hero.",
+    tagline: "Light, air, and sea",
+    defaultHeroImage:
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
     colors: {
-      bg: "#fefcf3",
-      surface: "#f0f7f4",
+      bg: "#f7f4ee",
+      surface: "#ffffff",
       text: "#1a3c34",
       muted: "#5f8a7d",
-      accent: "#0d9488",
+      accent: "#0f766e",
       accentText: "#ffffff",
-      border: "#d1e5df",
-      heroFrom: "#0d9488",
-      heroTo: "#065f46",
+      border: "#d7e5df",
+      heroFrom: "#0f766e",
+      heroTo: "#134e4a",
     },
-    fonts: { heading: "Outfit", body: "Inter" },
-    heroLayout: "centered",
-    listingLayout: "grid-2",
-    radius: "rounded",
-    thumbnailGradient: "linear-gradient(135deg, #0d9488 0%, #065f46 50%, #fefcf3 100%)",
-  },
-  {
-    id: "urban-edge",
-    name: "Urban Edge",
-    description: "Industrial charcoals with orange pop accents. Built for city-focused agencies and modern developments.",
-    tagline: "City living, redefined",
-    colors: {
-      bg: "#18181b",
-      surface: "#1f1f23",
-      text: "#fafafa",
-      muted: "#a1a1aa",
-      accent: "#f97316",
-      accentText: "#18181b",
-      border: "#3f3f46",
-      heroFrom: "#f97316",
-      heroTo: "#ea580c",
-    },
-    fonts: { heading: "Outfit", body: "Inter" },
+    fonts: { heading: "Georgia, 'Times New Roman', serif", body: "Inter, system-ui, sans-serif" },
     heroLayout: "left-aligned",
-    listingLayout: "masonry",
-    radius: "sharp",
-    thumbnailGradient: "linear-gradient(135deg, #18181b 0%, #3f3f46 50%, #f97316 100%)",
-  },
-  {
-    id: "heritage-estate",
-    name: "Heritage Estate",
-    description: "Warm creams with hunter green and gold touches. Evokes country houses, period properties, and heritage charm.",
-    tagline: "Steeped in tradition",
-    colors: {
-      bg: "#faf8f1",
-      surface: "#f5f0e3",
-      text: "#2d3a2e",
-      muted: "#6b7c6c",
-      accent: "#2d5a3d",
-      accentText: "#faf8f1",
-      border: "#d4cbb8",
-      heroFrom: "#2d5a3d",
-      heroTo: "#1a3a24",
-    },
-    fonts: { heading: "Playfair Display", body: "Source Sans Pro" },
-    heroLayout: "overlay",
     listingLayout: "grid-2",
     radius: "rounded",
-    thumbnailGradient: "linear-gradient(135deg, #2d5a3d 0%, #1a3a24 50%, #faf8f1 100%)",
-  },
-  {
-    id: "tech-forward",
-    name: "Tech-Forward",
-    description: "Cool slate with electric blue accents. For proptech-savvy agencies that lead with data and innovation.",
-    tagline: "The future of property",
-    colors: {
-      bg: "#0f172a",
-      surface: "#1e293b",
-      text: "#f1f5f9",
-      muted: "#94a3b8",
-      accent: "#3b82f6",
-      accentText: "#ffffff",
-      border: "#334155",
-      heroFrom: "#3b82f6",
-      heroTo: "#1d4ed8",
-    },
-    fonts: { heading: "Inter", body: "Inter" },
-    heroLayout: "split",
-    listingLayout: "grid-3",
-    radius: "rounded",
-    thumbnailGradient: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #3b82f6 100%)",
+    thumbnailGradient: "linear-gradient(135deg, #0f766e 0%, #f7f4ee 100%)",
   },
 ];
 
-export function getTemplate(id?: string): WebsiteTemplate {
-  return WEBSITE_TEMPLATES.find((t) => t.id === id) || WEBSITE_TEMPLATES[0];
+export const FEATURED_TEMPLATES = WEBSITE_TEMPLATES.filter((t) => t.featured);
+
+export function resolveTemplateId(id?: string): WebsiteTemplateId {
+  if (!id) return "modern-minimal";
+  if (TEMPLATE_ALIASES[id]) return TEMPLATE_ALIASES[id];
+  if (WEBSITE_TEMPLATES.some((t) => t.id === id)) return id as WebsiteTemplateId;
+  return "modern-minimal";
 }
 
-export function getTemplateById(id: WebsiteTemplateId): WebsiteTemplate {
-  return WEBSITE_TEMPLATES.find((t) => t.id === id) || WEBSITE_TEMPLATES[0];
+export function getTemplate(id?: string): WebsiteTemplate {
+  const resolved = resolveTemplateId(id);
+  return WEBSITE_TEMPLATES.find((t) => t.id === resolved) || WEBSITE_TEMPLATES[0];
 }
