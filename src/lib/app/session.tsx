@@ -30,6 +30,7 @@ import type {
   SocialPost,
   TransactionDeal,
   WebsiteSite,
+  LeadRoutingSettings,
 } from "@/types";
 import { isSupabaseConfigured, createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/toast";
@@ -55,8 +56,9 @@ import {
   findDevSeedAccount,
   isDevSeedEnabled,
 } from "@/lib/dev/seed-accounts";
-import { syncWorkspaceToPlatformRegistry } from "@/lib/admin/sync-workspace";
 import { setTenantPlan } from "@/lib/admin/registry";
+import { syncWorkspaceToPlatformRegistry } from "@/lib/admin/sync-workspace";
+import { prepareNewLead, hydrateLeadRouting, ownerId } from "@/lib/crm/routing";
 import { syncListingToPortals } from "@/lib/portals/adapters";
 import {
   loadPortalConnections,
@@ -132,6 +134,7 @@ export interface AppOrg {
   trialEndsAt?: string;
   lastPaymentStatus?: string;
   lastPaymentAt?: string;
+  leadRouting?: LeadRoutingSettings;
 }
 
 interface AppState {
@@ -166,6 +169,8 @@ interface AppState {
   setPlan: (plan: PlanId) => Promise<void>;
   refresh: () => Promise<void>;
   addLead: (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  assignLead: (id: string, assignedTo: string) => Promise<void>;
+  saveLeadRouting: (settings: LeadRoutingSettings) => Promise<void>;
   updateLeadStage: (id: string, stage: Lead["stage"]) => Promise<void>;
   addContact: (
     contact: Omit<Contact, "id" | "createdAt" | "updatedAt" | "market">,
@@ -319,6 +324,7 @@ function toAppOrg(org: WorkspaceOrg): AppOrg {
     trialEndsAt: org.trialEndsAt,
     lastPaymentStatus: org.lastPaymentStatus,
     lastPaymentAt: org.lastPaymentAt,
+    leadRouting: org.leadRouting,
   };
 }
 
@@ -750,7 +756,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
 
   const addLead = useCallback(
     async (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => {
-      if (!repoRef.current) return;
+      if (!repoRef.current || !org || !user) return;
       const phones =
         lead.phone && !lead.phones?.length
           ? [
@@ -762,10 +768,25 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
               }),
             ]
           : lead.phones;
+      const prepared = prepareNewLead(
+        { ...lead, phones },
+        {
+          plan: org.plan,
+          settings: hydrateLeadRouting(org.leadRouting),
+          members,
+          existingLeads: leads,
+          creatorId: user.id,
+          fallbackId: ownerId(members) || user.id,
+          territory: lead.territory,
+          explicitAssignee: lead.assignedTo || undefined,
+        },
+      );
       const created = await repoRef.current.createLead({
         ...lead,
         market: brand.market,
         phones,
+        score: prepared.score,
+        assignedTo: prepared.assignedTo,
       });
       if (created?.id) {
         await fireAutomationTrigger({
@@ -776,7 +797,25 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       }
       await refresh();
     },
-    [brand.market, fireAutomationTrigger, refresh],
+    [brand.market, fireAutomationTrigger, leads, members, org, refresh, user],
+  );
+
+  const assignLead = useCallback(
+    async (id: string, assignedTo: string) => {
+      if (!repoRef.current) return;
+      await repoRef.current.updateLead(id, { assignedTo });
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const saveLeadRouting = useCallback(
+    async (settings: LeadRoutingSettings) => {
+      if (!repoRef.current) return;
+      const next = await repoRef.current.saveLeadRouting(settings);
+      setOrg(toAppOrg(next));
+    },
+    [],
   );
 
   const updateLeadStage = useCallback(
@@ -912,6 +951,25 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       if (!repoRef.current) return;
       const contact = contacts.find((c) => c.id === contactId);
       if (!contact) return;
+      const prepared = prepareNewLead(
+        {
+          email: contact.email || "",
+          phone: contact.phone || contact.phones?.[0]?.number || "",
+          phones: contact.phones,
+          type: input.type,
+          source: input.source || "referral",
+          notes: contact.notes,
+          assignedTo: contact.assignedTo,
+        },
+        {
+          plan: org?.plan || "solo",
+          settings: hydrateLeadRouting(org?.leadRouting),
+          members,
+          existingLeads: leads,
+          creatorId: user?.id,
+          fallbackId: ownerId(members) || contact.assignedTo || user?.id || "",
+        },
+      );
       const created = await repoRef.current.createLead({
         name: contact.name,
         email: contact.email || "",
@@ -919,8 +977,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         phones: contact.phones,
         type: input.type,
         stage: "new",
-        score: 50,
-        assignedTo: contact.assignedTo || "",
+        score: prepared.score,
+        assignedTo: prepared.assignedTo,
         market: contact.market,
         source: input.source || "referral",
         notes: contact.notes,
@@ -929,9 +987,16 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         category: "lead",
         leadId: created.id,
       });
+      if (created?.id) {
+        await fireAutomationTrigger({
+          leadId: created.id,
+          trigger: "lead_created",
+          stage: created.stage,
+        });
+      }
       await refresh();
     },
-    [contacts, refresh],
+    [contacts, fireAutomationTrigger, leads, members, org, refresh, user],
   );
 
   const addListing = useCallback(
@@ -1460,6 +1525,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       setPlan,
       refresh,
       addLead,
+      assignLead,
+      saveLeadRouting,
       updateLeadStage,
       addContact,
       updateContact,
@@ -1519,6 +1586,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       setPlan,
       refresh,
       addLead,
+      assignLead,
+      saveLeadRouting,
       updateLeadStage,
       addContact,
       updateContact,

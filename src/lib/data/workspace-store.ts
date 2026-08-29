@@ -16,6 +16,7 @@ import type {
   SocialPost,
   TransactionDeal,
   WebsiteSite,
+  LeadRoutingSettings,
 } from "@/types";
 
 export interface WorkspaceOrg {
@@ -32,6 +33,7 @@ export interface WorkspaceOrg {
   trialEndsAt?: string;
   lastPaymentStatus?: string;
   lastPaymentAt?: string;
+  leadRouting?: LeadRoutingSettings;
 }
 
 export interface WorkspaceUser {

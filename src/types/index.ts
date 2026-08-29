@@ -117,6 +117,17 @@ export interface Lead {
   updatedAt: string;
 }
 
+export type LeadRoutingMode = "creator" | "round_robin" | "territory" | "least_open";
+
+export interface LeadRoutingSettings {
+  mode: LeadRoutingMode;
+  /** Roles that receive auto-assigned leads (owner is a separate toggle). */
+  includeRoles: Role[];
+  includeOwner: boolean;
+  /** memberId → territory tokens (city, postcode area, office name) */
+  territories: Record<string, string[]>;
+}
+
 export type ContactCategory =
   | "lead"
   | "client"

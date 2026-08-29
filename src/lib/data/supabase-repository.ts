@@ -228,6 +228,16 @@ export function createSupabaseRepository(
       return ctx.org;
     },
 
+    async saveLeadRouting(settings) {
+      const { error } = await supabase
+        .from("organizations")
+        .update({ lead_routing: settings })
+        .eq("id", ctx.org.id);
+      if (error) throw error;
+      ctx.org.leadRouting = settings;
+      return ctx.org;
+    },
+
     async listMembers() {
       const { data, error } = await supabase
         .from("profiles")
@@ -352,6 +362,9 @@ export function createSupabaseRepository(
           ...(patch.nextActionDueAt !== undefined ? { next_action_due_at: patch.nextActionDueAt } : {}),
           ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
           ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+          ...(patch.assignedTo !== undefined ? { assigned_to: patch.assignedTo || null } : {}),
+          ...(patch.score !== undefined ? { score: patch.score } : {}),
+          ...(patch.territory !== undefined ? { territory: patch.territory } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
@@ -1325,6 +1338,7 @@ export async function hydrateSupabaseSession(): Promise<{
       trialEndsAt: org.trial_ends_at ? String(org.trial_ends_at) : undefined,
       lastPaymentStatus: org.last_payment_status ? String(org.last_payment_status) : undefined,
       lastPaymentAt: org.last_payment_at ? String(org.last_payment_at) : undefined,
+      leadRouting: (org.lead_routing as WorkspaceOrg["leadRouting"]) || undefined,
     },
   };
 }

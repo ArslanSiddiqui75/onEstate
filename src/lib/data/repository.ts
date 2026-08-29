@@ -7,6 +7,7 @@ import type {
   Lead,
   LeadActivity,
   LeadStage,
+  LeadRoutingSettings,
   Listing,
   ListingStatus,
   MessageSequence,
@@ -30,6 +31,7 @@ export interface WorkspaceRepository {
   saveAuth(user: WorkspaceUser, org: WorkspaceOrg): Promise<void>;
   clearAuth(): Promise<void>;
   setPlan(plan: PlanId): Promise<WorkspaceOrg>;
+  saveLeadRouting(settings: LeadRoutingSettings): Promise<WorkspaceOrg>;
   listMembers(): Promise<OrgMember[]>;
   listLeads(): Promise<Lead[]>;
   createLead(lead: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead>;
@@ -37,7 +39,7 @@ export interface WorkspaceRepository {
   updateLead(
     id: string,
     patch: Partial<
-      Pick<Lead, "name" | "email" | "phone" | "phones" | "nextAction" | "nextActionDueAt" | "priority" | "notes">
+      Pick<Lead, "name" | "email" | "phone" | "phones" | "nextAction" | "nextActionDueAt" | "priority" | "notes" | "assignedTo" | "score" | "territory">
     >,
   ): Promise<Lead>;
   listContacts(): Promise<Contact[]>;

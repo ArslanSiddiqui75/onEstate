@@ -1,22 +1,21 @@
 # 0nEstate (CertifiedUK / CertifiedUS) — Project Context
 
 > **Purpose**: This file preserves project context across model switches and chat sessions.
-> **Last updated**: 2026-08-29 (section palette shipped; migrations 010+011 applied)
+> **Last updated**: 2026-08-29 (lead routing + scoring shipped; migration 012 applied)
 
 ---
 
-## Chat handoff — NEXT: Lead routing + scoring (2026-08-29)
+## Chat handoff — NEXT: Domain CNAME + SSL (2026-08-29)
 
 Use this block when starting a **new Cursor chat**. Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.app
 
 If Arslan says **"continue"** / **"next task"** with no extra detail: do the first unchecked item under **Pick up here**. Do not redo shipped work below.
 
 ### Pick up here (ordered)
-1. **[START HERE IN CODE] Lead routing + scoring engines** — `leadRouting` / `leadScoring` plan flags exist; all leads still assign to creator; score column is display-only
-2. Domain CNAME verify + SSL status productization (`/api/website/domain/verify` is still a stub)
-3. Email channel (tasks/automations mention Email; no send transport)
-4. Message sequence runner (seeded sequences + enrollment toggles; no scheduler — automations already cover drip)
-5. Live-test Facebook / LinkedIn / X publish (IG is verified)
+1. **[START HERE IN CODE] Domain CNAME verify + SSL status productization** — `/api/website/domain/verify` is still a stub
+2. Email channel (tasks/automations mention Email; no send transport)
+3. Message sequence runner (seeded sequences + enrollment toggles; no scheduler — automations already cover drip)
+4. Live-test Facebook / LinkedIn / X publish (IG is verified)
 
 Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page IA. Org switcher — **skip**. Themes stay at the current 4 until Arslan supplies new UIs.
 
@@ -25,10 +24,11 @@ Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page
 - **Messaging** — simulated inbound in CRM inbox (`/api/messaging/inbound`); `MESSAGING_MODE`; Twilio still cannot deliver to PK numbers.
 - **Public websites + lead capture** — `5c7c5be`. `/site/[slug]`; `src/proxy.ts` rewrites custom domains; `POST /api/public/leads` creates a CRM lead and fires `lead_created` automations. Unpublished sites stay private.
 - **Website section palette + reorder** — curated blocks (hero/listings/about/contact + optional testimonials/stats/cta), show/hide, up/down reorder, per-block style variants. Catalog: `src/lib/website/sections.ts`. Footer is always last. Older payloads hydrate from `show*` flags.
-- **Hosted migrations 010 + 011 applied** on project `pruezuqdsofegzhbodnj` (2026-08-29).
+- **Lead routing + scoring** — `src/lib/crm/{scoring,routing}.ts`. Team/Enterprise: round-robin / territory / least-open / creator. Score is computed (source, completeness, type, priority), not typed. Website capture uses the same engines. CRM → Routing tab. Solo still assigns to the person who adds the lead.
+- **Hosted migrations 010, 011, 012 applied** on project `pruezuqdsofegzhbodnj`.
 
-### Key files for next CRM work
-`src/lib/app/session.tsx` (addLead assignment) · `src/lib/plans/catalog.ts` (`leadRouting`, `leadScoring`) · CRM page score column · `src/types/index.ts` Lead
+### Key files for next website work
+`src/app/api/website/domain/verify/route.ts` · Website editor Domain panel · `WebsiteSite.domainStatus` / `sslStatus`
 
 ### Habits
 Commit + push major changes automatically (`.cursor/rules/git-auto-push.mdc`). User is **Arslan**. Verify UI in the browser when changing web app behavior.
@@ -84,7 +84,7 @@ UI shows **Workspace** name + short org id in the shell. Wrong email = empty Acc
 | Schedule never fires on Hobby | Daily Vercel cron + cron-job.org + page flush | `vercel.json`, `publish-due`, Social `DuePostsFlusher` — `7069954` |
 
 ### Still open / next product work
-- [ ] **Lead routing + scoring** — see top handoff — **START HERE NEXT** (section palette is done)
+- [ ] **Domain CNAME + SSL** — see top handoff — **START HERE NEXT** (routing/scoring is done)
 - [ ] Live-test Facebook / LinkedIn / X (deferred)
 - [ ] Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe
 - Repo habit: **commit + push major changes automatically** (see `.cursor/rules/git-auto-push.mdc`)
@@ -139,7 +139,7 @@ src/
 │   │   ├── public/leads/             # Website form → CRM lead
 │   │   ├── stripe/  twilio/  social/  waitlist/  website/domain/verify/
 ├── components/
-│   ├── crm/automation-builder.tsx
+│   ├── crm/automation-builder.tsx, lead-routing-panel.tsx
 │   ├── website/{website-preview, editable-field, public-contact-form, section-palette}.tsx
 │   ├── social/  shell/  ui/
 ├── lib/
@@ -147,9 +147,10 @@ src/
 │   ├── automations/engine.ts         # Runtime (enqueue + execute + wait)
 │   ├── messaging/{service,capabilities}.ts
 │   ├── website/{templates,defaults,public-site,slug,sections}.ts
+│   ├── crm/{scoring,routing}.ts
 │   ├── data/  stripe/  twilio/  social/  portals/  rbac/  plans/
 ├── types/index.ts
-supabase/migrations/                  # 001–011 (010 automations, 011 public sites)
+supabase/migrations/                  # 001–012 (012 lead_routing jsonb on orgs)
 ```
 
 ---
@@ -163,7 +164,7 @@ Key types:
 - `WorkspaceOrg` — org with Stripe billing fields
 - `WorkspaceUser` — user with role + orgId
 - `WebsiteSite` — website config (headline, tagline, **slug**, domain, sections, templateId, published, domainStatus)
-- `Lead`, `Contact`, `Listing`, `TransactionDeal` — core business objects. Lead stages: `new → contacted → qualified → viewing → offer → won|lost`. No separate deals table; Transactions is post-offer.
+- `Lead`, `Contact`, `Listing`, `TransactionDeal` — core business objects. Lead stages: `new → contacted → qualified → viewing → offer → won|lost`. `LeadRoutingSettings` on the org. No separate deals table; Transactions is post-offer.
 - `SocialAccount`, `SocialPost` — social module
 - `Automation`, `AutomationStep`, `AutomationRun`, `LeadActivity` — CRM workflows + timeline
 - `LeadTask`, `ConversationMessage` — SMS inbox + follow-up tasks
@@ -192,7 +193,7 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 ## Module Completion Status
 
 ### ✅ Fully Built (just need env keys / migrations to go live)
-1. **CRM & Lead Management** (~95%) — Pipeline, contacts, SMS (Twilio + simulated inbound), call logging, **automation runtime**, activity timeline. Missing: routing/scoring engines, email send, sequence scheduler
+1. **CRM & Lead Management** (~98%) — Pipeline, contacts, SMS, call logging, automation runtime, **lead routing + scoring**. Missing: email send, sequence scheduler
 2. **Listings & Portal Sync** (~85%) — Table, search, sync buttons, portal adapters (export-ready; live APIs need partnerships)
 3. **Transactions & Compliance** (~80%) — Deal cards, checklists, progress bars, e-sign indicators
 4. **Social Media Tools** (~85%) — All 4 platforms with real OAuth; IG publish + schedule verified; FB/LI/X live-test deferred
@@ -200,7 +201,6 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 6. **Website Builder** (~90%) — 4 themes, visual editor, public `/site/[slug]` + custom-domain proxy, contact form → CRM leads, **section palette + reorder + variants**. Missing: CNAME/SSL productization
 
 ### 🔴 Major Work Remaining
-- Lead routing + scoring
 - Domain CNAME + SSL
 - Email channel
 - Message sequence runner (optional — automations already drip)
@@ -227,6 +227,13 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 - Per-block variants: hero overlay/left/split, listings grid-2/grid-3/cards, about split/stacked, contact compact/stacked, plus quote/featured, stats row/cards, CTA banner/centered
 - Editor: Website → **Sections** panel (`section-palette.tsx`). Footer is pinned last.
 - Files: `src/lib/website/sections.ts`, `src/components/website/section-palette.tsx`, `website-preview.tsx`
+
+### Lead routing + scoring — ✅ (2026-08-29)
+- Scoring: `src/lib/crm/scoring.ts` — transparent 0–100 from email/phone/budget/notes + source + type + priority. Shown on Team/Enterprise; still stored on Solo.
+- Routing: `src/lib/crm/routing.ts` — modes `creator` | `round_robin` | `territory` | `least_open`. Plan flag `leadRouting` required (Team/Enterprise).
+- Settings on `organizations.lead_routing` jsonb (migration 012). CRM → **Routing** tab.
+- `addLead`, CSV import, promote-to-lead, and `POST /api/public/leads` all go through `prepareNewLead`. Website enquiries assign to the owner on Solo, or the routing pool on Team.
+- Lead detail: reassign dropdown + score factor breakdown.
 
 ### CRM automations — ✅ Runtime built (2026-08-29)
 Before this, `automations` rows were config that nothing executed.
@@ -291,7 +298,10 @@ Four live themes: Modern Minimal, Luxury Dark, Classic Agency, Coastal Living.
 Visual editor + public render + lead capture + **section palette** **done**. Next website work: CNAME/SSL.
 
 ### 3. CRM automations + messaging (2026-08-29)
-Runtime + simulated inbound **done**. Hosted migrations 010 + 011 **applied**. Next CRM work: routing/scoring.
+Runtime + simulated inbound **done**. Hosted migrations 010–012 **applied**. Routing + scoring **done**.
+
+### 4. Lead routing + scoring (2026-08-29)
+Done. Next CRM work: email channel.
 
 ---
 
@@ -325,8 +335,8 @@ All documented in `.env.example`. Key groups:
 
 ## Latest commits (main)
 
-- (this session) Website section palette + reorder
+- (this session) Lead routing + scoring
+- `0bd09f6` Website section palette + reorder
 - `60cbace` Fill remaining gaps in project context.md
-- `9bc83c8` Refresh chat handoff
 - `5c7c5be` Public websites + lead capture
 - `3f97ea5` CRM automation runtime + simulated inbound messaging

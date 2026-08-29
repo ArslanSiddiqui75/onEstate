@@ -172,6 +172,14 @@ export function createLocalRepository(
       return snap.org;
     },
 
+    async saveLeadRouting(settings) {
+      const snap = requireSnapshot();
+      snap.org.leadRouting = settings;
+      commit(snap);
+      writeAuth(snap.user, snap.org);
+      return snap.org;
+    },
+
     async listMembers() {
       return requireSnapshot().members;
     },

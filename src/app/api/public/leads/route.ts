@@ -4,7 +4,8 @@ import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { triggerAndProcess } from "@/lib/automations/engine";
 import { normalizeHost } from "@/lib/website/slug";
 import { normalizePhoneNumber } from "@/lib/utils";
-import type { LeadType } from "@/types";
+import { hydrateLeadRouting, ownerId, prepareNewLead } from "@/lib/crm/routing";
+import type { LeadType, PlanId, Role } from "@/types";
 
 const bodySchema = z.object({
   /** Public site slug or custom domain the form was rendered on */
@@ -85,11 +86,48 @@ export async function POST(request: Request) {
 
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, market")
+    .select("id, market, plan, lead_routing")
     .eq("id", orgId)
     .maybeSingle();
 
   const phone = parsed.data.phone ? normalizePhoneNumber(parsed.data.phone) : "";
+  const leadType = (parsed.data.type || "buyer") satisfies LeadType;
+
+  const [{ data: profiles }, { data: existing }] = await Promise.all([
+    supabase.from("profiles").select("id, role").eq("org_id", orgId),
+    supabase
+      .from("leads")
+      .select("assigned_to, stage, created_at")
+      .eq("org_id", orgId)
+      .limit(200),
+  ]);
+
+  const members = (profiles || []).map((p) => ({
+    id: String(p.id),
+    role: p.role as Role,
+  }));
+  const fallback = ownerId(members) || members[0]?.id || "";
+  const prepared = prepareNewLead(
+    {
+      email: parsed.data.email || "",
+      phone,
+      source: "Website",
+      type: leadType,
+      priority: "high",
+      notes: parsed.data.message?.trim(),
+    },
+    {
+      plan: (org?.plan as PlanId) || "solo",
+      settings: hydrateLeadRouting(org?.lead_routing as Record<string, unknown> | undefined),
+      members,
+      existingLeads: (existing || []).map((row) => ({
+        assignedTo: String(row.assigned_to || ""),
+        stage: String(row.stage || "new"),
+        createdAt: String(row.created_at || ""),
+      })),
+      fallbackId: fallback,
+    },
+  );
 
   const { data: lead, error: leadError } = await supabase
     .from("leads")
@@ -98,9 +136,10 @@ export async function POST(request: Request) {
       name: parsed.data.name.trim(),
       email: parsed.data.email || null,
       phone: phone || null,
-      lead_type: (parsed.data.type || "buyer") satisfies LeadType,
+      lead_type: leadType,
       stage: "new",
-      score: 0,
+      score: prepared.score,
+      assigned_to: prepared.assignedTo || null,
       market: org?.market || "uk",
       source: "Website",
       capture_source: "website",
@@ -140,7 +179,14 @@ export async function POST(request: Request) {
     lead_id: leadId,
     activity_type: "website_enquiry",
     body: parsed.data.message?.trim() || `${parsed.data.name} enquired via the website`,
-    metadata: { slug: siteRow.slug, email: parsed.data.email, phone },
+    metadata: {
+      slug: siteRow.slug,
+      email: parsed.data.email,
+      phone,
+      assignedTo: prepared.assignedTo,
+      score: prepared.score,
+      routeReason: prepared.reason,
+    },
   });
 
   await supabase.from("lead_capture_events").insert({

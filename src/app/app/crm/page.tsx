@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import { Alert } from "@/components/ui/alert";
 import { useAppSession } from "@/lib/app/session";
-import { hasModuleAccess, hasFeature } from "@/lib/access";
+import { hasModuleAccess } from "@/lib/access";
 import { InviteModal } from "@/components/team/invite-modal";
 import { LockedModule } from "@/components/ui/locked-module";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,8 @@ import { Table, TBody, TD, TH, THead, TR, TableShell } from "@/components/ui/tab
 import { Tabs, TabsBar, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AutomationBuilder } from "@/components/crm/automation-builder";
+import { LeadRoutingPanel } from "@/components/crm/lead-routing-panel";
+import { scoreLead } from "@/lib/crm/scoring";
 import {
   Contact as ContactIcon,
   Download,
@@ -42,6 +44,7 @@ import {
   Sparkles,
   Trash2,
   Upload,
+  UserPlus,
   Workflow,
   X,
 } from "lucide-react";
@@ -110,6 +113,8 @@ export default function AppCrmPage() {
     enrollments,
     tasks,
     addLead,
+    assignLead,
+    saveLeadRouting,
     updateLeadStage,
     addContact,
     updateContact,
@@ -338,6 +343,10 @@ export default function AppCrmPage() {
               <Workflow className="h-3.5 w-3.5" />
               Automations
             </TabsTrigger>
+            <TabsTrigger value="routing">
+              <UserPlus className="h-3.5 w-3.5" />
+              Routing
+            </TabsTrigger>
           </TabsList>
         </TabsBar>
 
@@ -435,8 +444,8 @@ export default function AppCrmPage() {
                       phone: String(form.get("phone") || ""),
                       type: String(form.get("type")) as LeadType,
                       stage: "new",
-                      score: Number(form.get("score") || 50),
-                      assignedTo: user.id,
+                      score: 0,
+                      assignedTo: flags.leadRouting ? String(form.get("assignedTo") || "") : user.id,
                       market,
                       source: String(form.get("source") || "Manual"),
                       phones: String(form.get("phone") || "")
@@ -458,6 +467,7 @@ export default function AppCrmPage() {
                       nextAction: String(form.get("nextAction") || "First outreach"),
                       nextActionDueAt: new Date().toISOString(),
                       priority: String(form.get("priority") || "medium") as Priority,
+                      territory: String(form.get("territory") || "") || undefined,
                     });
                     formEl.reset();
                     setShowLeadForm(false);
@@ -527,8 +537,25 @@ export default function AppCrmPage() {
                 <option value="valid">Verified valid</option>
                 <option value="invalid">Marked invalid</option>
               </select>
+              <Input name="territory" placeholder="Territory (city or postcode area)" />
+              {flags.leadRouting ? (
+                <select
+                  name="assignedTo"
+                  className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
+                  defaultValue=""
+                >
+                  <option value="">Auto-assign (routing rules)</option>
+                  {members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               {flags.leadScoring ? (
-                <Input name="score" type="number" placeholder="Score 0-100" defaultValue={60} />
+                <p className="text-xs text-[var(--muted)] sm:col-span-2">
+                  Score is calculated from source, completeness, type, and priority — not typed in.
+                </p>
               ) : null}
               <Button type="submit" className="sm:col-span-2" disabled={busy}>
                 {busy ? "Saving…" : "Save lead"}
@@ -1204,6 +1231,20 @@ export default function AppCrmPage() {
             )}
           </section>
         </TabsContent>
+
+        <TabsContent value="routing" className="mt-4">
+          <LeadRoutingPanel
+            plan={org.plan}
+            settings={org.leadRouting}
+            members={members}
+            leads={leads}
+            canEdit={canEdit}
+            onSave={async (next) => {
+              await saveLeadRouting(next);
+              toast.success("Lead routing saved");
+            }}
+          />
+        </TabsContent>
       </Tabs>
 
       {viewDetailLead ? (
@@ -1240,6 +1281,10 @@ export default function AppCrmPage() {
               ) : null}
             </div>
 
+            {flags.leadScoring ? (
+              <ScoreBreakdown lead={viewDetailLead} />
+            ) : null}
+
             <div className="space-y-3 pt-2">
               <h3 className="text-sm font-semibold">Lead Details & Activity</h3>
               <div className="grid gap-3 sm:grid-cols-2 rounded-xl bg-[var(--surface-muted)] p-4 text-sm">
@@ -1249,7 +1294,26 @@ export default function AppCrmPage() {
                 </div>
                 <div>
                   <span className="text-xs text-[var(--muted)] font-medium block">Owner / Assigned Agent</span>
-                  <span>{members.find((m) => m.id === viewDetailLead.assignedTo)?.name || "Unassigned"}</span>
+                  {canEdit ? (
+                    <select
+                      className="mt-1 h-9 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-sm"
+                      value={viewDetailLead.assignedTo || ""}
+                      onChange={(e) => {
+                        const assignedTo = e.target.value;
+                        void assignLead(viewDetailLead.id, assignedTo);
+                        setViewDetailLead({ ...viewDetailLead, assignedTo });
+                      }}
+                    >
+                      <option value="">Unassigned</option>
+                      {members.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span>{members.find((m) => m.id === viewDetailLead.assignedTo)?.name || "Unassigned"}</span>
+                  )}
                 </div>
                 <div>
                   <span className="text-xs text-[var(--muted)] font-medium block">Created Date</span>
@@ -1374,8 +1438,8 @@ export default function AppCrmPage() {
                         phone: cols[2] || "",
                         type: (cols[3] as LeadType) || "buyer",
                         stage: "new",
-                        score: 60,
-                        assignedTo: user.id,
+                        score: 0,
+                        assignedTo: "",
                         market,
                         source: cols[5] || "CSV Import",
                         budget: Number(cols[4]) || undefined,
@@ -1399,6 +1463,27 @@ export default function AppCrmPage() {
           </div>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function ScoreBreakdown({ lead }: { lead: Lead }) {
+  const result = scoreLead(lead);
+  return (
+    <div className="rounded-xl border border-[var(--border)] p-3 text-sm">
+      <p className="text-xs font-semibold text-[var(--muted)]">Why this score</p>
+      <ul className="mt-2 space-y-1">
+        {result.factors.map((factor) => (
+          <li key={factor.label} className="flex justify-between gap-3">
+            <span>{factor.label}</span>
+            <span className="tabular-nums text-[var(--muted)]">+{factor.points}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-xs text-[var(--muted)]">
+        Auto {result.score}/100
+        {result.score !== lead.score ? ` · saved ${lead.score}` : ""}
+      </p>
     </div>
   );
 }
