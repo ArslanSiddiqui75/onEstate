@@ -19,6 +19,7 @@ import type {
   ConversationMessage,
   Lead,
   LeadActivity,
+  LeadPatch,
   LeadTask,
   Listing,
   MessageSequence,
@@ -59,6 +60,7 @@ import {
 import { setTenantPlan } from "@/lib/admin/registry";
 import { syncWorkspaceToPlatformRegistry } from "@/lib/admin/sync-workspace";
 import { prepareNewLead, hydrateLeadRouting, ownerId } from "@/lib/crm/routing";
+import { scoreLead } from "@/lib/crm/scoring";
 import { syncListingToPortals } from "@/lib/portals/adapters";
 import {
   loadPortalConnections,
@@ -172,6 +174,7 @@ interface AppState {
   assignLead: (id: string, assignedTo: string) => Promise<void>;
   saveLeadRouting: (settings: LeadRoutingSettings) => Promise<void>;
   updateLeadStage: (id: string, stage: Lead["stage"]) => Promise<void>;
+  updateLead: (id: string, patch: LeadPatch) => Promise<Lead>;
   addContact: (
     contact: Omit<Contact, "id" | "createdAt" | "updatedAt" | "market">,
   ) => Promise<void>;
@@ -835,6 +838,53 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
     },
     [fireAutomationTrigger, refresh],
+  );
+
+  const updateLead = useCallback(
+    async (id: string, patch: LeadPatch) => {
+      if (!repoRef.current) throw new Error("Workspace is not loaded");
+      const current = leads.find((l) => l.id === id);
+      if (!current) throw new Error("Lead not found");
+
+      let nextPatch = patch;
+      if (patch.phone !== undefined) {
+        const number = patch.phone.trim();
+        const existing =
+          current.phones?.find((p) => p.preferred) || current.phones?.[0];
+        if (!number) {
+          nextPatch = { ...patch, phone: "", phones: [] };
+        } else if (existing && existing.number === number) {
+          nextPatch = { ...patch, phones: current.phones };
+        } else {
+          nextPatch = {
+            ...patch,
+            phone: number,
+            phones: [
+              buildPhoneContactMethod({
+                number,
+                source: existing?.source || "manual",
+                consent: existing?.consent || "unknown",
+                verification: "unverified",
+              }),
+            ],
+          };
+        }
+      }
+
+      const merged = { ...current, ...nextPatch };
+      const { score } = scoreLead(merged);
+      const saved = await repoRef.current.updateLead(id, { ...nextPatch, score });
+      if (nextPatch.stage && nextPatch.stage !== current.stage) {
+        await fireAutomationTrigger({
+          leadId: id,
+          trigger: "stage_changed",
+          stage: nextPatch.stage,
+        });
+      }
+      await refresh();
+      return saved;
+    },
+    [fireAutomationTrigger, leads, refresh],
   );
 
   const runAutomationNow = useCallback(
@@ -1587,6 +1637,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       assignLead,
       saveLeadRouting,
       updateLeadStage,
+      updateLead,
       addContact,
       updateContact,
       deleteContact,
@@ -1649,6 +1700,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       assignLead,
       saveLeadRouting,
       updateLeadStage,
+      updateLead,
       addContact,
       updateContact,
       deleteContact,

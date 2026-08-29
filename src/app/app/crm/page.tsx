@@ -117,6 +117,7 @@ export default function AppCrmPage() {
     assignLead,
     saveLeadRouting,
     updateLeadStage,
+    updateLead,
     addContact,
     updateContact,
     deleteContact,
@@ -145,6 +146,7 @@ export default function AppCrmPage() {
   const PAGE_SIZE = 20;
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [viewDetailLead, setViewDetailLead] = useState<Lead | null>(null);
+  const [editingLead, setEditingLead] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [csvText, setCsvText] = useState("");
   const [draftText, setDraftText] = useState("");
@@ -610,7 +612,10 @@ export default function AppCrmPage() {
                       <TD>
                         <button
                           type="button"
-                          onClick={() => setViewDetailLead(lead)}
+                          onClick={() => {
+                            setEditingLead(false);
+                            setViewDetailLead(lead);
+                          }}
                           className="font-medium hover:underline text-left"
                         >
                           {lead.name}
@@ -671,11 +676,27 @@ export default function AppCrmPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setViewDetailLead(lead)}
+                          onClick={() => {
+                            setEditingLead(false);
+                            setViewDetailLead(lead);
+                          }}
                           title="View lead details"
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        {canEdit ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setViewDetailLead(lead);
+                              setEditingLead(true);
+                            }}
+                            title="Edit lead"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        ) : null}
                       </TD>
                     </TR>
                   );
@@ -1350,14 +1371,73 @@ export default function AppCrmPage() {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setViewDetailLead(null)}
-                className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-muted)]"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-1">
+                {canEdit && !editingLead ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setEditingLead(true)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit
+                  </Button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLead(false);
+                    setViewDetailLead(null);
+                  }}
+                  className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-muted)]"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
+
+            {editingLead && canEdit ? (
+              <LeadEditForm
+                lead={viewDetailLead}
+                busy={busy}
+                showTerritory={flags.leadRouting}
+                onCancel={() => setEditingLead(false)}
+                onSubmit={(form) => {
+                  void (async () => {
+                    setBusy(true);
+                    setError(null);
+                    try {
+                      const saved = await updateLead(viewDetailLead.id, {
+                        name: String(form.get("name") || "").trim(),
+                        email: String(form.get("email") || "").trim(),
+                        phone: String(form.get("phone") || "").trim(),
+                        source: String(form.get("source") || "").trim(),
+                        type: String(form.get("type")) as LeadType,
+                        stage: String(form.get("stage")) as LeadStage,
+                        budget: Number(form.get("budget") || 0) || 0,
+                        nextAction: String(form.get("nextAction") || "").trim(),
+                        priority: String(form.get("priority") || "medium") as Priority,
+                        territory: String(form.get("territory") || "").trim(),
+                        notes: String(form.get("notes") || "").trim(),
+                        assignedTo: String(form.get("assignedTo") || ""),
+                      });
+                      setViewDetailLead(saved);
+                      setEditingLead(false);
+                      toast.success("Lead updated");
+                    } catch (err) {
+                      const msg = asErrorMessage(err, "Failed to update lead");
+                      setError(msg);
+                      toast.error(msg);
+                    } finally {
+                      setBusy(false);
+                    }
+                  })();
+                }}
+                members={members}
+              />
+            ) : null}
+
+            {!editingLead ? (
+              <>
 
             <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border)]">
               <Badge tone="accent">Type: {viewDetailLead.type}</Badge>
@@ -1458,7 +1538,10 @@ export default function AppCrmPage() {
                 )}
               </div>
             </div>
+              </>
+            ) : null}
 
+            {!editingLead ? (
             <div className="flex justify-end gap-2 pt-4 border-t border-[var(--border)]">
               <Button
                 variant="secondary"
@@ -1476,6 +1559,7 @@ export default function AppCrmPage() {
                 Close
               </Button>
             </div>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -1930,6 +2014,111 @@ function ContactsDirectory({
         </div>
       )}
     </div>
+  );
+}
+
+function LeadEditForm({
+  lead,
+  members,
+  busy,
+  showTerritory,
+  onSubmit,
+  onCancel,
+}: {
+  lead: Lead;
+  members: { id: string; name: string }[];
+  busy: boolean;
+  showTerritory: boolean;
+  onSubmit: (form: FormData) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <form
+      key={lead.updatedAt}
+      className="grid gap-3 sm:grid-cols-2 rounded-xl border border-[var(--border)] p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit(new FormData(e.currentTarget));
+      }}
+    >
+      <Input name="name" placeholder="Name" defaultValue={lead.name} required />
+      <Input name="email" type="email" placeholder="Email" defaultValue={lead.email} required />
+      <Input name="phone" placeholder="Phone number" defaultValue={lead.phone} />
+      <Input name="source" placeholder="Lead source" defaultValue={lead.source} />
+      <select
+        name="type"
+        className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
+        defaultValue={lead.type}
+      >
+        <option value="buyer">Buyer</option>
+        <option value="seller">Seller</option>
+        <option value="landlord">Landlord</option>
+        <option value="tenant">Tenant</option>
+      </select>
+      <select
+        name="stage"
+        className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
+        defaultValue={lead.stage}
+      >
+        {STAGES.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+      <Input
+        name="budget"
+        type="number"
+        placeholder="Budget"
+        defaultValue={lead.budget || ""}
+      />
+      <Input name="nextAction" placeholder="Next action" defaultValue={lead.nextAction} />
+      <select
+        name="priority"
+        className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
+        defaultValue={lead.priority || "medium"}
+      >
+        <option value="low">Low priority</option>
+        <option value="medium">Medium priority</option>
+        <option value="high">High priority</option>
+        <option value="urgent">Urgent</option>
+      </select>
+      <select
+        name="assignedTo"
+        className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
+        defaultValue={lead.assignedTo || ""}
+      >
+        <option value="">Unassigned</option>
+        {members.map((member) => (
+          <option key={member.id} value={member.id}>
+            {member.name}
+          </option>
+        ))}
+      </select>
+      {showTerritory ? (
+        <Input
+          name="territory"
+          placeholder="Territory (city or postcode area)"
+          defaultValue={lead.territory}
+        />
+      ) : (
+        <input type="hidden" name="territory" value={lead.territory || ""} />
+      )}
+      <textarea
+        name="notes"
+        placeholder="Notes"
+        defaultValue={lead.notes}
+        className="min-h-20 rounded-md border border-[var(--border)] bg-transparent px-3 py-2 text-sm sm:col-span-2"
+      />
+      <div className="flex gap-2 sm:col-span-2">
+        <Button type="submit" disabled={busy}>
+          {busy ? "Saving…" : "Save changes"}
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }
 

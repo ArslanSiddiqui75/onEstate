@@ -117,6 +117,11 @@ export interface Lead {
   updatedAt: string;
 }
 
+/** Fields a CRM user can patch. Score is recomputed on save, not typed. */
+export type LeadPatch = Partial<
+  Omit<Lead, "id" | "createdAt" | "updatedAt" | "market">
+>;
+
 export type LeadRoutingMode = "creator" | "round_robin" | "territory" | "least_open";
 
 export interface LeadRoutingSettings {

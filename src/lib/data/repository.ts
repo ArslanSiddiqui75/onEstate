@@ -6,6 +6,7 @@ import type {
   ConversationMessage,
   Lead,
   LeadActivity,
+  LeadPatch,
   LeadStage,
   LeadRoutingSettings,
   Listing,
@@ -36,12 +37,7 @@ export interface WorkspaceRepository {
   listLeads(): Promise<Lead[]>;
   createLead(lead: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead>;
   updateLeadStage(id: string, stage: LeadStage): Promise<Lead>;
-  updateLead(
-    id: string,
-    patch: Partial<
-      Pick<Lead, "name" | "email" | "phone" | "phones" | "nextAction" | "nextActionDueAt" | "priority" | "notes" | "assignedTo" | "score" | "territory">
-    >,
-  ): Promise<Lead>;
+  updateLead(id: string, patch: LeadPatch): Promise<Lead>;
   listContacts(): Promise<Contact[]>;
   createContact(
     contact: Omit<Contact, "id" | "createdAt" | "updatedAt">,
