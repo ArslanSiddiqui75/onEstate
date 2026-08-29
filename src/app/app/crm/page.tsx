@@ -38,6 +38,7 @@ import {
   FileSpreadsheet,
   Inbox as InboxIcon,
   ListChecks,
+  Mail,
   Pencil,
   Phone,
   Search,
@@ -121,6 +122,7 @@ export default function AppCrmPage() {
     deleteContact,
     promoteContactToLead,
     sendSms,
+    sendEmail,
     receiveInboundSms,
     logCall,
     setLeadWorkflow,
@@ -146,8 +148,11 @@ export default function AppCrmPage() {
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [csvText, setCsvText] = useState("");
   const [draftText, setDraftText] = useState("");
+  const [draftSubject, setDraftSubject] = useState("");
+  const [composeChannel, setComposeChannel] = useState<"sms" | "email">("sms");
   const [simulateReplyText, setSimulateReplyText] = useState("");
   const [messagingMode, setMessagingMode] = useState<"live" | "simulated" | null>(null);
+  const [emailMode, setEmailMode] = useState<"live" | "simulated" | null>(null);
   const [automationRuns, setAutomationRuns] = useState<AutomationRun[]>([]);
   const [leadActivities, setLeadActivities] = useState<LeadActivity[]>([]);
   const [busy, setBusy] = useState(false);
@@ -162,6 +167,14 @@ export default function AppCrmPage() {
         }
       })
       .catch(() => setMessagingMode(null));
+    void fetch("/api/email/status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.mode === "live" || json?.mode === "simulated") {
+          setEmailMode(json.mode);
+        }
+      })
+      .catch(() => setEmailMode(null));
   }, []);
 
   // Opening the CRM flushes automation waits that came due, so runs advance
@@ -284,6 +297,8 @@ export default function AppCrmPage() {
             body: `Thread ready · ${activeLead.source}. Next: ${activeLead.nextAction || "First outreach"}`,
             direction: "system" as const,
             sentAt: activeLead.updatedAt,
+            channel: undefined as "sms" | "email" | undefined,
+            subject: undefined as string | undefined,
           },
         ]
       : activeMessages.map((m) => ({
@@ -291,6 +306,8 @@ export default function AppCrmPage() {
           body: m.body,
           direction: m.direction,
           sentAt: m.sentAt,
+          channel: m.channel,
+          subject: m.subject,
         }));
 
   const enrollment = activeLead
@@ -333,7 +350,7 @@ export default function AppCrmPage() {
             </TabsTrigger>
             <TabsTrigger value="inbox">
               <InboxIcon className="h-3.5 w-3.5" />
-              Texting inbox
+              Inbox
             </TabsTrigger>
             <TabsTrigger value="calls">
               <Phone className="h-3.5 w-3.5" />
@@ -724,17 +741,24 @@ export default function AppCrmPage() {
             <div className="border-b border-[var(--border)] px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h2 className="font-semibold">Texting inbox</h2>
+                  <h2 className="font-semibold">Inbox</h2>
                   <p className="text-sm text-[var(--muted)]">
-                    Two-way SMS threads. Outbound uses Twilio when live; use simulate reply to
-                    test inbound without a carrier.
+                    SMS and email on one thread. Outbound uses Twilio / Resend when live;
+                    otherwise it is simulated and still logged here.
                   </p>
                 </div>
+                <div className="flex flex-wrap gap-2">
                 {messagingMode ? (
                   <Badge tone={messagingMode === "live" ? "success" : "warning"}>
-                    {messagingMode === "live" ? "Live Twilio" : "Simulated messaging"}
+                    {messagingMode === "live" ? "Live SMS" : "Simulated SMS"}
                   </Badge>
                 ) : null}
+                {emailMode ? (
+                  <Badge tone={emailMode === "live" ? "success" : "warning"}>
+                    {emailMode === "live" ? "Live email" : "Simulated email"}
+                  </Badge>
+                ) : null}
+                </div>
               </div>
             </div>
 
@@ -762,7 +786,7 @@ export default function AppCrmPage() {
                           ) : null}
                         </div>
                         <p className="mt-1 text-xs text-[var(--muted)]">
-                          {phone?.number || lead.phone || "No number"}
+                          {phone?.number || lead.phone || lead.email || "No contact"}
                         </p>
                       </button>
                     );
@@ -779,6 +803,9 @@ export default function AppCrmPage() {
                         {(activeLead.phones || [])
                           .map((phone) => `${phone.label}: ${phone.number}`)
                           .join(" · ") || activeLead.phone}
+                        {activeLead.email
+                          ? `${activeLead.phone || (activeLead.phones || []).length ? " · " : ""}${activeLead.email}`
+                          : ""}
                       </p>
                     </div>
 
@@ -794,11 +821,16 @@ export default function AppCrmPage() {
                                 : "mx-auto bg-[var(--surface-muted)] text-[var(--muted)] text-center text-xs"
                           }`}
                         >
-                          <p>{message.body}</p>
+                          <p>
+                            {message.subject ? (
+                              <span className="mb-1 block font-medium">{message.subject}</span>
+                            ) : null}
+                            {message.body}
+                          </p>
                           <p className="mt-2 text-[11px] opacity-70">
                             {message.direction === "system"
                               ? formatDate(message.sentAt, market)
-                              : `${message.direction} · ${formatDate(message.sentAt, market)}`}
+                              : `${message.channel === "email" ? "email" : "sms"} · ${message.direction} · ${formatDate(message.sentAt, market)}`}
                           </p>
                         </div>
                       ))}
@@ -809,9 +841,38 @@ export default function AppCrmPage() {
                         <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
                           Agent outbound
                         </p>
+                        <div className="mb-2 flex gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={composeChannel === "sms" ? "secondary" : "ghost"}
+                            onClick={() => setComposeChannel("sms")}
+                          >
+                            SMS
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={composeChannel === "email" ? "secondary" : "ghost"}
+                            onClick={() => setComposeChannel("email")}
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                            Email
+                          </Button>
+                        </div>
+                        {composeChannel === "email" ? (
+                          <Input
+                            className="mb-2"
+                            placeholder="Subject"
+                            value={draftSubject}
+                            onChange={(e) => setDraftSubject(e.target.value)}
+                          />
+                        ) : null}
                         <textarea
                           className="min-h-24 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                          placeholder="Write an SMS…"
+                          placeholder={
+                            composeChannel === "email" ? "Write an email…" : "Write an SMS…"
+                          }
                           value={draftText}
                           onChange={(e) => setDraftText(e.target.value)}
                         />
@@ -824,16 +885,33 @@ export default function AppCrmPage() {
                                 setBusy(true);
                                 setError(null);
                                 try {
-                                  const result = await sendSms({
-                                    leadId: activeLead.id,
-                                    body: draftText.trim(),
-                                  });
-                                  setDraftText("");
-                                  toast.success(
-                                    result.mode === "live"
-                                      ? "Message sent via Twilio"
-                                      : "Message sent (simulated)",
-                                  );
+                                  if (composeChannel === "email") {
+                                    const result = await sendEmail({
+                                      leadId: activeLead.id,
+                                      subject:
+                                        draftSubject.trim() ||
+                                        `Following up from ${org.name}`,
+                                      body: draftText.trim(),
+                                    });
+                                    setDraftText("");
+                                    setDraftSubject("");
+                                    toast.success(
+                                      result.mode === "live"
+                                        ? "Email sent via Resend"
+                                        : "Email sent (simulated)",
+                                    );
+                                  } else {
+                                    const result = await sendSms({
+                                      leadId: activeLead.id,
+                                      body: draftText.trim(),
+                                    });
+                                    setDraftText("");
+                                    toast.success(
+                                      result.mode === "live"
+                                        ? "Message sent via Twilio"
+                                        : "Message sent (simulated)",
+                                    );
+                                  }
                                 } catch (err) {
                                   const msg = err instanceof Error ? err.message : "Send failed";
                                   setError(msg);
@@ -844,14 +922,16 @@ export default function AppCrmPage() {
                               })();
                             }}
                           >
-                            Send text
+                            {composeChannel === "email" ? "Send email" : "Send text"}
                           </Button>
                           <Button
                             type="button"
                             variant="secondary"
                             onClick={() =>
                               setDraftText(
-                                `Hi ${activeLead.name.split(" ")[0]}, just checking whether you’re still available for the next step.`,
+                                composeChannel === "email"
+                                  ? `Hi ${activeLead.name.split(" ")[0]},\n\nJust checking whether you’re still available for the next step.\n\nThanks,\n${org.name}`
+                                  : `Hi ${activeLead.name.split(" ")[0]}, just checking whether you’re still available for the next step.`,
                               )
                             }
                           >

@@ -71,9 +71,9 @@ export async function findLeadByPhone(
 }
 
 /** Find or create the single conversation thread for an org+lead pair. */
-async function ensureThread(
+export async function ensureThread(
   supabase: SupabaseClient,
-  input: { orgId: string; leadId: string; phoneNumber?: string },
+  input: { orgId: string; leadId: string; phoneNumber?: string; email?: string },
 ): Promise<{ threadId?: string; error?: string }> {
   const { data: existing } = await supabase
     .from("conversation_threads")
@@ -82,7 +82,18 @@ async function ensureThread(
     .eq("lead_id", input.leadId)
     .maybeSingle();
 
-  if (existing) return { threadId: String(existing.id) };
+  if (existing) {
+    const patch: Record<string, string> = {};
+    if (input.email) patch.email = input.email;
+    if (input.phoneNumber) patch.phone_number = input.phoneNumber;
+    if (Object.keys(patch).length) {
+      await supabase
+        .from("conversation_threads")
+        .update(patch)
+        .eq("id", existing.id);
+    }
+    return { threadId: String(existing.id) };
+  }
 
   let phoneNumber = input.phoneNumber;
   if (!phoneNumber) {
@@ -101,6 +112,7 @@ async function ensureThread(
       org_id: input.orgId,
       lead_id: input.leadId,
       phone_number: phoneNumber || "",
+      email: input.email || null,
       last_message_at: new Date().toISOString(),
     })
     .select("id")
@@ -192,6 +204,7 @@ export async function sendOutboundSms(
         status: result.status === "failed" ? "failed" : "sent",
         provider_sid: result.sid,
         sent_at: sentAt,
+        channel: "sms",
       })
       .select("id")
       .single();
@@ -246,6 +259,7 @@ export async function recordInboundMessage(
       status: "received",
       provider_sid: providerSid,
       sent_at: sentAt,
+      channel: "sms",
     })
     .select("id")
     .single();

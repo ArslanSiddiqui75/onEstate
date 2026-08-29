@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowUp,
   Clock,
+  Mail,
   MessageSquare,
   Plus,
   Bell,
@@ -47,6 +48,7 @@ const ACTION_TYPES: {
   icon: typeof MessageSquare;
 }[] = [
   { value: "send_sms", label: "Send SMS", icon: MessageSquare },
+  { value: "send_email", label: "Send email", icon: Mail },
   { value: "create_task", label: "Create task", icon: ListTodo },
   { value: "wait", label: "Wait / delay", icon: Clock },
   { value: "update_stage", label: "Update stage", icon: GitBranch },
@@ -74,6 +76,10 @@ function defaultStep(type: AutomationActionType): AutomationStep {
   };
   if (type === "send_sms") {
     base.config.body = "Hi {{first_name}}, just following up…";
+  } else if (type === "send_email") {
+    base.config.subject = "Thanks for getting in touch, {{first_name}}";
+    base.config.body =
+      "Hi {{first_name}}, thanks for reaching out — I'll send a few options shortly.";
   } else if (type === "wait") {
     base.config.delayHours = 24;
     base.label = "Wait 24 hours";
@@ -92,6 +98,8 @@ function stepSummary(step: AutomationStep) {
   switch (step.type) {
     case "send_sms":
       return step.config.body || "Empty SMS body";
+    case "send_email":
+      return step.config.subject || step.config.body || "Empty email";
     case "wait":
       return `Wait ${step.config.delayHours || 0} hours`;
     case "create_task":
@@ -634,6 +642,28 @@ function StepEditor({
           }
           placeholder="SMS body — use {{first_name}}"
         />
+      ) : null}
+      {step.type === "send_email" ? (
+        <div className="space-y-2">
+          <Input
+            value={step.config.subject || ""}
+            onChange={(e) =>
+              onChange({
+                ...step,
+                config: { ...step.config, subject: e.target.value },
+              })
+            }
+            placeholder="Subject — use {{first_name}}"
+          />
+          <textarea
+            className="min-h-24 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+            value={step.config.body || ""}
+            onChange={(e) =>
+              onChange({ ...step, config: { ...step.config, body: e.target.value } })
+            }
+            placeholder="Email body — use {{first_name}}, {{email}}, {{stage}}"
+          />
+        </div>
       ) : null}
       {step.type === "wait" ? (
         <Input

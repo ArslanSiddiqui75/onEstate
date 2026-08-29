@@ -247,6 +247,7 @@ export type MessageStatus =
   | "delivered"
   | "failed"
   | "received";
+export type MessageChannel = "sms" | "email";
 
 export interface ConversationMessage {
   id: string;
@@ -258,6 +259,8 @@ export interface ConversationMessage {
   status: MessageStatus;
   providerSid?: string;
   sentAt: string;
+  channel?: MessageChannel;
+  subject?: string;
 }
 
 export interface ConversationThread {
@@ -299,6 +302,7 @@ export type AutomationTrigger =
 
 export type AutomationActionType =
   | "send_sms"
+  | "send_email"
   | "create_task"
   | "wait"
   | "update_stage"
@@ -311,6 +315,7 @@ export interface AutomationStep {
   label: string;
   config: {
     body?: string;
+    subject?: string;
     delayHours?: number;
     stage?: LeadStage;
     taskTitle?: string;

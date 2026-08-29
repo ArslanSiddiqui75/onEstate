@@ -74,6 +74,22 @@ function mapContact(row: Record<string, unknown>, phones: Contact["phones"] = []
   };
 }
 
+function mapConversationMessage(m: Record<string, unknown>): ConversationMessage {
+  return {
+    id: String(m.id),
+    orgId: String(m.org_id),
+    threadId: String(m.thread_id),
+    leadId: String(m.lead_id),
+    direction: m.direction as ConversationMessage["direction"],
+    body: String(m.body),
+    status: m.status as ConversationMessage["status"],
+    providerSid: m.provider_sid ? String(m.provider_sid) : undefined,
+    sentAt: String(m.sent_at),
+    channel: m.channel === "email" ? "email" : "sms",
+    subject: m.subject ? String(m.subject) : undefined,
+  };
+}
+
 function mapSocialAccount(row: Record<string, unknown>): SocialAccount {
   return {
     id: String(row.id),
@@ -172,17 +188,9 @@ export function createSupabaseRepository(
         contacts,
         listings,
         deals,
-        messages: (messages || []).map((m: any) => ({
-          id: String(m.id),
-          orgId: String(m.org_id),
-          threadId: String(m.thread_id),
-          leadId: String(m.lead_id),
-          direction: m.direction,
-          body: String(m.body),
-          status: m.status,
-          providerSid: m.provider_sid || undefined,
-          sentAt: String(m.sent_at),
-        })),
+        messages: (messages || []).map((m: Record<string, unknown>) =>
+          mapConversationMessage(m),
+        ),
         threads: (threads || []).map((t: any) => ({
           id: String(t.id),
           orgId: String(t.org_id),
@@ -760,19 +768,7 @@ export function createSupabaseRepository(
         .eq("lead_id", leadId)
         .order("sent_at", { ascending: true });
       if (error) throw error;
-      return (data || []).map(
-        (m): ConversationMessage => ({
-          id: String(m.id),
-          orgId: String(m.org_id),
-          threadId: String(m.thread_id),
-          leadId: String(m.lead_id),
-          direction: m.direction,
-          body: String(m.body),
-          status: m.status,
-          providerSid: m.provider_sid || undefined,
-          sentAt: String(m.sent_at),
-        }),
-      );
+      return (data || []).map((m: Record<string, unknown>) => mapConversationMessage(m));
     },
 
     async appendMessage(message) {
@@ -809,6 +805,8 @@ export function createSupabaseRepository(
           lead_id: message.leadId,
           direction: message.direction,
           body: message.body,
+          subject: message.subject || null,
+          channel: message.channel || "sms",
           status: message.status,
           provider_sid: message.providerSid,
           sent_at: message.sentAt,
@@ -822,17 +820,7 @@ export function createSupabaseRepository(
         .update({ last_message_at: message.sentAt })
         .eq("id", threadId);
 
-      return {
-        id: String(data.id),
-        orgId: ctx.org.id,
-        threadId,
-        leadId: message.leadId,
-        direction: message.direction,
-        body: message.body,
-        status: message.status,
-        providerSid: message.providerSid,
-        sentAt: message.sentAt,
-      };
+      return mapConversationMessage({ ...data, thread_id: threadId });
     },
 
     async listCallLogs(leadId) {

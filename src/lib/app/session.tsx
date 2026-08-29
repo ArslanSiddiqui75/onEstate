@@ -226,6 +226,11 @@ interface AppState {
     leadId: string;
     body: string;
   }) => Promise<{ mode: "live" | "simulated" }>;
+  sendEmail: (input: {
+    leadId: string;
+    subject: string;
+    body: string;
+  }) => Promise<{ mode: "live" | "simulated" }>;
   /** Simulate or record an inbound SMS from the lead (in-app testing). */
   receiveInboundSms: (input: {
     leadId: string;
@@ -1220,6 +1225,60 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [leads, org, refresh],
   );
 
+  const sendEmail = useCallback(
+    async (input: { leadId: string; subject: string; body: string }) => {
+      if (!repoRef.current || !org) {
+        return { mode: "simulated" as const };
+      }
+      const lead = leads.find((l) => l.id === input.leadId);
+      if (!lead) throw new Error("Lead not found");
+      const to = (lead.email || "").trim();
+      if (!to) throw new Error("Lead has no email address");
+
+      const token = authMode === "supabase" ? await getAuthToken() : null;
+      const res = await fetch("/api/email/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          leadId: lead.id,
+          to,
+          subject: input.subject,
+          body: input.body,
+        }),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        mode?: "live" | "simulated";
+        sid?: string;
+        threadId?: string;
+        sentAt?: string;
+      };
+      if (!res.ok) throw new Error(json.error || "Failed to send email");
+
+      if (repoRef.current.mode === "local") {
+        await repoRef.current.appendMessage({
+          orgId: org.id,
+          threadId: json.threadId || "",
+          leadId: lead.id,
+          direction: "outbound",
+          body: input.body,
+          subject: input.subject,
+          channel: "email",
+          status: "sent",
+          providerSid: json.sid,
+          sentAt: json.sentAt || new Date().toISOString(),
+        });
+      }
+      await refresh();
+      return { mode: json.mode || "simulated" };
+    },
+    [authMode, getAuthToken, leads, org, refresh],
+  );
+
   const logCall = useCallback(
     async (input: {
       leadId: string;
@@ -1541,6 +1600,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       updateDealChecklistItem,
       updateDealMeta,
       sendSms,
+      sendEmail,
       receiveInboundSms,
       logCall,
       setLeadWorkflow,
@@ -1602,6 +1662,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       updateDealChecklistItem,
       updateDealMeta,
       sendSms,
+      sendEmail,
       receiveInboundSms,
       logCall,
       setLeadWorkflow,

@@ -6,6 +6,7 @@ import type {
   LeadStage,
 } from "@/types";
 import { sendOutboundSms } from "@/lib/messaging/service";
+import { sendOutboundEmail } from "@/lib/email/service";
 
 /**
  * Automation runtime.
@@ -269,6 +270,41 @@ async function executeStep(
       return { outcome: "completed", detail: `SMS sent (${result.mode}) to ${to}` };
     }
 
+    case "send_email": {
+      const to = (lead.email || "").trim();
+      if (!to) return { outcome: "skipped", detail: "Lead has no email address" };
+
+      const subject = renderTemplate(
+        step.config.subject || "Following up",
+        vars,
+      ).trim();
+      const body = renderTemplate(step.config.body || "", vars).trim();
+      if (!body) return { outcome: "skipped", detail: "Empty email body" };
+
+      const result = await sendOutboundEmail(supabase, {
+        orgId: run.org_id,
+        leadId: lead.id,
+        to,
+        subject,
+        body,
+      });
+      if (!result.ok) {
+        return { outcome: "failed", detail: result.error || "Email send failed" };
+      }
+
+      await logActivity(supabase, {
+        orgId: run.org_id,
+        leadId: lead.id,
+        activityType: "automation_email",
+        body: subject,
+        metadata: { runId: run.id, mode: result.mode, sid: result.sid },
+      });
+      return {
+        outcome: "completed",
+        detail: `Email sent (${result.mode}) to ${to}`,
+      };
+    }
+
     case "create_task": {
       const title = renderTemplate(step.config.taskTitle || "Follow up", vars);
       const { error } = await supabase.from("lead_tasks").insert({
@@ -342,8 +378,7 @@ async function executeStep(
     }
 
     case "notify_owner": {
-      // Surfaced as an activity + open task rather than email/push, which the
-      // platform doesn't have a transport for yet.
+      // In-app activity + task. Lead-facing mail uses `send_email`.
       const message = `${lead.name} needs attention (${lead.stage})`;
       await logActivity(supabase, {
         orgId: run.org_id,
