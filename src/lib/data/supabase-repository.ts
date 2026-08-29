@@ -25,6 +25,7 @@ import type { WorkspaceOrg, WorkspaceSnapshot, WorkspaceUser } from "@/lib/data/
 import { newId } from "@/lib/data/workspace-store";
 import { toast } from "@/components/ui/toast";
 import { fallbackSlug, normalizeHost } from "@/lib/website/slug";
+import { asErrorMessage } from "@/lib/utils";
 
 function mapLead(row: Record<string, unknown>, phones: Lead["phones"] = []): Lead {
   return {
@@ -309,7 +310,7 @@ export function createSupabaseRepository(
         })
         .select("*")
         .single();
-      if (error) throw error;
+      if (error) throw new Error(asErrorMessage(error, "Could not save lead"));
 
       if (lead.phones?.length) {
         await supabase.from("lead_phone_numbers").insert(

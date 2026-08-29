@@ -69,3 +69,13 @@ export function buildPhoneContactMethod(input: {
     preferred: input.preferred ?? true,
   } satisfies PhoneContactMethod;
 }
+
+/** Supabase often throws a plain `{ message }` instead of `Error`. */
+export function asErrorMessage(err: unknown, fallback: string) {
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === "object" && "message" in err) {
+    const message = (err as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return fallback;
+}

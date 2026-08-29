@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
-import { buildPhoneContactMethod, formatDate, formatMoney } from "@/lib/utils";
+import { buildPhoneContactMethod, formatDate, formatMoney, asErrorMessage } from "@/lib/utils";
 import type {
   AutomationRun,
   Contact,
@@ -473,7 +473,7 @@ export default function AppCrmPage() {
                     setShowLeadForm(false);
                     toast.success(`Lead "${leadName}" added to pipeline`);
                   } catch (err) {
-                    const msg = err instanceof Error ? err.message : "Failed to add lead";
+                    const msg = asErrorMessage(err, "Failed to add lead");
                     setError(msg);
                     toast.error(msg);
                   } finally {

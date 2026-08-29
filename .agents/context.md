@@ -25,7 +25,7 @@ Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page
 - **Public websites + lead capture** — `5c7c5be`. `/site/[slug]`; `src/proxy.ts` rewrites custom domains; `POST /api/public/leads` creates a CRM lead and fires `lead_created` automations. Unpublished sites stay private.
 - **Website section palette + reorder** — curated blocks (hero/listings/about/contact + optional testimonials/stats/cta), show/hide, up/down reorder, per-block style variants. Catalog: `src/lib/website/sections.ts`. Footer is always last. Older payloads hydrate from `show*` flags.
 - **Lead routing + scoring** — `src/lib/crm/{scoring,routing}.ts`. Team/Enterprise: round-robin / territory / least-open / creator. Score is computed (source, completeness, type, priority), not typed. Website capture uses the same engines. CRM → Routing tab. Solo still assigns to the person who adds the lead.
-- **Hosted migrations 010, 011, 012 applied** on project `pruezuqdsofegzhbodnj`.
+- **Hosted migrations 010–013 applied** on project `pruezuqdsofegzhbodnj`. 013 added missing `leads.next_action/territory/priority` (002 never landed those columns; add-lead 400'd).
 
 ### Key files for next website work
 `src/app/api/website/domain/verify/route.ts` · Website editor Domain panel · `WebsiteSite.domainStatus` / `sslStatus`
