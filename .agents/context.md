@@ -1,35 +1,37 @@
 # 0nEstate (CertifiedUK / CertifiedUS) — Project Context
 
 > **Purpose**: This file preserves project context across model switches and chat sessions.
-> **Last updated**: 2026-08-16 (Website Builder next — section-based redesign)
+> **Last updated**: 2026-08-29 (automations runtime + public sites shipped)
 
 ---
 
-## Chat handoff — NEXT: Website Builder (2026-08-16)
+## Chat handoff — NEXT: Website section palette (2026-08-29)
 
 Use this block when starting a **new Cursor chat**. Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.app
 
-### Pick up here
-Social is mostly done (IG publish + schedule verified; FB/LI/X live-test deferred). **Next major work = Website Builder redesign.**
+If Arslan says **"continue"** / **"next task"** with no extra detail: do the first unchecked item under **Pick up here**. Do not redo shipped work below.
 
-Arslan will provide components + UI details. Scope is a **curated section/block builder**, not freeform Webflow.
+### Pick up here (ordered)
+1. **Operator (not code):** apply hosted Supabase migrations `010_automation_runs.sql` and `011_public_sites.sql`. Without them, automations and public sites fail at runtime. Confirm in MCP/`list_migrations` or by creating a lead + opening `/site/<slug>`.
+2. **[START HERE IN CODE] Website section palette + reorder** — curated blocks, show/hide, reorder, per-block style variants. Not freeform Webflow. Keep current 4 themes until Arslan supplies new UIs.
+3. Lead routing + scoring engines (`leadRouting` / `leadScoring` plan flags exist; all leads still assign to creator; score column is display-only)
+4. Domain CNAME verify + SSL status productization (`/api/website/domain/verify` is still a stub)
+5. Email channel (tasks/automations mention Email; no send transport)
+6. Message sequence runner (seeded sequences + enrollment toggles; no scheduler — automations already cover drip)
+7. Live-test Facebook / LinkedIn / X publish (IG is verified)
 
-### Website Builder backlog (ordered)
-- [ ] **Redo templates/layouts** from provided components/UI (current 4 themes stay until Arslan supplies new UIs)
-- [x] **Visual editor** — full-page canvas; hover text to edit, hover hero to change image
-- [ ] **Section palette** — add curated blocks + per-block style variants
-- [ ] **Public multi-tenant renderer** — host/domain → org `WebsiteSite` + listings
-- [ ] **Domain path** — CNAME verify → `sites.0nestate.app` + SSL status (API stub exists)
+Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page IA. Org switcher — **skip**.
 
-Out of scope for v1: free canvas, custom HTML/CSS, full CMS / multi-page IA.
+### Shipped this session (do not rebuild)
+- **CRM automations actually run** — `3f97ea5`. Engine `src/lib/automations/engine.ts`. Triggers: `addLead` → `lead_created`, `updateLeadStage` → `stage_changed`. `wait` steps park until `/api/automations/cron/run` or CRM page flush. `update_stage` does **not** re-fire `stage_changed`.
+- **Messaging** — simulated inbound in CRM inbox (`/api/messaging/inbound`); `MESSAGING_MODE`; Twilio still cannot deliver to PK numbers.
+- **Public websites + lead capture** — `5c7c5be`. `/site/[slug]`; `src/proxy.ts` rewrites custom domains; `POST /api/public/leads` creates a CRM lead and fires `lead_created` automations. Unpublished sites stay private.
 
-### Existing website files (to evolve / replace)
-`src/app/app/website/page.tsx` · `src/lib/website/templates.ts` · `src/app/api/website/domain/verify/route.ts` · `WebsiteSite` in `src/types/index.ts`
+### Key files for next website work
+`src/app/app/website/page.tsx` · `src/components/website/website-preview.tsx` · `src/lib/website/{templates,defaults,public-site,slug}.ts` · `src/app/site/[slug]/page.tsx` · `src/app/api/public/leads/route.ts` · `WebsiteSite` in `src/types/index.ts`
 
-### Deferred (not blocking Website Builder)
-- [ ] Live-test Facebook / LinkedIn / X publish
-- [ ] Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe
-- Org switcher — **skip** (duplicate `tp` orgs were test-only)
+### Habits
+Commit + push major changes automatically (`.cursor/rules/git-auto-push.mdc`). User is **Arslan**. Verify UI in the browser when changing web app behavior.
 
 ### Portal sync foundation (2026-08-17)
 Honest multi-portal sync (not fake in-memory worker):
@@ -82,7 +84,7 @@ UI shows **Workspace** name + short org id in the shell. Wrong email = empty Acc
 | Schedule never fires on Hobby | Daily Vercel cron + cron-job.org + page flush | `vercel.json`, `publish-due`, Social `DuePostsFlusher` — `7069954` |
 
 ### Still open / next product work
-- [ ] **Website Builder** — see top handoff (themes redo → blocks → public render) — **START HERE NEXT**
+- [ ] **Website section palette + reorder** — see top handoff — **START HERE NEXT** (public render is done)
 - [ ] Live-test Facebook / LinkedIn / X (deferred)
 - [ ] Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe
 - Repo habit: **commit + push major changes automatically** (see `.cursor/rules/git-auto-push.mdc`)
@@ -210,20 +212,21 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 
 ## Module Completion Status
 
-### ✅ Fully Built (just need env keys to go live)
-1. **CRM & Lead Management** (~90%) — Pipeline, search, pagination, scoring, contacts, SMS via Twilio, call logging, automation builder
-2. **Listings & Portal Sync** (~85%) — Table, search, sync buttons, portal adapters (stubbed), job queue
+### ✅ Fully Built (just need env keys / migrations to go live)
+1. **CRM & Lead Management** (~95%) — Pipeline, contacts, SMS (Twilio + simulated inbound), call logging, **automation runtime**, activity timeline. Missing: routing/scoring engines, email send, sequence scheduler
+2. **Listings & Portal Sync** (~85%) — Table, search, sync buttons, portal adapters (export-ready; live APIs need partnerships)
 3. **Transactions & Compliance** (~80%) — Deal cards, checklists, progress bars, e-sign indicators
-4. **Social Media Tools** (~85%) — All 4 platforms (Facebook, Instagram, LinkedIn, X) with real OAuth, publish, refresh, cron scheduler
+4. **Social Media Tools** (~85%) — All 4 platforms with real OAuth; IG publish + schedule verified; FB/LI/X live-test deferred
 5. **Billing & Subscriptions** (~90%) — Stripe Checkout, Portal, Webhooks (6 events), plan swap with proration, UI
+6. **Website Builder** (~80%) — 4 themes, visual editor, public `/site/[slug]` + custom-domain proxy, contact form → CRM leads. Missing: section palette/reorder, CNAME/SSL productization
 
 ### 🔴 Major Work Remaining
-6. **Website Builder** (~50% → building now):
-   - ✅ Settings panel, section toggles, live preview, domain field, publish toggle
-   - 🔨 IN PROGRESS: Template/theme system (8 pre-made templates)
-   - 🔨 IN PROGRESS: Domain connection system (DNS verification, status tracking)
-   - ❌ NOT YET: Public website rendering (server-side, multi-tenant by domain)
-   - ❌ NOT YET: Custom block editor, client portal as standalone
+- Website section palette + reorder
+- Lead routing + scoring
+- Domain CNAME + SSL
+- Email channel
+- Message sequence runner (optional — automations already drip)
+- FB / LinkedIn / X live publish smoke
 
 ---
 
@@ -289,19 +292,20 @@ Before this, `automations` rows were config that nothing executed.
 ## Current Work In Progress
 
 ### 1. Social — smoke / harden (MOSTLY DONE — 2026-08-16)
-Checklist:
 - [x] Publish image + caption from Compose (DB + IG path verified earlier)
 - [x] Queue can show `published`
 - [x] Cron-job.org test: `processed:1, published:1`
 - [x] Workspace identity / duplicate `tp` guidance
-- [x] Video ≤10MB upload path (signed URL) — re-test on production after deploy
+- [x] Video ≤10MB upload path (signed URL)
 - [ ] Facebook / LinkedIn / X live publish
-- [ ] Optional org switcher
+- Org switcher — **skip**
 
-### 2. Website Builder — templates + editable copy (IN PROGRESS)
+### 2. Website Builder (2026-08-29)
 Four live themes: Modern Minimal, Luxury Dark, Classic Agency, Coastal Living.
-Users can edit hero image (URL or upload), headline, tagline, CTAs, about, listings heading, contact heading, footer.
-Settings persist in `public.websites` (jsonb payload). Public multi-tenant render still TODO.
+Visual editor + public render + lead capture **done**. Next: **section palette + reorder**.
+
+### 3. CRM automations + messaging (2026-08-29)
+Runtime + simulated inbound **done**. Operator must apply migrations 010 + 011. Next CRM work: routing/scoring.
 
 ---
 
@@ -312,6 +316,8 @@ All documented in `.env.example`. Key groups:
 - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`
 - Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
+- Messaging: `MESSAGING_MODE=auto|simulated|twilio`
+- Automations cron: `AUTOMATION_CRON_SECRET` (falls back to `SOCIAL_CRON_SECRET` / `CRON_SECRET`)
 - Social: `META_APP_ID`, `META_APP_SECRET`, `INSTAGRAM_APP_*`, `LINKEDIN_CLIENT_*`, `X_CLIENT_*`
 - Social infra: `SOCIAL_TOKEN_ENCRYPTION_KEY`, `SOCIAL_CRON_SECRET`, `CRON_SECRET` (same value as SOCIAL_CRON_SECRET on Vercel)
 
