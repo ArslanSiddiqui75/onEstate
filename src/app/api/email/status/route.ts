@@ -7,6 +7,8 @@ export async function GET() {
     mode: caps.mode,
     outbound: caps.outbound,
     resendConfigured: caps.resendConfigured,
+    inboundWebhook: caps.inboundWebhook,
+    inboundAddress: caps.inboundAddress || null,
     configError: caps.configError || null,
   });
 }

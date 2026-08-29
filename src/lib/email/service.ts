@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendResendEmail } from "@/lib/email/client";
+import { inboundReplyTo } from "@/lib/email/inbound";
 import { ensureThread } from "@/lib/messaging/service";
 
 export interface OutboundEmailInput {
@@ -43,7 +44,12 @@ export async function sendOutboundEmail(
 
   let result;
   try {
-    result = await sendResendEmail({ to, subject, body });
+    result = await sendResendEmail({
+      to,
+      subject,
+      body,
+      replyTo: inboundReplyTo(input.leadId),
+    });
   } catch (error) {
     return {
       ok: false,

@@ -8,8 +8,11 @@ export interface InboundMessageInput {
   leadId: string;
   body: string;
   providerSid?: string | null;
-  /** simulated = in-app test reply; twilio = carrier webhook */
-  source?: "simulated" | "twilio";
+  subject?: string | null;
+  channel?: "sms" | "email";
+  email?: string;
+  /** simulated = in-app test; twilio / resend = provider webhook */
+  source?: "simulated" | "twilio" | "resend";
 }
 
 export interface InboundMessageResult {
@@ -245,13 +248,27 @@ export async function recordInboundMessage(
   const thread = await ensureThread(supabase, {
     orgId: input.orgId,
     leadId: input.leadId,
+    email: input.email,
   });
   if (thread.error || !thread.threadId) {
     return { ok: false, error: thread.error || "Failed to create thread" };
   }
   const threadId = thread.threadId;
 
+  if (input.providerSid) {
+    const { data: existing } = await supabase
+      .from("messages")
+      .select("id")
+      .eq("org_id", input.orgId)
+      .eq("provider_sid", input.providerSid)
+      .maybeSingle();
+    if (existing) {
+      return { ok: true, threadId, messageId: String(existing.id) };
+    }
+  }
+
   const sentAt = new Date().toISOString();
+  const channel = input.channel === "email" ? "email" : "sms";
   const providerSid =
     input.providerSid ||
     (input.source === "simulated" ? `sim_in_${Date.now()}` : null);
@@ -264,10 +281,11 @@ export async function recordInboundMessage(
       lead_id: input.leadId,
       direction: "inbound",
       body,
+      subject: input.subject || null,
       status: "received",
       provider_sid: providerSid,
       sent_at: sentAt,
-      channel: "sms",
+      channel,
     })
     .select("id")
     .single();

@@ -4,6 +4,8 @@ export interface EmailCapabilities {
   mode: "live" | "simulated";
   outbound: "resend" | "simulated";
   resendConfigured: boolean;
+  inboundWebhook: boolean;
+  inboundAddress: string;
   from: string;
   /** Present when the operator set a key but forgot the sender (or vice versa). */
   configError?: string;
@@ -33,6 +35,10 @@ export function emailFromAddress(): string {
 export function isResendConfigured() {
   const from = emailFromAddress();
   return Boolean(process.env.RESEND_API_KEY && from && !fromLooksUnverified(from));
+}
+
+export function inboundWebhookConfigured() {
+  return Boolean((process.env.RESEND_WEBHOOK_SECRET || "").trim());
 }
 
 export function emailConfigError(): string | undefined {
@@ -67,6 +73,8 @@ export function getEmailCapabilities(): EmailCapabilities {
     mode: useResend ? "live" : "simulated",
     outbound: useResend ? "resend" : "simulated",
     resendConfigured: configured,
+    inboundWebhook: inboundWebhookConfigured(),
+    inboundAddress: (process.env.EMAIL_INBOUND_ADDRESS || "").trim(),
     from: emailFromAddress(),
     configError,
   };

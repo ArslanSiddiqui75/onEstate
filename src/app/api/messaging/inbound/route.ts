@@ -7,10 +7,12 @@ import { cancelNoReplyRuns } from "@/lib/automations/engine";
 
 const bodySchema = z.object({
   leadId: z.string().min(1),
-  body: z.string().min(1).max(1600),
+  body: z.string().min(1).max(20000),
+  channel: z.enum(["sms", "email"]).optional(),
+  subject: z.string().max(200).optional(),
 });
 
-/** Simulate an inbound SMS from a lead (Twilio cannot receive from PK numbers). */
+/** Simulate an inbound SMS or email from a lead. */
 export async function POST(request: Request) {
   const profile = await resolveProfileFromRequest(request);
   if (!profile) {
@@ -42,10 +44,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
+  const channel = parsed.data.channel === "email" ? "email" : "sms";
   const result = await recordInboundMessage(supabase, {
     orgId: profile.orgId,
     leadId: parsed.data.leadId,
     body: parsed.data.body,
+    subject: parsed.data.subject || null,
+    channel,
     source: "simulated",
   });
 

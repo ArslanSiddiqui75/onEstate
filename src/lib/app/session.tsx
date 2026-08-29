@@ -240,10 +240,12 @@ interface AppState {
     subject: string;
     body: string;
   }) => Promise<{ mode: "live" | "simulated" }>;
-  /** Simulate or record an inbound SMS from the lead (in-app testing). */
+  /** Simulate an inbound SMS or email from the lead (in-app testing). */
   receiveInboundSms: (input: {
     leadId: string;
     body: string;
+    channel?: "sms" | "email";
+    subject?: string;
   }) => Promise<{ mode: "simulated" }>;
   logCall: (input: {
     leadId: string;
@@ -1615,12 +1617,18 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const receiveInboundSms = useCallback(
-    async (input: { leadId: string; body: string }) => {
+    async (input: {
+      leadId: string;
+      body: string;
+      channel?: "sms" | "email";
+      subject?: string;
+    }) => {
       if (!repoRef.current || !org) {
         throw new Error("Workspace not loaded");
       }
       const lead = leads.find((l) => l.id === input.leadId);
       if (!lead) throw new Error("Lead not found");
+      const channel = input.channel === "email" ? "email" : "sms";
 
       if (repoRef.current.mode === "local") {
         await repoRef.current.appendMessage({
@@ -1629,6 +1637,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           leadId: lead.id,
           direction: "inbound",
           body: input.body,
+          subject: input.subject,
+          channel,
           status: "received",
           providerSid: `sim_in_${Date.now()}`,
           sentAt: new Date().toISOString(),
@@ -1649,6 +1659,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({
           leadId: input.leadId,
           body: input.body,
+          channel,
+          subject: input.subject,
         }),
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };

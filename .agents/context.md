@@ -1,21 +1,20 @@
 # 0nEstate (CertifiedUK / CertifiedUS) — Project Context
 
 > **Purpose**: This file preserves project context across model switches and chat sessions.
-> **Last updated**: 2026-08-29 (`lead_contacted` / `no_reply` runtime; X + portal live HTTP skipped)
+> **Last updated**: 2026-08-29 (inbound email webhook shipped; X + portal live HTTP skipped)
 
 ---
 
-## Chat handoff — NEXT: inbound email webhook (2026-08-29)
+## Chat handoff — NEXT: transactions e-sign (2026-08-29)
 
 Use this block when starting a **new Cursor chat**. Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.app
 
 If Arslan says **"continue"** / **"next task"** with no extra detail: do the first unchecked item under **Pick up here**. Do not redo shipped work below.
 
 ### Pick up here (ordered)
-1. **[START HERE] Inbound email webhook** — outbound email (Resend) is live; inbound is not. Wire a Resend (or similar) inbound webhook so lead replies land on the same thread as SMS and cancel `no_reply` runs the same way simulated/Twilio inbound does.
-2. Transactions e-sign is still UI-only (no provider).
-3. WhatsApp later (international path). Do not switch off Twilio.
-4. Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe.
+1. **[START HERE] Transactions e-sign** — UI indicators only; no provider yet.
+2. WhatsApp later (international path). Do not switch off Twilio.
+3. Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe.
 
 **Skipped (do not pick up unless Arslan asks):**
 - **X (Twitter) live-test** — skipped this cycle. Env is on Production; no X account connected. FB + LinkedIn posted from org `c3d7bf08…` on 2026-08-16.
@@ -24,13 +23,14 @@ If Arslan says **"continue"** / **"next task"** with no extra detail: do the fir
 Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page IA. Org switcher — **skip**. Themes stay at the current 4 until Arslan supplies new UIs.
 
 ### Shipped (do not rebuild)
+- **Inbound email webhook** — Resend `email.received` at `/api/email/webhook/inbound` (Svix-signed). Fetches body via Receiving API, matches Reply-To plus-tag (`inbox+{leadId}@…`) then From → `leads.email`, logs on the same thread, cancels `no_reply`. CRM Inbox still simulates inbound (SMS or email). Needs `RESEND_WEBHOOK_SECRET` + receiving domain; `EMAIL_INBOUND_ADDRESS` sets outbound Reply-To. Files: `src/lib/email/{inbound,webhook,service}.ts`.
 - **`lead_contacted` / `no_reply` runtime** — first CRM/API SMS or email (count of outbound `messages` === 1) fires `lead_contacted`. Does **not** fire from automation/sequence sends (avoids welcome-SMS loops). `no_reply` = last message still outbound and older than 48h; scanned at the start of `processAutomationRuns` (cron + CRM flush). A real or simulated inbound cancels pending/waiting/running `no_reply` runs. Files: `src/lib/automations/engine.ts`, `/api/twilio/sms`, `/api/email/send`, inbound routes.
 - **Message sequence runner** — seeded follow-up + nurture playbooks; enroll toggles send the next step now; **Send next** for the rest. No Day-N scheduler (automations still own `wait`). Files: `src/lib/sequences/{catalog,ensure,engine}.ts`, `/api/sequences/advance`, CRM Automations tab. Migration **015**.
 - **CRM automations actually run** — `3f97ea5`. Engine `src/lib/automations/engine.ts`. Triggers: `addLead` → `lead_created`, `updateLeadStage` → `stage_changed`. `wait` steps park until `/api/automations/cron/run` or CRM page flush. `update_stage` does **not** re-fire `stage_changed`.
 - **Messaging** — simulated inbound in CRM inbox (`/api/messaging/inbound`); `MESSAGING_MODE`. Twilio **can deliver to PK** (`+92…`). It cannot **receive inbound SMS from Pakistani numbers**; we do not need PK inbound now — CRM simulate-reply is the test path.
 - **Lead edit** — pipeline pencil or Edit in the lead drawer. `LeadPatch` + `updateLead` (session + supabase). Score recomputes; stage change still fires `stage_changed`.
 - **Phone country codes (E.164)** — dial-code picker on add/edit lead and contacts. `0333…` + Pakistan → `+92333…`. SMS send/automations refuse numbers without `+`. Files: `src/lib/phone/e164.ts`, `src/components/crm/phone-field.tsx`. Not a full telephony product; default dial is UK `+44` / US `+1`.
-- **Email channel** — Resend when `RESEND_API_KEY` + `EMAIL_FROM` are set, else simulated and still logged. Automation step `send_email`. CRM Inbox composes SMS or email on the same thread. Files: `src/lib/email/{capabilities,client,service}.ts`, `/api/email/send`, `/api/email/status`. Migration **014**.
+- **Email channel** — Resend when `RESEND_API_KEY` + `EMAIL_FROM` are set, else simulated and still logged. Automation step `send_email`. CRM Inbox composes SMS or email on the same thread. Inbound via Resend webhook (or simulate). Files: `src/lib/email/{capabilities,client,service,inbound,webhook}.ts`, `/api/email/send`, `/api/email/webhook/inbound`. Migration **014**.
 - **Public websites + lead capture** — `5c7c5be`. `/site/[slug]`; `src/proxy.ts` rewrites custom domains; `POST /api/public/leads` creates a CRM lead and fires `lead_created` automations. Unpublished sites stay private.
 - **Website section palette + reorder** — curated blocks (hero/listings/about/contact + optional testimonials/stats/cta), show/hide, up/down reorder, per-block style variants. Catalog: `src/lib/website/sections.ts`. Footer is always last. Older payloads hydrate from `show*` flags.
 - **Lead routing + scoring** — `src/lib/crm/{scoring,routing}.ts`. Team/Enterprise: round-robin / territory / least-open / creator. Score is computed (source, completeness, type, priority), not typed. Website capture uses the same engines. CRM → Routing tab. Solo still assigns to the person who adds the lead.
@@ -38,7 +38,7 @@ Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page
 - **Hosted migrations 010–015 applied** on project `pruezuqdsofegzhbodnj`. 015 creates `message_sequences` / `sequence_enrollments` (they were missing on hosted).
 
 ### Key files for next work
-Inbound email webhook (new) · `src/lib/email/{client,service}.ts` · `/api/email/send` · `cancelNoReplyRuns` in `src/lib/automations/engine.ts`
+Transactions e-sign (provider TBD) · CRM deals UI
 
 ### Habits
 Commit + push major changes automatically (`.cursor/rules/git-auto-push.mdc`). User is **Arslan**. Verify UI in the browser when changing web app behavior.
@@ -97,9 +97,9 @@ UI shows **Workspace** name + short org id in the shell. Wrong email = empty Acc
 - [x] **Message sequence runner** — shipped (seeded playbooks + enroll / Send next; no extra scheduler)
 - [x] Facebook + LinkedIn live publish — 3-account post succeeded 2026-08-16 after LinkedIn version header was fixed (`20240101` was invalid; now `202608`)
 - [x] **`lead_contacted` / `no_reply` runtime**
+- [x] Inbound email webhook
 - [ ] Live-test **X** publish — **skipped** this cycle (env configured; Connect an X account — paid API tier required)
 - [ ] Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe
-- [ ] Inbound email webhook
 - Repo habit: **commit + push major changes automatically** (see `.cursor/rules/git-auto-push.mdc`)
 
 ### Key paths
@@ -206,7 +206,7 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 ## Module Completion Status
 
 ### ✅ Fully Built (just need env keys / migrations to go live)
-1. **CRM & Lead Management** (~99%) — Pipeline, contacts, SMS, **email**, call logging, automation runtime (`lead_created` / `stage_changed` / `lead_contacted` / `no_reply`), **lead routing + scoring**, **sequence enroll / Send next**. Timed drip stays on automations.
+1. **CRM & Lead Management** (~99%) — Pipeline, contacts, SMS, **email (send + inbound)**, call logging, automation runtime (`lead_created` / `stage_changed` / `lead_contacted` / `no_reply`), **lead routing + scoring**, **sequence enroll / Send next**. Timed drip stays on automations.
 2. **Listings & Portal Sync** (~85%) — Table, search, sync buttons, portal adapters (export-ready; live APIs need partnerships)
 3. **Transactions & Compliance** (~80%) — Deal cards, checklists, progress bars, e-sign indicators
 4. **Social Media Tools** (~85%) — All 4 platforms with real OAuth; IG publish + schedule verified; FB/LI/X live-test deferred
@@ -214,7 +214,6 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 6. **Website Builder** (~95%) — 4 themes, visual editor, public `/site/[slug]` + custom-domain proxy, contact form → CRM leads, **section palette + reorder + variants**, **live DNS verify + TLS probe** (optional Vercel domain attach).
 
 ### 🔴 Major Work Remaining
-- Inbound email webhook
 - Transactions e-sign is UI-only
 - WhatsApp (later international SMS path)
 - X (Twitter) live publish smoke — skipped this cycle; Connect + paid API when asked
@@ -276,7 +275,8 @@ Before this, `automations` rows were config that nothing executed.
 - `/api/email/send` (Bearer auth when Supabase is on) · `/api/email/status`
 - Same conversation thread as SMS; `messages.channel` + `subject` (migration 014)
 - CRM Inbox: SMS | Email composer. Live send needs `RESEND_API_KEY` + verified `EMAIL_FROM`
-- Inbound email is not a webhook yet — only outbound + simulated SMS inbound
+- Inbound: `/api/email/webhook/inbound` (Resend `email.received`, Svix `RESEND_WEBHOOK_SECRET`). Body via `GET /emails/receiving/:id`. Match Reply-To plus-tag then From email. Cancels `no_reply`. CRM simulate inbound works for email too (`channel=email`).
+- Outbound sets `Reply-To` to `EMAIL_INBOUND_ADDRESS` local+`{leadId}` when that env is set.
 
 ### Twilio ↔ CRM — ✅ Code Complete
 - `src/lib/twilio/client.ts` — sendTwilioSms with live/simulated fallback
@@ -321,7 +321,7 @@ Four live themes: Modern Minimal, Luxury Dark, Classic Agency, Coastal Living.
 Visual editor + public render + lead capture + **section palette** + **CNAME/SSL verify** **done**.
 
 ### 3. CRM automations + messaging (2026-08-29)
-Runtime + simulated inbound + **email send** + **`lead_contacted` / `no_reply`** **done**. Hosted migrations 010–015 **applied**. Routing + scoring **done**.
+Runtime + simulated inbound + **email send + inbound webhook** + **`lead_contacted` / `no_reply`** **done**. Hosted migrations 010–015 **applied**. Routing + scoring **done**.
 
 ### 4. Lead routing + scoring (2026-08-29)
 Done. Sequence runner shipped (enroll / Send next; automations still drip).
@@ -336,7 +336,7 @@ All documented in `.env.example`. Key groups:
 - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_*`
 - Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`
 - Messaging: `MESSAGING_MODE=auto|simulated|twilio`
-- Email: `EMAIL_MODE=auto|simulated|resend`, `RESEND_API_KEY`, `EMAIL_FROM`
+- Email: `EMAIL_MODE=auto|simulated|resend`, `RESEND_API_KEY`, `EMAIL_FROM`, `RESEND_WEBHOOK_SECRET`, `EMAIL_INBOUND_ADDRESS`
 - Automations cron: `AUTOMATION_CRON_SECRET` (falls back to `SOCIAL_CRON_SECRET` / `CRON_SECRET`)
 - Social: `META_APP_ID`, `META_APP_SECRET`, `INSTAGRAM_APP_*`, `LINKEDIN_CLIENT_*`, `X_CLIENT_*`
 - Social infra: `SOCIAL_TOKEN_ENCRYPTION_KEY`, `SOCIAL_CRON_SECRET`, `CRON_SECRET` (same value as SOCIAL_CRON_SECRET on Vercel)
@@ -359,7 +359,8 @@ All documented in `.env.example`. Key groups:
 
 ## Latest commits (main)
 
-- (this session) `lead_contacted` / `no_reply` runtime + Twilio PK copy
+- (this session) Inbound email webhook (Resend)
+- `97285aa` `lead_contacted` / `no_reply` runtime + Twilio PK copy
 - `da46870` LinkedIn API version `202608`
 - `0da4cbc` Message sequence runner
 - `53de9d1` E.164 country-code picker

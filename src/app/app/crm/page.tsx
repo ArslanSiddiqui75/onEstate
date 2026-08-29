@@ -161,6 +161,7 @@ export default function AppCrmPage() {
   const [simulateReplyText, setSimulateReplyText] = useState("");
   const [messagingMode, setMessagingMode] = useState<"live" | "simulated" | null>(null);
   const [emailMode, setEmailMode] = useState<"live" | "simulated" | null>(null);
+  const [emailInboundWebhook, setEmailInboundWebhook] = useState(false);
   const [emailConfigError, setEmailConfigError] = useState<string | null>(null);
   const [automationRuns, setAutomationRuns] = useState<AutomationRun[]>([]);
   const [leadActivities, setLeadActivities] = useState<LeadActivity[]>([]);
@@ -182,10 +183,12 @@ export default function AppCrmPage() {
         if (json?.mode === "live" || json?.mode === "simulated") {
           setEmailMode(json.mode);
         }
+        setEmailInboundWebhook(Boolean(json?.inboundWebhook));
         setEmailConfigError(typeof json?.configError === "string" ? json.configError : null);
       })
       .catch(() => {
         setEmailMode(null);
+        setEmailInboundWebhook(false);
         setEmailConfigError(null);
       });
   }, []);
@@ -783,7 +786,8 @@ export default function AppCrmPage() {
                   <h2 className="font-semibold">Inbox</h2>
                   <p className="text-sm text-[var(--muted)]">
                     SMS and email on one thread. Outbound uses Twilio / Resend when live;
-                    otherwise it is simulated and still logged here.
+                    inbound email needs a Resend webhook. Otherwise it is simulated and still
+                    logged here.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -796,6 +800,9 @@ export default function AppCrmPage() {
                   <Badge tone={emailMode === "live" ? "success" : "warning"}>
                     {emailMode === "live" ? "Live email" : "Simulated email"}
                   </Badge>
+                ) : null}
+                {emailInboundWebhook ? (
+                  <Badge tone="success">Inbound email webhook</Badge>
                 ) : null}
                 </div>
                 {emailConfigError ? (
@@ -988,8 +995,11 @@ export default function AppCrmPage() {
                         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-4">
                           <p className="text-sm font-medium">Simulate lead reply</p>
                           <p className="mt-1 text-xs text-[var(--muted)]">
-                            Twilio can deliver SMS to Pakistan, but it cannot receive replies from
-                            Pakistani numbers. Use this to test inbound without a real reply.
+                            {composeChannel === "email"
+                              ? emailInboundWebhook
+                                ? "Live replies land here via Resend. Use this to test without waiting for a real reply."
+                                : "Live inbound needs Resend Receiving + a webhook at /api/email/webhook/inbound. Use this to test a reply now."
+                              : "Twilio can deliver SMS to Pakistan, but it cannot receive replies from Pakistani numbers. Use this to test inbound without a real reply."}
                           </p>
                           <textarea
                             className="mt-3 min-h-20 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
@@ -1010,6 +1020,11 @@ export default function AppCrmPage() {
                                   await receiveInboundSms({
                                     leadId: activeLead.id,
                                     body: simulateReplyText.trim(),
+                                    channel: composeChannel,
+                                    subject:
+                                      composeChannel === "email"
+                                        ? draftSubject.trim() || "Re: (simulated)"
+                                        : undefined,
                                   });
                                   setSimulateReplyText("");
                                   toast.success("Inbound reply recorded");
