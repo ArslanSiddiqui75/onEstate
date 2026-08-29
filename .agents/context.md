@@ -1,21 +1,20 @@
 # 0nEstate (CertifiedUK / CertifiedUS) — Project Context
 
 > **Purpose**: This file preserves project context across model switches and chat sessions.
-> **Last updated**: 2026-08-29 (lead routing + scoring shipped; migration 012 applied)
+> **Last updated**: 2026-08-29 (domain CNAME verify + SSL shipped)
 
 ---
 
-## Chat handoff — NEXT: Domain CNAME + SSL (2026-08-29)
+## Chat handoff — NEXT: Email channel (2026-08-29)
 
 Use this block when starting a **new Cursor chat**. Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.app
 
 If Arslan says **"continue"** / **"next task"** with no extra detail: do the first unchecked item under **Pick up here**. Do not redo shipped work below.
 
 ### Pick up here (ordered)
-1. **[START HERE IN CODE] Domain CNAME verify + SSL status productization** — `/api/website/domain/verify` is still a stub
-2. Email channel (tasks/automations mention Email; no send transport)
-3. Message sequence runner (seeded sequences + enrollment toggles; no scheduler — automations already cover drip)
-4. Live-test Facebook / LinkedIn / X publish (IG is verified)
+1. **[START HERE IN CODE] Email channel** — tasks/automations mention Email; there is still no send transport
+2. Message sequence runner (seeded sequences + enrollment toggles; no scheduler — automations already cover drip)
+3. Live-test Facebook / LinkedIn / X publish (IG is verified)
 
 Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page IA. Org switcher — **skip**. Themes stay at the current 4 until Arslan supplies new UIs.
 
@@ -25,10 +24,11 @@ Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page
 - **Public websites + lead capture** — `5c7c5be`. `/site/[slug]`; `src/proxy.ts` rewrites custom domains; `POST /api/public/leads` creates a CRM lead and fires `lead_created` automations. Unpublished sites stay private.
 - **Website section palette + reorder** — curated blocks (hero/listings/about/contact + optional testimonials/stats/cta), show/hide, up/down reorder, per-block style variants. Catalog: `src/lib/website/sections.ts`. Footer is always last. Older payloads hydrate from `show*` flags.
 - **Lead routing + scoring** — `src/lib/crm/{scoring,routing}.ts`. Team/Enterprise: round-robin / territory / least-open / creator. Score is computed (source, completeness, type, priority), not typed. Website capture uses the same engines. CRM → Routing tab. Solo still assigns to the person who adds the lead.
+- **Domain CNAME verify + SSL** — live DNS (CNAME chain + apex A → Vercel IPs) and TLS probe on 443. Auth via Bearer (`resolveProfileFromRequest`); persist `custom_domain` + payload status with service role. Optional `VERCEL_TOKEN` + `VERCEL_PROJECT_ID` attaches the hostname so certificates can issue. UI: copyable records, apex vs www. Files: `src/lib/website/{domain,domain-records}.ts`, `src/components/website/domain-panel.tsx`, `src/app/api/website/domain/verify/route.ts`.
 - **Hosted migrations 010–013 applied** on project `pruezuqdsofegzhbodnj`. 013 added missing `leads.next_action/territory/priority` (002 never landed those columns; add-lead 400'd).
 
-### Key files for next website work
-`src/app/api/website/domain/verify/route.ts` · Website editor Domain panel · `WebsiteSite.domainStatus` / `sslStatus`
+### Key files for next work
+Email send transport (tasks/automations already mention Email) · `src/lib/automations/engine.ts`
 
 ### Habits
 Commit + push major changes automatically (`.cursor/rules/git-auto-push.mdc`). User is **Arslan**. Verify UI in the browser when changing web app behavior.
@@ -84,7 +84,7 @@ UI shows **Workspace** name + short org id in the shell. Wrong email = empty Acc
 | Schedule never fires on Hobby | Daily Vercel cron + cron-job.org + page flush | `vercel.json`, `publish-due`, Social `DuePostsFlusher` — `7069954` |
 
 ### Still open / next product work
-- [ ] **Domain CNAME + SSL** — see top handoff — **START HERE NEXT** (routing/scoring is done)
+- [ ] **Email channel** — see top handoff — **START HERE NEXT**
 - [ ] Live-test Facebook / LinkedIn / X (deferred)
 - [ ] Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe
 - Repo habit: **commit + push major changes automatically** (see `.cursor/rules/git-auto-push.mdc`)
@@ -198,10 +198,9 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 3. **Transactions & Compliance** (~80%) — Deal cards, checklists, progress bars, e-sign indicators
 4. **Social Media Tools** (~85%) — All 4 platforms with real OAuth; IG publish + schedule verified; FB/LI/X live-test deferred
 5. **Billing & Subscriptions** (~90%) — Stripe Checkout, Portal, Webhooks (6 events), plan swap with proration, UI
-6. **Website Builder** (~90%) — 4 themes, visual editor, public `/site/[slug]` + custom-domain proxy, contact form → CRM leads, **section palette + reorder + variants**. Missing: CNAME/SSL productization
+6. **Website Builder** (~95%) — 4 themes, visual editor, public `/site/[slug]` + custom-domain proxy, contact form → CRM leads, **section palette + reorder + variants**, **live DNS verify + TLS probe** (optional Vercel domain attach).
 
 ### 🔴 Major Work Remaining
-- Domain CNAME + SSL
 - Email channel
 - Message sequence runner (optional — automations already drip)
 - FB / LinkedIn / X live publish smoke
@@ -295,7 +294,7 @@ Before this, `automations` rows were config that nothing executed.
 
 ### 2. Website Builder (2026-08-29)
 Four live themes: Modern Minimal, Luxury Dark, Classic Agency, Coastal Living.
-Visual editor + public render + lead capture + **section palette** **done**. Next website work: CNAME/SSL.
+Visual editor + public render + lead capture + **section palette** + **CNAME/SSL verify** **done**. Next product work: email channel.
 
 ### 3. CRM automations + messaging (2026-08-29)
 Runtime + simulated inbound **done**. Hosted migrations 010–012 **applied**. Routing + scoring **done**.
