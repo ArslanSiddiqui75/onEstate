@@ -102,6 +102,7 @@ Three surfaces:
 - `/` — Marketing landing page
 - `/app` — Multi-tenant product workspace (6 modules)
 - `/admin` — SaaS admin console
+- `/site/[slug]` — Public tenant website (unpublished stays 404). Custom domains rewrite via `src/proxy.ts`
 
 ---
 
@@ -112,7 +113,7 @@ Three surfaces:
 - **Animations**: Framer Motion
 - **UI Primitives**: Radix UI
 - **Auth & DB**: Supabase Auth + Postgres + RLS (optional — durable localStorage fallback)
-- **SMS/Telephony**: Twilio (optional — simulated when unset)
+- **SMS/Telephony**: Twilio (optional — simulated when unset). Stay on Twilio for embedded CRM SMS; **do not switch to RingCentral** (seat-priced UCaaS, weak multi-tenant fit; does not fix PK inbound). WhatsApp later for international.
 - **Payments**: Stripe Checkout + Customer Portal (platform-owned)
 - **Validation**: Zod v4
 - **Icons**: Lucide React
@@ -125,55 +126,30 @@ Three surfaces:
 ```
 src/
 ├── app/
-│   ├── page.tsx                      # Marketing landing page (~21 KB)
+│   ├── page.tsx                      # Marketing landing page
+│   ├── site/[slug]/page.tsx          # Public tenant website (server component)
+│   ├── proxy.ts                      # Custom-domain rewrite → /site/<host> (Next 16)
 │   ├── admin/                        # SaaS admin console
-│   │   ├── audit/ organizations/ subscriptions/ users/
 │   ├── app/                          # Product workspace
-│   │   ├── crm/page.tsx              # CRM module (~48 KB, 1289 lines)
-│   │   ├── listings/page.tsx         # Listings module (~13.5 KB)
-│   │   ├── transactions/page.tsx     # Transactions module (~12.7 KB)
-│   │   ├── website/page.tsx          # Website builder (~24 KB)
-│   │   ├── social/page.tsx           # Social media module
-│   │   ├── billing/page.tsx          # Billing module (~9.7 KB)
-│   │   ├── onboarding/page.tsx       # Tenant onboarding
-│   │   ├── login/ signup/
+│   │   ├── crm/page.tsx              # CRM: pipeline, contacts, inbox, calls, automations
+│   │   ├── listings/ website/ social/ transactions/ billing/
 │   ├── api/
-│   │   ├── stripe/  (checkout/ portal/ webhook/)
-│   │   ├── twilio/  (sms/ webhook/inbound/ webhook/status/)
-│   │   ├── social/  (accounts/ cron/ oauth/ publish/ status/)
-│   │   ├── waitlist/
+│   │   ├── automations/  (trigger/ run-due/ cron/run/)
+│   │   ├── messaging/    (inbound/ status/)
+│   │   ├── public/leads/             # Website form → CRM lead
+│   │   ├── stripe/  twilio/  social/  waitlist/  website/domain/verify/
 ├── components/
-│   ├── ui/           # Design system (Badge, Button, Card, Input, etc.)
-│   ├── crm/          # automation-builder.tsx (25 KB)
-│   ├── social/       # social-planner.tsx (60 KB)
-│   ├── shell/        # App shell / sidebar
-│   ├── team/         # invite-modal.tsx
-│   ├── brand/        # Brand switcher
-│   ├── marketing/    # Landing page components
+│   ├── crm/automation-builder.tsx
+│   ├── website/{website-preview, editable-field, public-contact-form}.tsx
+│   ├── social/  shell/  ui/
 ├── lib/
-│   ├── app/session.tsx          # Main session provider (~36 KB, 1254 lines)
-│   ├── data/
-│   │   ├── repository.ts        # WorkspaceRepository interface
-│   │   ├── local-repository.ts  # localStorage implementation
-│   │   ├── supabase-repository.ts # Supabase implementation
-│   │   ├── workspace-store.ts   # Types + localStorage helpers
-│   │   ├── bootstrap.ts         # Seed data factory
-│   ├── stripe/config.ts         # Stripe client + price mapping
-│   ├── twilio/client.ts         # Twilio SMS client (live + simulated)
-│   ├── social/
-│   │   ├── providers.ts         # All 4 platform adapters (615 lines)
-│   │   ├── publish-service.ts   # Publish engine + cron
-│   │   ├── oauth-service.ts     # State + PKCE management
-│   │   ├── crypto.ts            # Token encryption
-│   │   ├── media.ts             # Platform labels/icons
-│   ├── rbac/matrix.ts           # 6×6 role-module access matrix
-│   ├── plans/catalog.ts         # Plan definitions + feature flags
-│   ├── access.ts                # hasModuleAccess(), hasFeature()
-│   ├── portals/adapters.ts      # Portal sync adapters (Rightmove, Zoopla, etc.)
-│   ├── jobs/queue.ts            # Background job queue abstraction
-│   ├── website/templates.ts     # [NEW] Website template definitions
-├── types/index.ts               # All TypeScript types (389 lines)
-supabase/migrations/             # 7 SQL migrations (001–007)
+│   ├── app/session.tsx
+│   ├── automations/engine.ts         # Runtime (enqueue + execute + wait)
+│   ├── messaging/{service,capabilities}.ts
+│   ├── website/{templates,defaults,public-site,slug}.ts
+│   ├── data/  stripe/  twilio/  social/  portals/  rbac/  plans/
+├── types/index.ts
+supabase/migrations/                  # 001–011 (010 automations, 011 public sites)
 ```
 
 ---
@@ -186,10 +162,13 @@ Key types:
 - `WorkspaceSnapshot` — full state object (workspace-store.ts)
 - `WorkspaceOrg` — org with Stripe billing fields
 - `WorkspaceUser` — user with role + orgId
-- `WebsiteSite` — website config (headline, tagline, domain, sections, templateId, domainStatus)
-- `Lead`, `Contact`, `Listing`, `TransactionDeal` — core business objects
+- `WebsiteSite` — website config (headline, tagline, **slug**, domain, sections, templateId, published, domainStatus)
+- `Lead`, `Contact`, `Listing`, `TransactionDeal` — core business objects. Lead stages: `new → contacted → qualified → viewing → offer → won|lost`. No separate deals table; Transactions is post-offer.
 - `SocialAccount`, `SocialPost` — social module
-- `Automation`, `AutomationStep` — CRM automation builder
+- `Automation`, `AutomationStep`, `AutomationRun`, `LeadActivity` — CRM workflows + timeline
+- `LeadTask`, `ConversationMessage` — SMS inbox + follow-up tasks
+
+**CRM UI** (`/app/crm`): Pipeline (table, not kanban), Contacts + promote-to-lead, Texting inbox, Calls (manual log, no dialer), Automations. Website/portal/waitlist capture: **website form now creates leads**; portal/waitlist still do not. No lead↔listing FK. Won leads do not auto-create transactions.
 
 Session provider (`lib/app/session.tsx`) exposes all state + mutation methods via React Context.
 
@@ -249,14 +228,15 @@ Before this, `automations` rows were config that nothing executed.
 - Durable runs: migration `010_automation_runs.sql` (`automation_runs`, `automation_run_steps`, `leads.tags`)
 - Steps implemented: `send_sms`, `create_task`, `wait`, `update_stage`, `add_tag`, `notify_owner`
 - Templating: `{{first_name}}`, `{{last_name}}`, `{{full_name}}`, `{{email}}`, `{{phone}}`, `{{stage}}`, `{{source}}`
-- Triggers fire from `session.tsx`: `addLead` → `lead_created`, `updateLeadStage` → `stage_changed`
+- Triggers that **auto-fire**: `lead_created`, `stage_changed` (plus `manual` from UI). `lead_contacted` / `no_reply` exist in the builder but have **no runtime hook yet**.
 - Routes: `/api/automations/trigger` (user bearer), `/api/automations/run-due` (org flush), `/api/automations/cron/run` (secret)
 - `update_stage` deliberately does NOT re-trigger `stage_changed` — prevents workflow ping-pong
 - UI: Run history + per-step detail in CRM → Automations; activity timeline in lead detail
-- **Needs**: `AUTOMATION_CRON_SECRET` (or reuses `SOCIAL_CRON_SECRET`/`CRON_SECRET`) + migration 010 applied
+- **Needs**: `AUTOMATION_CRON_SECRET` (or reuses `SOCIAL_CRON_SECRET`/`CRON_SECRET`) + migration 010 applied. Point cron-job.org at `/api/automations/cron/run` every few minutes (same pattern as social).
 - Local workspace mode has no engine (server-side service role only) — UI says so
+- **Provider decision (2026-08-29):** keep Twilio (or later Telnyx) as the messaging API. RingCentral is not cheaper and is the wrong architecture for multi-tenant CRM SMS. PK inbound stays simulated. WhatsApp is the later international path.
 
-### Messaging — ✅ Two-way + simulated inbound (2026-08-22)
+### Messaging — ✅ Two-way + simulated inbound (2026-08-22 / 29)
 - `MESSAGING_MODE=auto|simulated|twilio` (`src/lib/messaging/capabilities.ts`)
 - Shared `sendOutboundSms` / `recordInboundMessage` in `src/lib/messaging/service.ts`
 - `/api/messaging/inbound` simulates a lead reply — Twilio can't deliver to PK numbers
@@ -325,7 +305,7 @@ All documented in `.env.example`. Key groups:
 
 ## Conventions
 
-- All pages are client components (`"use client"`)
+- All **app workspace** pages are client components (`"use client"`). Public `/site/[slug]` is a **server** component.
 - Session state via `useAppSession()` hook from `lib/app/session.tsx`
 - Toast notifications via `toast.success()` / `toast.error()` from `components/ui/toast.tsx`
 - Module access checks via `hasModuleAccess(role, plan, module, level)`
@@ -334,3 +314,12 @@ All documented in `.env.example`. Key groups:
 - Motion via `fadeUp` / `staggerContainer` from `lib/motion.ts`
 - All money formatting via `formatMoney(amount, market)` from `lib/utils.ts`
 - IDs generated via `newId(prefix)` from `workspace-store.ts`
+
+---
+
+## Latest commits (main)
+
+- `9bc83c8` Refresh chat handoff
+- `5c7c5be` Public websites + lead capture
+- `3f97ea5` CRM automation runtime + simulated inbound messaging
+- `b6bf74b` Restyle website templates (earlier)
