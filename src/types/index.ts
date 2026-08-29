@@ -274,6 +274,8 @@ export interface ConversationThread {
   leadId: string;
   phoneNumber: string;
   lastMessageAt?: string;
+  channel?: MessageChannel;
+  email?: string;
 }
 
 export interface CallLog {

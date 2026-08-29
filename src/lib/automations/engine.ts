@@ -298,12 +298,16 @@ export async function enqueueNoReplyTriggers(
   if (!threads?.length) return 0;
 
   const orgSet = new Set(active.map((row) => String(row.org_id)));
+  const seenLeads = new Set<string>();
   let enqueued = 0;
 
   for (const thread of threads) {
     const orgId = String(thread.org_id);
     const leadId = String(thread.lead_id);
     if (!orgSet.has(orgId)) continue;
+    const leadKey = `${orgId}:${leadId}`;
+    if (seenLeads.has(leadKey)) continue;
+    seenLeads.add(leadKey);
 
     const { data: lead } = await supabase
       .from("leads")

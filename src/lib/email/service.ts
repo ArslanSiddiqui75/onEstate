@@ -64,6 +64,7 @@ export async function sendOutboundEmail(
       orgId: input.orgId,
       leadId: input.leadId,
       email: to,
+      channel: "email",
     });
     if (thread.error) {
       return {

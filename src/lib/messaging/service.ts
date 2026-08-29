@@ -74,16 +74,24 @@ export async function findLeadByPhone(
   return null;
 }
 
-/** Find or create the single conversation thread for an org+lead pair. */
+/** Find or create the conversation thread for an org+lead+channel. */
 export async function ensureThread(
   supabase: SupabaseClient,
-  input: { orgId: string; leadId: string; phoneNumber?: string; email?: string },
+  input: {
+    orgId: string;
+    leadId: string;
+    channel?: "sms" | "email";
+    phoneNumber?: string;
+    email?: string;
+  },
 ): Promise<{ threadId?: string; error?: string }> {
+  const channel = input.channel === "email" ? "email" : "sms";
   const { data: existing } = await supabase
     .from("conversation_threads")
     .select("id")
     .eq("org_id", input.orgId)
     .eq("lead_id", input.leadId)
+    .eq("channel", channel)
     .maybeSingle();
 
   if (existing) {
@@ -100,7 +108,7 @@ export async function ensureThread(
   }
 
   let phoneNumber = input.phoneNumber;
-  if (!phoneNumber) {
+  if (!phoneNumber && channel === "sms") {
     const { data: lead } = await supabase
       .from("leads")
       .select("phone")
@@ -117,6 +125,7 @@ export async function ensureThread(
       lead_id: input.leadId,
       phone_number: phoneNumber || "",
       email: input.email || null,
+      channel,
       last_message_at: new Date().toISOString(),
     })
     .select("id")
@@ -186,6 +195,7 @@ export async function sendOutboundSms(
       orgId: input.orgId,
       leadId: input.leadId,
       phoneNumber: input.to,
+      channel: "sms",
     });
     if (thread.error) {
       // The message really did go out, so report success with the send details
@@ -244,11 +254,13 @@ export async function recordInboundMessage(
 ): Promise<InboundMessageResult> {
   const body = input.body.trim();
   if (!body) return { ok: false, error: "Message body is required" };
+  const channel = input.channel === "email" ? "email" : "sms";
 
   const thread = await ensureThread(supabase, {
     orgId: input.orgId,
     leadId: input.leadId,
     email: input.email,
+    channel,
   });
   if (thread.error || !thread.threadId) {
     return { ok: false, error: thread.error || "Failed to create thread" };
@@ -268,7 +280,6 @@ export async function recordInboundMessage(
   }
 
   const sentAt = new Date().toISOString();
-  const channel = input.channel === "email" ? "email" : "sms";
   const providerSid =
     input.providerSid ||
     (input.source === "simulated" ? `sim_in_${Date.now()}` : null);

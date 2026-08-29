@@ -302,18 +302,22 @@ export default function AppCrmPage() {
     marketLeads.find((lead) => lead.id === selectedLeadId) || marketLeads[0] || null;
   const activeMessages = activeLead
     ? messages
-        .filter((m) => m.leadId === activeLead.id)
+        .filter(
+          (m) =>
+            m.leadId === activeLead.id &&
+            (m.channel || "sms") === composeChannel,
+        )
         .sort((a, b) => a.sentAt.localeCompare(b.sentAt))
     : [];
   const seededMessages =
     activeLead && activeMessages.length === 0
       ? [
           {
-            id: `${activeLead.id}_seed`,
-            body: `Thread ready · ${activeLead.source}. Next: ${activeLead.nextAction || "First outreach"}`,
+            id: `${activeLead.id}_seed_${composeChannel}`,
+            body: `${composeChannel === "email" ? "Email" : "SMS"} thread ready · ${activeLead.source}. Next: ${activeLead.nextAction || "First outreach"}`,
             direction: "system" as const,
             sentAt: activeLead.updatedAt,
-            channel: undefined as "sms" | "email" | undefined,
+            channel: composeChannel,
             subject: undefined as string | undefined,
           },
         ]
@@ -785,9 +789,8 @@ export default function AppCrmPage() {
                 <div>
                   <h2 className="font-semibold">Inbox</h2>
                   <p className="text-sm text-[var(--muted)]">
-                    SMS and email on one thread. Outbound uses Twilio / Resend when live;
-                    inbound email needs a Resend webhook. Otherwise it is simulated and still
-                    logged here.
+                    SMS and email are separate threads. Switch SMS / Email above the composer
+                    to open the matching thread. Live send uses Twilio / Resend when configured.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -847,15 +850,40 @@ export default function AppCrmPage() {
                 {activeLead ? (
                   <>
                     <div className="border-b border-[var(--border)] px-4 py-3">
-                      <h3 className="font-semibold">{activeLead.name}</h3>
-                      <p className="text-sm text-[var(--muted)]">
-                        {(activeLead.phones || [])
-                          .map((phone) => `${phone.label}: ${phone.number}`)
-                          .join(" · ") || activeLead.phone}
-                        {activeLead.email
-                          ? `${activeLead.phone || (activeLead.phones || []).length ? " · " : ""}${activeLead.email}`
-                          : ""}
-                      </p>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <h3 className="font-semibold">{activeLead.name}</h3>
+                          <p className="text-sm text-[var(--muted)]">
+                            {composeChannel === "email" ? "Email thread" : "SMS thread"}
+                            {composeChannel === "email" && activeLead.email
+                              ? ` \u00b7 ${activeLead.email}`
+                              : ""}
+                            {composeChannel === "sms"
+                              ? ` \u00b7 ${(activeLead.phones || [])
+                                  .map((phone) => `${phone.label}: ${phone.number}`)
+                                  .join(" \u00b7 ") || activeLead.phone || "no number"}`
+                              : ""}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={composeChannel === "sms" ? "secondary" : "ghost"}
+                            onClick={() => setComposeChannel("sms")}
+                          >
+                            SMS
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={composeChannel === "email" ? "secondary" : "ghost"}
+                            onClick={() => setComposeChannel("email")}
+                          >
+                            Email
+                          </Button>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="flex-1 space-y-3 bg-[var(--surface-muted)] px-4 py-4">

@@ -375,15 +375,20 @@ export function createLocalRepository(
 
     async appendMessage(message) {
       const snap = requireSnapshot();
-      let thread = snap.threads.find((t) => t.leadId === message.leadId);
+      const channel = message.channel === "email" ? "email" : "sms";
+      let thread = snap.threads.find(
+        (t) => t.leadId === message.leadId && (t.channel || "sms") === channel,
+      );
       if (!thread) {
         const lead = snap.leads.find((l) => l.id === message.leadId);
         thread = {
           id: newId("thread"),
           orgId: snap.org.id,
           leadId: message.leadId,
-          phoneNumber: lead?.phones?.[0]?.number || lead?.phone || "",
+          phoneNumber: channel === "sms" ? lead?.phones?.[0]?.number || lead?.phone || "" : "",
           lastMessageAt: message.sentAt,
+          channel,
+          email: channel === "email" ? lead?.email : undefined,
         };
         snap.threads = [thread, ...snap.threads];
       }

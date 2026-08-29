@@ -198,6 +198,8 @@ export function createSupabaseRepository(
           leadId: String(t.lead_id),
           phoneNumber: String(t.phone_number),
           lastMessageAt: t.last_message_at || undefined,
+          channel: t.channel === "email" ? "email" : "sms",
+          email: t.email ? String(t.email) : undefined,
         })),
         callLogs,
         sequences,
@@ -778,12 +780,14 @@ export function createSupabaseRepository(
 
     async appendMessage(message) {
       let threadId = message.threadId;
+      const channel = message.channel === "email" ? "email" : "sms";
       if (!threadId) {
         const { data: existing } = await supabase
           .from("conversation_threads")
           .select("id")
           .eq("org_id", ctx.org.id)
           .eq("lead_id", message.leadId)
+          .eq("channel", channel)
           .maybeSingle();
         if (existing) threadId = String(existing.id);
         else {
@@ -793,6 +797,7 @@ export function createSupabaseRepository(
               org_id: ctx.org.id,
               lead_id: message.leadId,
               phone_number: "",
+              channel,
               last_message_at: message.sentAt,
             })
             .select("id")
