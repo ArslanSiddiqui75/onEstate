@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { buildPhoneContactMethod, formatDate, formatMoney, asErrorMessage } from "@/lib/utils";
+import { PhoneField } from "@/components/crm/phone-field";
 import type {
   AutomationRun,
   Contact,
@@ -21,6 +22,7 @@ import type {
   LeadActivity,
   LeadStage,
   LeadType,
+  Market,
   Priority,
 } from "@/types";
 import { PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
@@ -508,7 +510,7 @@ export default function AppCrmPage() {
             >
               <Input name="name" placeholder="Name" required />
               <Input name="email" type="email" placeholder="Email" required />
-              <Input name="phone" placeholder="Phone number" />
+              <PhoneField name="phone" market={market} className="sm:col-span-1" />
               <select
                 name="phoneSource"
                 className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
@@ -1399,6 +1401,7 @@ export default function AppCrmPage() {
               <LeadEditForm
                 lead={viewDetailLead}
                 busy={busy}
+                market={market}
                 showTerritory={flags.leadRouting}
                 onCancel={() => setEditingLead(false)}
                 onSubmit={(form) => {
@@ -1580,6 +1583,8 @@ export default function AppCrmPage() {
 
             <p className="text-xs text-[var(--muted)]">
               Paste CSV data with headers: <code>name, email, phone, type, budget, source</code>.
+              Phones need a country code (<code>+4477…</code> or <code>+92333…</code>, not{" "}
+              <code>0333…</code>).
             </p>
 
             <textarea
@@ -1703,7 +1708,7 @@ interface ContactsDirectoryProps {
   busy: boolean;
   setBusy: (v: boolean) => void;
   setError: (v: string | null) => void;
-  market: "uk" | "us";
+  market: Market;
   userId: string;
   addContact: (
     contact: Omit<Contact, "id" | "createdAt" | "updatedAt" | "market">,
@@ -1742,6 +1747,7 @@ function ContactsDirectory({
   busy,
   setBusy,
   setError,
+  market,
   userId,
   addContact,
   updateContact,
@@ -1845,11 +1851,16 @@ function ContactsDirectory({
       </div>
 
       {showForm && canEdit ? (
-        <ContactForm onSubmit={(form) => void handleSubmit(form)} busy={busy} />
+        <ContactForm
+          market={market}
+          onSubmit={(form) => void handleSubmit(form)}
+          busy={busy}
+        />
       ) : null}
 
       {editingContact && canEdit ? (
         <ContactForm
+          market={market}
           contact={editingContact}
           busy={busy}
           onSubmit={(form) => void handleSubmit(form, editingContact)}
@@ -2021,6 +2032,7 @@ function LeadEditForm({
   lead,
   members,
   busy,
+  market,
   showTerritory,
   onSubmit,
   onCancel,
@@ -2028,6 +2040,7 @@ function LeadEditForm({
   lead: Lead;
   members: { id: string; name: string }[];
   busy: boolean;
+  market: Market;
   showTerritory: boolean;
   onSubmit: (form: FormData) => void;
   onCancel: () => void;
@@ -2043,7 +2056,7 @@ function LeadEditForm({
     >
       <Input name="name" placeholder="Name" defaultValue={lead.name} required />
       <Input name="email" type="email" placeholder="Email" defaultValue={lead.email} required />
-      <Input name="phone" placeholder="Phone number" defaultValue={lead.phone} />
+      <PhoneField name="phone" market={market} defaultValue={lead.phone} />
       <Input name="source" placeholder="Lead source" defaultValue={lead.source} />
       <select
         name="type"
@@ -2124,11 +2137,13 @@ function LeadEditForm({
 
 function ContactForm({
   contact,
+  market,
   busy,
   onSubmit,
   onCancel,
 }: {
   contact?: Contact;
+  market: Market;
   busy: boolean;
   onSubmit: (form: FormData) => void;
   onCancel?: () => void;
@@ -2144,7 +2159,7 @@ function ContactForm({
       <Input name="name" placeholder="Full name" defaultValue={contact?.name} required />
       <Input name="company" placeholder="Company (optional)" defaultValue={contact?.company} />
       <Input name="email" type="email" placeholder="Email" defaultValue={contact?.email} />
-      <Input name="phone" placeholder="Phone number" defaultValue={contact?.phone} />
+      <PhoneField name="phone" market={market} defaultValue={contact?.phone} />
       <select
         name="category"
         className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"

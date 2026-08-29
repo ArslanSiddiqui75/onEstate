@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendOutboundSms } from "@/lib/messaging/service";
+import { isE164 } from "@/lib/phone/e164";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { sendTwilioSms } from "@/lib/twilio/client";
 
@@ -24,6 +25,16 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Cannot send SMS: contact opted out" },
       { status: 403 },
+    );
+  }
+
+  if (!isE164(parsed.data.to)) {
+    return NextResponse.json(
+      {
+        error:
+          "Phone needs a country code (save as +92… or +44…, not 0333…).",
+      },
+      { status: 400 },
     );
   }
 

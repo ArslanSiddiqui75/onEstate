@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizePhoneNumber } from "@/lib/utils";
+import { isE164 } from "@/lib/phone/e164";
 import { sendTwilioSms } from "@/lib/twilio/client";
 
 export interface InboundMessageInput {
@@ -157,6 +158,13 @@ export async function sendOutboundSms(
   }
   const body = input.body.trim();
   if (!body) return { ok: false, error: "Message body is required" };
+  if (!isE164(input.to)) {
+    return {
+      ok: false,
+      error:
+        "Phone needs a country code (save as +92… or +44…, not 0333…).",
+    };
+  }
 
   let result;
   try {

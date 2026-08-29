@@ -37,6 +37,7 @@ import { isSupabaseConfigured, createBrowserSupabaseClient } from "@/lib/supabas
 import { toast } from "@/components/ui/toast";
 import { getActiveBrand } from "@/lib/brand/config";
 import { buildPhoneContactMethod } from "@/lib/utils";
+import { isE164 } from "@/lib/phone/e164";
 import type { WorkspaceRepository } from "@/lib/data/repository";
 import {
   createLocalRepository,
@@ -1230,6 +1231,11 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       const phone = lead.phones?.find((p) => p.preferred) || lead.phones?.[0];
       const to = phone?.number || lead.phone;
       if (!to) throw new Error("Lead has no phone number");
+      if (!isE164(to)) {
+        throw new Error(
+          "Phone needs a country code (save as +92… or +44…, not 0333…). Edit the lead, pick a country, then send.",
+        );
+      }
       if (phone?.consent === "opted_out") {
         throw new Error("Cannot send SMS: contact opted out");
       }

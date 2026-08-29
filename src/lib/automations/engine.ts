@@ -7,6 +7,7 @@ import type {
 } from "@/types";
 import { sendOutboundSms } from "@/lib/messaging/service";
 import { sendOutboundEmail } from "@/lib/email/service";
+import { isE164 } from "@/lib/phone/e164";
 
 /**
  * Automation runtime.
@@ -244,6 +245,12 @@ async function executeStep(
         (phones || []).find((p) => p.preferred) || (phones || [])[0];
       const to = preferred?.number || lead.phone || "";
       if (!to) return { outcome: "skipped", detail: "Lead has no phone number" };
+      if (!isE164(to)) {
+        return {
+          outcome: "skipped",
+          detail: "Phone needs a country code (save as +92… or +44…, not 0333…)",
+        };
+      }
       if (preferred?.consent === "opted_out") {
         return { outcome: "skipped", detail: "Contact opted out of SMS" };
       }

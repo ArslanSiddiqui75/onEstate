@@ -1,7 +1,7 @@
 # 0nEstate (CertifiedUK / CertifiedUS) — Project Context
 
 > **Purpose**: This file preserves project context across model switches and chat sessions.
-> **Last updated**: 2026-08-29 (email channel shipped)
+> **Last updated**: 2026-08-29 (E.164 country-code picker)
 
 ---
 
@@ -19,7 +19,9 @@ Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page
 
 ### Shipped (do not rebuild)
 - **CRM automations actually run** — `3f97ea5`. Engine `src/lib/automations/engine.ts`. Triggers: `addLead` → `lead_created`, `updateLeadStage` → `stage_changed`. `wait` steps park until `/api/automations/cron/run` or CRM page flush. `update_stage` does **not** re-fire `stage_changed`.
-- **Messaging** — simulated inbound in CRM inbox (`/api/messaging/inbound`); `MESSAGING_MODE`; Twilio still cannot deliver to PK numbers.
+- **Messaging** — simulated inbound in CRM inbox (`/api/messaging/inbound`); `MESSAGING_MODE`; Twilio still cannot deliver to PK numbers even with `+92`.
+- **Lead edit** — pipeline pencil or Edit in the lead drawer. `LeadPatch` + `updateLead` (session + supabase). Score recomputes; stage change still fires `stage_changed`.
+- **Phone country codes (E.164)** — dial-code picker on add/edit lead and contacts. `0333…` + Pakistan → `+92333…`. SMS send/automations refuse numbers without `+`. Files: `src/lib/phone/e164.ts`, `src/components/crm/phone-field.tsx`. Not a full telephony product; default dial is UK `+44` / US `+1`.
 - **Email channel** — Resend when `RESEND_API_KEY` + `EMAIL_FROM` are set, else simulated and still logged. Automation step `send_email`. CRM Inbox composes SMS or email on the same thread. Files: `src/lib/email/{capabilities,client,service}.ts`, `/api/email/send`, `/api/email/status`. Migration **014**.
 - **Public websites + lead capture** — `5c7c5be`. `/site/[slug]`; `src/proxy.ts` rewrites custom domains; `POST /api/public/leads` creates a CRM lead and fires `lead_created` automations. Unpublished sites stay private.
 - **Website section palette + reorder** — curated blocks (hero/listings/about/contact + optional testimonials/stats/cta), show/hide, up/down reorder, per-block style variants. Catalog: `src/lib/website/sections.ts`. Footer is always last. Older payloads hydrate from `show*` flags.
