@@ -8,6 +8,7 @@ import type {
   LeadActivity,
   LeadPatch,
   LeadStage,
+  LeadTask,
   LeadRoutingSettings,
   Listing,
   ListingStatus,
@@ -136,6 +137,9 @@ export interface WorkspaceRepository {
   upsertEnrollment(
     input: Omit<SequenceEnrollment, "id"> & { id?: string },
   ): Promise<SequenceEnrollment>;
+  createLeadTask(
+    input: Omit<LeadTask, "id"> & { id?: string },
+  ): Promise<LeadTask>;
   resolveTask(taskId: string): Promise<void>;
   listOpenTasks(): Promise<WorkspaceSnapshot["tasks"]>;
   getWebsite(): Promise<WebsiteSite | null>;

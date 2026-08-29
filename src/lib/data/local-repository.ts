@@ -14,6 +14,7 @@ import type {
   TransactionDeal,
 } from "@/types";
 import type { WorkspaceRepository } from "@/lib/data/repository";
+import { mergeDefaultSequences } from "@/lib/sequences/catalog";
 import {
   loadWorkspace,
   newId,
@@ -90,6 +91,17 @@ function requireSnapshot(): WorkspaceSnapshot {
     media: Array.isArray(post.media) ? post.media : [],
   }));
   if (!snap.contacts) snap.contacts = [];
+  if (!snap.tasks) snap.tasks = [];
+  if (!Array.isArray(snap.enrollments)) snap.enrollments = [];
+  snap.enrollments = (snap.enrollments || []).map((e) => ({
+    ...e,
+    currentStep: e.currentStep ?? 0,
+  }));
+  snap.sequences = mergeDefaultSequences(
+    snap.sequences || [],
+    snap.org.id,
+    () => newId("seq"),
+  );
   if (!Array.isArray(snap.automations)) {
     const now = new Date().toISOString();
     snap.automations = [
@@ -405,7 +417,18 @@ export function createLocalRepository(
     },
 
     async listSequences() {
-      return requireSnapshot().sequences;
+      const snap = requireSnapshot();
+      const next = mergeDefaultSequences(snap.sequences || [], snap.org.id, () =>
+        newId("seq"),
+      );
+      const changed =
+        next.length !== snap.sequences.length ||
+        next.some((seq, i) => seq.kind !== snap.sequences[i]?.kind);
+      if (changed) {
+        snap.sequences = next;
+        commit(snap);
+      }
+      return next;
     },
 
     async listAutomations() {
@@ -467,12 +490,29 @@ export function createLocalRepository(
       );
       const row: SequenceEnrollment = {
         ...input,
+        currentStep: input.currentStep ?? 0,
         id: input.id || newId("enr"),
       };
       if (existing >= 0) snap.enrollments[existing] = row;
       else snap.enrollments = [row, ...snap.enrollments];
       commit(snap);
       return row;
+    },
+
+    async createLeadTask(input) {
+      const snap = requireSnapshot();
+      const created = {
+        id: input.id || newId("task"),
+        leadId: input.leadId,
+        orgId: input.orgId,
+        title: input.title,
+        dueAt: input.dueAt,
+        channel: input.channel,
+        status: input.status || "open",
+      };
+      snap.tasks = [created, ...snap.tasks];
+      commit(snap);
+      return created;
     },
 
     async resolveTask(taskId) {

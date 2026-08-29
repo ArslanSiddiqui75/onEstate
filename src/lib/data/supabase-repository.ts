@@ -9,7 +9,6 @@ import type {
   LeadStage,
   Listing,
   ListingStatus,
-  MessageSequence,
   OrgMember,
   PlanId,
   SequenceEnrollment,
@@ -26,6 +25,8 @@ import { newId } from "@/lib/data/workspace-store";
 import { toast } from "@/components/ui/toast";
 import { fallbackSlug, normalizeHost } from "@/lib/website/slug";
 import { asErrorMessage } from "@/lib/utils";
+import { ensureDefaultSequences } from "@/lib/sequences/ensure";
+import { mapSequenceRow } from "@/lib/sequences/catalog";
 
 function mapLead(row: Record<string, unknown>, phones: Lead["phones"] = []): Lead {
   return {
@@ -880,21 +881,19 @@ export function createSupabaseRepository(
     },
 
     async listSequences() {
+      try {
+        await ensureDefaultSequences(supabase, ctx.org.id);
+      } catch (error) {
+        console.warn("ensureDefaultSequences", error);
+      }
       const { data, error } = await supabase
         .from("message_sequences")
         .select("*")
-        .eq("org_id", ctx.org.id);
+        .eq("org_id", ctx.org.id)
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data || []).map(
-        (s): MessageSequence => ({
-          id: String(s.id),
-          orgId: String(s.org_id),
-          title: String(s.title),
-          description: String(s.description || ""),
-          status: s.status,
-          steps: Array.isArray(s.steps) ? s.steps.map(String) : [],
-          createdAt: String(s.created_at),
-        }),
+      return (data || []).map((s) =>
+        mapSequenceRow(s as Record<string, unknown>),
       );
     },
 
@@ -1069,6 +1068,8 @@ export function createSupabaseRepository(
           status: e.status,
           followUp: Boolean(e.follow_up),
           nurture: Boolean(e.nurture),
+          currentStep: Number(e.current_step || 0),
+          lastRanAt: e.last_ran_at ? String(e.last_ran_at) : undefined,
         }),
       );
     },
@@ -1085,6 +1086,9 @@ export function createSupabaseRepository(
             status: input.status,
             follow_up: input.followUp,
             nurture: input.nurture,
+            ...(input.currentStep !== undefined
+              ? { current_step: input.currentStep }
+              : {}),
           },
           { onConflict: "sequence_id,lead_id" },
         )
@@ -1099,6 +1103,33 @@ export function createSupabaseRepository(
         status: input.status,
         followUp: input.followUp,
         nurture: input.nurture,
+        currentStep: Number(data.current_step || input.currentStep || 0),
+        lastRanAt: data.last_ran_at ? String(data.last_ran_at) : input.lastRanAt,
+      };
+    },
+
+    async createLeadTask(input) {
+      const { data, error } = await supabase
+        .from("lead_tasks")
+        .insert({
+          lead_id: input.leadId,
+          org_id: ctx.org.id,
+          title: input.title,
+          due_at: input.dueAt || null,
+          channel: input.channel,
+          status: input.status || "open",
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      return {
+        id: String(data.id),
+        leadId: String(data.lead_id),
+        orgId: ctx.org.id,
+        title: String(data.title),
+        dueAt: data.due_at ? String(data.due_at) : undefined,
+        channel: data.channel,
+        status: data.status,
       };
     },
 

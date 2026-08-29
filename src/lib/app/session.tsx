@@ -38,6 +38,11 @@ import { toast } from "@/components/ui/toast";
 import { getActiveBrand } from "@/lib/brand/config";
 import { buildPhoneContactMethod } from "@/lib/utils";
 import { isE164 } from "@/lib/phone/e164";
+import {
+  findSequenceByKind,
+  renderSequenceTemplate,
+  sequenceVarsFromLead,
+} from "@/lib/sequences/catalog";
 import type { WorkspaceRepository } from "@/lib/data/repository";
 import {
   createLocalRepository,
@@ -250,6 +255,10 @@ interface AppState {
     followUp: boolean;
     nurture: boolean;
   }) => Promise<void>;
+  advanceSequence: (input: {
+    leadId: string;
+    sequenceId: string;
+  }) => Promise<{ ok: boolean; detail?: string; completed?: boolean }>;
   createAutomation: (
     automation: Omit<Automation, "id" | "createdAt" | "updatedAt" | "orgId">,
   ) => Promise<void>;
@@ -1358,23 +1367,152 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [leads, org, refresh],
   );
 
+  const advanceSequence = useCallback(
+    async (input: { leadId: string; sequenceId: string }) => {
+      if (!repoRef.current || !org) {
+        throw new Error("Workspace is not loaded");
+      }
+
+      if (authMode === "supabase") {
+        const token = await getAuthToken();
+        if (!token) throw new Error("Sign in required");
+        const res = await fetch("/api/sequences/advance", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(input),
+        });
+        const json = (await res.json()) as {
+          ok?: boolean;
+          error?: string;
+          detail?: string;
+          completed?: boolean;
+        };
+        await refresh();
+        if (!res.ok) throw new Error(json.error || "Failed to send next step");
+        return {
+          ok: true,
+          detail: json.detail,
+          completed: json.completed,
+        };
+      }
+
+      const seqs = await repoRef.current.listSequences();
+      const sequence = seqs.find((s) => s.id === input.sequenceId);
+      if (!sequence) throw new Error("Sequence not found");
+      const enrolled = await repoRef.current.listEnrollments(input.leadId);
+      const enrollment = enrolled.find((e) => e.sequenceId === input.sequenceId);
+      if (!enrollment) throw new Error("Lead is not enrolled");
+      if (enrollment.status === "paused") {
+        throw new Error("Enrollment is paused");
+      }
+      const steps = sequence.steps;
+      const currentStep = enrollment.currentStep || 0;
+      if (currentStep >= steps.length) {
+        await repoRef.current.upsertEnrollment({
+          ...enrollment,
+          status: "completed",
+        });
+        await refresh();
+        return { ok: true, completed: true, detail: "Sequence already finished" };
+      }
+
+      const lead = leads.find((l) => l.id === input.leadId);
+      if (!lead) throw new Error("Lead not found");
+      const step = steps[currentStep];
+      const vars = sequenceVarsFromLead(lead);
+      let detail = step.label;
+
+      if (step.type === "sms") {
+        const body = renderSequenceTemplate(step.body || "", vars).trim();
+        if (!body) throw new Error("Empty SMS body");
+        const result = await sendSms({ leadId: lead.id, body });
+        detail = `SMS sent (${result.mode})`;
+      } else if (step.type === "email") {
+        const body = renderSequenceTemplate(step.body || "", vars).trim();
+        const subject = renderSequenceTemplate(
+          step.subject || "Following up",
+          vars,
+        ).trim();
+        if (!body) throw new Error("Empty email body");
+        const result = await sendEmail({
+          leadId: lead.id,
+          subject,
+          body,
+        });
+        detail = `Email sent (${result.mode})`;
+      } else {
+        const title = renderSequenceTemplate(step.label || "Follow up", vars);
+        await repoRef.current.createLeadTask({
+          leadId: lead.id,
+          orgId: org.id,
+          title,
+          channel: step.channel || "Call",
+          status: "open",
+          dueAt: new Date(Date.now() + 24 * 3_600_000).toISOString(),
+        });
+        detail = `Task created: ${title}`;
+      }
+
+      const next = currentStep + 1;
+      const done = next >= steps.length;
+      await repoRef.current.upsertEnrollment({
+        ...enrollment,
+        currentStep: next,
+        lastRanAt: new Date().toISOString(),
+        status: done ? "completed" : "active",
+      });
+      await refresh();
+      return { ok: true, completed: done, detail };
+    },
+    [authMode, getAuthToken, leads, org, refresh, sendEmail, sendSms],
+  );
+
   const setLeadWorkflow = useCallback(
     async (input: { leadId: string; followUp: boolean; nurture: boolean }) => {
       if (!repoRef.current || !org) return;
       const seqs = await repoRef.current.listSequences();
-      const primary = seqs[0];
-      if (!primary) return;
-      await repoRef.current.upsertEnrollment({
-        orgId: org.id,
-        sequenceId: primary.id,
-        leadId: input.leadId,
-        status: "active",
+      const followSeq = findSequenceByKind(seqs, "follow_up") || seqs[0];
+      const nurtureSeq = findSequenceByKind(seqs, "nurture");
+      const existing = await repoRef.current.listEnrollments(input.leadId);
+
+      async function apply(
+        seq: (typeof seqs)[number] | undefined,
+        enabled: boolean,
+        flags: { followUp: boolean; nurture: boolean },
+      ) {
+        if (!seq) return;
+        const prev = existing.find((e) => e.sequenceId === seq.id);
+        const restart = enabled && prev?.status === "completed";
+        await repoRef.current!.upsertEnrollment({
+          orgId: org!.id,
+          sequenceId: seq.id,
+          leadId: input.leadId,
+          status: enabled ? "active" : "paused",
+          followUp: flags.followUp,
+          nurture: flags.nurture,
+          currentStep: restart ? 0 : prev?.currentStep || 0,
+          lastRanAt: prev?.lastRanAt,
+        });
+        const wasActive = prev?.status === "active";
+        if (enabled && (!wasActive || restart)) {
+          await advanceSequence({ leadId: input.leadId, sequenceId: seq.id });
+        }
+      }
+
+      await apply(followSeq, input.followUp, {
         followUp: input.followUp,
+        nurture: false,
+      });
+      await apply(nurtureSeq, input.nurture, {
+        followUp: false,
         nurture: input.nurture,
       });
       await refresh();
     },
-    [org, refresh],
+    [advanceSequence, org, refresh],
   );
 
   const createAutomation = useCallback(
@@ -1661,6 +1799,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       receiveInboundSms,
       logCall,
       setLeadWorkflow,
+      advanceSequence,
       createAutomation,
       updateAutomation,
       deleteAutomation,
@@ -1724,6 +1863,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       receiveInboundSms,
       logCall,
       setLeadWorkflow,
+      advanceSequence,
       createAutomation,
       updateAutomation,
       deleteAutomation,

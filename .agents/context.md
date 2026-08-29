@@ -1,23 +1,23 @@
 # 0nEstate (CertifiedUK / CertifiedUS) — Project Context
 
 > **Purpose**: This file preserves project context across model switches and chat sessions.
-> **Last updated**: 2026-08-29 (E.164 country-code picker)
+> **Last updated**: 2026-08-29 (message sequence runner shipped)
 
 ---
 
-## Chat handoff — NEXT: Message sequences (2026-08-29)
+## Chat handoff — NEXT: Social live-test (2026-08-29)
 
 Use this block when starting a **new Cursor chat**. Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.app
 
 If Arslan says **"continue"** / **"next task"** with no extra detail: do the first unchecked item under **Pick up here**. Do not redo shipped work below.
 
 ### Pick up here (ordered)
-1. **[START HERE IN CODE] Message sequence runner** — seeded sequences + enrollment toggles; no scheduler (automations already cover drip)
-2. Live-test Facebook / LinkedIn / X publish (IG is verified)
+1. **[START HERE] Live-test Facebook / LinkedIn / X publish** (IG is verified)
 
 Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page IA. Org switcher — **skip**. Themes stay at the current 4 until Arslan supplies new UIs.
 
 ### Shipped (do not rebuild)
+- **Message sequence runner** — seeded follow-up + nurture playbooks; enroll toggles send the next step now; **Send next** for the rest. No Day-N scheduler (automations still own `wait`). Files: `src/lib/sequences/{catalog,ensure,engine}.ts`, `/api/sequences/advance`, CRM Automations tab. Migration **015**.
 - **CRM automations actually run** — `3f97ea5`. Engine `src/lib/automations/engine.ts`. Triggers: `addLead` → `lead_created`, `updateLeadStage` → `stage_changed`. `wait` steps park until `/api/automations/cron/run` or CRM page flush. `update_stage` does **not** re-fire `stage_changed`.
 - **Messaging** — simulated inbound in CRM inbox (`/api/messaging/inbound`); `MESSAGING_MODE`; Twilio still cannot deliver to PK numbers even with `+92`.
 - **Lead edit** — pipeline pencil or Edit in the lead drawer. `LeadPatch` + `updateLead` (session + supabase). Score recomputes; stage change still fires `stage_changed`.
@@ -27,10 +27,10 @@ Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page
 - **Website section palette + reorder** — curated blocks (hero/listings/about/contact + optional testimonials/stats/cta), show/hide, up/down reorder, per-block style variants. Catalog: `src/lib/website/sections.ts`. Footer is always last. Older payloads hydrate from `show*` flags.
 - **Lead routing + scoring** — `src/lib/crm/{scoring,routing}.ts`. Team/Enterprise: round-robin / territory / least-open / creator. Score is computed (source, completeness, type, priority), not typed. Website capture uses the same engines. CRM → Routing tab. Solo still assigns to the person who adds the lead.
 - **Domain CNAME verify + SSL** — live DNS (CNAME chain + apex A → Vercel IPs) and TLS probe on 443. Auth via Bearer (`resolveProfileFromRequest`); persist `custom_domain` + payload status with service role. Optional `VERCEL_TOKEN` + `VERCEL_PROJECT_ID` attaches the hostname so certificates can issue. UI: copyable records, apex vs www. Files: `src/lib/website/{domain,domain-records}.ts`, `src/components/website/domain-panel.tsx`, `src/app/api/website/domain/verify/route.ts`.
-- **Hosted migrations 010–014 applied** on project `pruezuqdsofegzhbodnj`. 014 adds `messages.channel/subject` and `conversation_threads.email`.
+- **Hosted migrations 010–015 applied** on project `pruezuqdsofegzhbodnj`. 015 creates `message_sequences` / `sequence_enrollments` (they were missing on hosted).
 
 ### Key files for next work
-Message sequences (`message_sequences`, enrollment toggles) · automations already drip
+Facebook / LinkedIn / X live publish smoke (IG already verified)
 
 ### Habits
 Commit + push major changes automatically (`.cursor/rules/git-auto-push.mdc`). User is **Arslan**. Verify UI in the browser when changing web app behavior.
@@ -86,7 +86,7 @@ UI shows **Workspace** name + short org id in the shell. Wrong email = empty Acc
 | Schedule never fires on Hobby | Daily Vercel cron + cron-job.org + page flush | `vercel.json`, `publish-due`, Social `DuePostsFlusher` — `7069954` |
 
 ### Still open / next product work
-- [ ] **Message sequence runner** — see top handoff — **START HERE NEXT**
+- [x] **Message sequence runner** — shipped (seeded playbooks + enroll / Send next; no extra scheduler)
 - [ ] Live-test Facebook / LinkedIn / X (deferred)
 - [ ] Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe
 - Repo habit: **commit + push major changes automatically** (see `.cursor/rules/git-auto-push.mdc`)
@@ -195,7 +195,7 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 ## Module Completion Status
 
 ### ✅ Fully Built (just need env keys / migrations to go live)
-1. **CRM & Lead Management** (~99%) — Pipeline, contacts, SMS, **email**, call logging, automation runtime, **lead routing + scoring**. Missing: sequence scheduler
+1. **CRM & Lead Management** (~99%) — Pipeline, contacts, SMS, **email**, call logging, automation runtime, **lead routing + scoring**, **sequence enroll / Send next**. Timed drip stays on automations.
 2. **Listings & Portal Sync** (~85%) — Table, search, sync buttons, portal adapters (export-ready; live APIs need partnerships)
 3. **Transactions & Compliance** (~80%) — Deal cards, checklists, progress bars, e-sign indicators
 4. **Social Media Tools** (~85%) — All 4 platforms with real OAuth; IG publish + schedule verified; FB/LI/X live-test deferred
@@ -203,7 +203,6 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 6. **Website Builder** (~95%) — 4 themes, visual editor, public `/site/[slug]` + custom-domain proxy, contact form → CRM leads, **section palette + reorder + variants**, **live DNS verify + TLS probe** (optional Vercel domain attach).
 
 ### 🔴 Major Work Remaining
-- Message sequence runner (optional — automations already drip)
 - FB / LinkedIn / X live publish smoke
 
 ---
@@ -309,7 +308,7 @@ Visual editor + public render + lead capture + **section palette** + **CNAME/SSL
 Runtime + simulated inbound + **email send** **done**. Hosted migrations 010–014 **applied**. Routing + scoring **done**.
 
 ### 4. Lead routing + scoring (2026-08-29)
-Done. Next CRM work: sequence runner (optional).
+Done. Sequence runner shipped (enroll / Send next; automations still drip).
 
 ---
 

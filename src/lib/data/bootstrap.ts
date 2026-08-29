@@ -1,4 +1,5 @@
 import type { Market, OrgMember, PlanId, Role } from "@/types";
+import { defaultSequences } from "@/lib/sequences/catalog";
 import {
   newId,
   type WorkspaceOrg,
@@ -43,35 +44,10 @@ export function createEmptyWorkspace(input: {
     messages: [],
     threads: [],
     callLogs: [],
-    sequences: [
-      {
-        id: newId("seq"),
-        orgId: input.org.id,
-        title: "New buyer follow-up",
-        description: "Day 0 intro text, Day 2 call, Day 5 reminder.",
-        status: "active",
-        steps: ["Intro SMS", "Call attempt", "Reminder SMS"],
-        createdAt: now,
-      },
-      {
-        id: newId("seq"),
-        orgId: input.org.id,
-        title: "Valuation nurture",
-        description: "Appraisal reminder, seller FAQ, valuation re-engagement.",
-        status: "draft",
-        steps: ["Valuation SMS", "FAQ pack", "Re-engage"],
-        createdAt: now,
-      },
-      {
-        id: newId("seq"),
-        orgId: input.org.id,
-        title: "Viewing no-show recovery",
-        description: "Missed viewing text, rebook prompt, agent escalation.",
-        status: "active",
-        steps: ["Apology SMS", "Rebook link", "Escalate"],
-        createdAt: now,
-      },
-    ],
+    sequences: defaultSequences(input.org.id, now).map((seq) => ({
+      ...seq,
+      id: newId("seq"),
+    })),
     automations: [
       {
         id: newId("auto"),

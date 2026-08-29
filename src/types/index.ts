@@ -288,13 +288,27 @@ export interface CallLog {
   createdAt: string;
 }
 
+export type SequenceKind = "follow_up" | "nurture" | "custom";
+
+export type SequenceStepType = "sms" | "email" | "task";
+
+export interface SequenceStep {
+  id: string;
+  type: SequenceStepType;
+  label: string;
+  body?: string;
+  subject?: string;
+  channel?: "SMS" | "Call" | "Email";
+}
+
 export interface MessageSequence {
   id: string;
   orgId: string;
   title: string;
   description: string;
   status: "draft" | "active" | "paused";
-  steps: string[];
+  kind: SequenceKind;
+  steps: SequenceStep[];
   createdAt: string;
 }
 
@@ -397,6 +411,8 @@ export interface SequenceEnrollment {
   status: "active" | "paused" | "completed";
   followUp: boolean;
   nurture: boolean;
+  currentStep: number;
+  lastRanAt?: string;
 }
 
 export interface LeadTask {

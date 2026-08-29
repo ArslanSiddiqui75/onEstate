@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { buildPhoneContactMethod, formatDate, formatMoney, asErrorMessage } from "@/lib/utils";
 import { PhoneField } from "@/components/crm/phone-field";
+import { SequenceCatalog, SequenceProgress } from "@/components/crm/sequence-panel";
+import { findSequenceByKind } from "@/lib/sequences/catalog";
 import type {
   AutomationRun,
   Contact,
@@ -113,6 +115,7 @@ export default function AppCrmPage() {
     messages,
     callLogs,
     automations,
+    sequences,
     enrollments,
     tasks,
     addLead,
@@ -129,6 +132,7 @@ export default function AppCrmPage() {
     receiveInboundSms,
     logCall,
     setLeadWorkflow,
+    advanceSequence,
     createAutomation,
     updateAutomation,
     deleteAutomation,
@@ -319,14 +323,21 @@ export default function AppCrmPage() {
           subject: m.subject,
         }));
 
-  const enrollment = activeLead
-    ? enrollments.find((e) => e.leadId === activeLead.id)
+  const followSeq = findSequenceByKind(sequences, "follow_up") || sequences[0];
+  const nurtureSeq = findSequenceByKind(sequences, "nurture");
+  const followEnrollment = activeLead && followSeq
+    ? enrollments.find(
+        (e) => e.leadId === activeLead.id && e.sequenceId === followSeq.id,
+      )
+    : undefined;
+  const nurtureEnrollment = activeLead && nurtureSeq
+    ? enrollments.find(
+        (e) => e.leadId === activeLead.id && e.sequenceId === nurtureSeq.id,
+      )
     : undefined;
   const activeWorkflow = {
-    followUp: enrollment?.followUp ?? (activeLead?.stage !== "won" && activeLead?.stage !== "lost"),
-    nurture:
-      enrollment?.nurture ??
-      (activeLead?.stage === "new" || activeLead?.stage === "contacted"),
+    followUp: followEnrollment?.status === "active",
+    nurture: nurtureEnrollment?.status === "active",
   };
 
   const callQueue = marketLeads
@@ -1080,6 +1091,15 @@ export default function AppCrmPage() {
         </TabsContent>
 
         <TabsContent value="automations" className="mt-4 space-y-4">
+          <section className="hero-card rounded-[2rem] p-4">
+            <h2 className="font-semibold">Sequences</h2>
+            <p className="text-sm text-[var(--muted)]">
+              Playbooks you enroll a lead onto. Turning a toggle on sends the next
+              step now. Timed drips stay on Automations below.
+            </p>
+            <SequenceCatalog sequences={sequences} />
+          </section>
+
           <AutomationBuilder
             automations={automations}
             canEdit={canEdit}
@@ -1275,33 +1295,116 @@ export default function AppCrmPage() {
             <section className="hero-card rounded-[2rem] p-4">
               <h2 className="font-semibold">Lead enrollment</h2>
               <p className="text-sm text-[var(--muted)]">
-                Quick toggles for {activeLead.name} on the primary follow-up sequence.
+                Enroll {activeLead.name}. The first unsent step goes out when you
+                switch a sequence on.
               </p>
               <div className="mt-4 space-y-3">
                 <WorkflowRow
                   title="Follow-up sequence"
-                  description="Reminder texts after contact and viewing stages."
+                  description="Intro SMS, a call task, then a reminder. Twilio still cannot deliver to PK numbers."
                   checked={Boolean(activeWorkflow.followUp)}
                   onChange={(checked) => {
-                    void setLeadWorkflow({
-                      leadId: activeLead.id,
-                      followUp: checked,
-                      nurture: Boolean(activeWorkflow.nurture),
-                    });
+                    void (async () => {
+                      setBusy(true);
+                      try {
+                        await setLeadWorkflow({
+                          leadId: activeLead.id,
+                          followUp: checked,
+                          nurture: Boolean(activeWorkflow.nurture),
+                        });
+                        toast.success(
+                          checked
+                            ? "Follow-up on — first unsent step sent"
+                            : "Follow-up paused",
+                        );
+                      } catch (err) {
+                        const msg = asErrorMessage(err, "Could not update enrollment");
+                        setError(msg);
+                        toast.error(msg);
+                      } finally {
+                        setBusy(false);
+                      }
+                    })();
                   }}
                 />
+                {followSeq ? (
+                  <SequenceProgress
+                    sequence={followSeq}
+                    enrollment={followEnrollment}
+                    busy={busy}
+                    onAdvance={() => {
+                      void (async () => {
+                        setBusy(true);
+                        try {
+                          const result = await advanceSequence({
+                            leadId: activeLead.id,
+                            sequenceId: followSeq.id,
+                          });
+                          toast.success(result.detail || "Next step sent");
+                        } catch (err) {
+                          const msg = asErrorMessage(err, "Could not send next step");
+                          setError(msg);
+                          toast.error(msg);
+                        } finally {
+                          setBusy(false);
+                        }
+                      })();
+                    }}
+                  />
+                ) : null}
                 <WorkflowRow
                   title="Long-tail nurture"
-                  description="Keep colder leads warm with periodic check-ins."
+                  description="Keep colder leads warm. No automatic Day-N wait."
                   checked={Boolean(activeWorkflow.nurture)}
                   onChange={(checked) => {
-                    void setLeadWorkflow({
-                      leadId: activeLead.id,
-                      followUp: Boolean(activeWorkflow.followUp),
-                      nurture: checked,
-                    });
+                    void (async () => {
+                      setBusy(true);
+                      try {
+                        await setLeadWorkflow({
+                          leadId: activeLead.id,
+                          followUp: Boolean(activeWorkflow.followUp),
+                          nurture: checked,
+                        });
+                        toast.success(
+                          checked
+                            ? "Nurture on — first unsent step sent"
+                            : "Nurture paused",
+                        );
+                      } catch (err) {
+                        const msg = asErrorMessage(err, "Could not update enrollment");
+                        setError(msg);
+                        toast.error(msg);
+                      } finally {
+                        setBusy(false);
+                      }
+                    })();
                   }}
                 />
+                {nurtureSeq ? (
+                  <SequenceProgress
+                    sequence={nurtureSeq}
+                    enrollment={nurtureEnrollment}
+                    busy={busy}
+                    onAdvance={() => {
+                      void (async () => {
+                        setBusy(true);
+                        try {
+                          const result = await advanceSequence({
+                            leadId: activeLead.id,
+                            sequenceId: nurtureSeq.id,
+                          });
+                          toast.success(result.detail || "Next step sent");
+                        } catch (err) {
+                          const msg = asErrorMessage(err, "Could not send next step");
+                          setError(msg);
+                          toast.error(msg);
+                        } finally {
+                          setBusy(false);
+                        }
+                      })();
+                    }}
+                  />
+                ) : null}
               </div>
             </section>
           ) : null}
