@@ -411,6 +411,8 @@ export interface WebsiteSite {
   email: string;
   published: boolean;
   updatedAt: string;
+  /** Public path segment: /site/<slug> */
+  slug?: string;
   customDomain?: string;
   themeColor?: string;
   showHero?: boolean;

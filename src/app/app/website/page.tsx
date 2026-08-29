@@ -5,6 +5,7 @@ import {
   Globe,
   CheckCircle2,
   AlertCircle,
+  ExternalLink,
   Loader2,
   ShieldCheck,
   Monitor,
@@ -86,6 +87,9 @@ export default function AppWebsitePage() {
     site.customDomain || `${org.name.toLowerCase().replace(/\s+/g, "")}.0nestate.app`;
   const domainStatus = site.domainStatus || "none";
   const sslStatus = site.sslStatus || "none";
+  // Slug is assigned server-side on first save, so the link only appears once
+  // the site has been persisted.
+  const publicPath = site.slug ? `/site/${site.slug}` : null;
 
   const updateDraft = (patch: Partial<WebsiteSite>) => {
     setDraft({ ...site, ...patch });
@@ -204,6 +208,17 @@ export default function AppWebsitePage() {
         <Badge tone={site.published ? "success" : "warning"}>
           {site.published ? "Published" : "Draft"}
         </Badge>
+        {site.published && publicPath ? (
+          <a
+            href={publicPath}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-xs underline text-[var(--muted)] hover:text-[var(--foreground)]"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            View live site
+          </a>
+        ) : null}
         {canEdit ? (
           <>
             <Button

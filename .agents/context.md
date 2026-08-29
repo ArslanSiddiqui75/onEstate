@@ -229,6 +229,17 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 
 ## Integration Status
 
+### Website → public render + lead capture — ✅ (2026-08-29)
+- Public tenant site at **`/site/[slug]`** (server component, `revalidate = 60`)
+- Resolver `src/lib/website/public-site.ts` — matches `websites.slug` OR `custom_domain`, service role, **unpublished stays private**
+- Custom domains: `src/proxy.ts` rewrites non-platform hosts `/` → `/site/<host>` (Next 16 renamed `middleware` → `proxy`)
+- Migration `011_public_sites.sql` — `websites.slug/custom_domain/published` columns + unique indexes, `leads.capture_source`, `lead_capture_events`
+- `saveWebsite` now writes those routing columns (payload alone can't be looked up by host)
+- Only `active` / `under_offer` listings render publicly (max 12)
+- Capture: **`POST /api/public/leads`** — honeypot + per-IP rate limit (5/min), creates lead + `lead_phone_numbers` + activity + capture event, then fires `lead_created` automations
+- `WebsiteCanvas` takes an optional `contactForm` node; editor keeps placeholders, public render gets the live form
+- Editor shows a "View live site" link once published
+
 ### CRM automations — ✅ Runtime built (2026-08-29)
 Before this, `automations` rows were config that nothing executed.
 - Engine: `src/lib/automations/engine.ts` — enqueue on trigger, walk steps, park on `wait`

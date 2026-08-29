@@ -24,6 +24,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { WorkspaceOrg, WorkspaceSnapshot, WorkspaceUser } from "@/lib/data/workspace-store";
 import { newId } from "@/lib/data/workspace-store";
 import { toast } from "@/components/ui/toast";
+import { fallbackSlug, normalizeHost } from "@/lib/website/slug";
 
 function mapLead(row: Record<string, unknown>, phones: Lead["phones"] = []): Lead {
   return {
@@ -1136,7 +1137,7 @@ export function createSupabaseRepository(
 
       const { data, error } = await supabase
         .from("websites")
-        .select("payload, updated_at")
+        .select("payload, slug, updated_at")
         .eq("org_id", ctx.org.id)
         .maybeSingle();
       if (error || !data?.payload) return fallback;
@@ -1147,16 +1148,25 @@ export function createSupabaseRepository(
         ...payload,
         id: ctx.org.id,
         orgId: ctx.org.id,
+        slug: data.slug ? String(data.slug) : payload.slug,
         updatedAt: String(data.updated_at || fallback.updatedAt),
       };
     },
 
     async saveWebsite(site) {
-      const payload = { ...site, orgId: ctx.org.id, id: ctx.org.id };
+      // `slug`, `custom_domain` and `published` are also written as columns
+      // because the public renderer resolves a host without reading payloads.
+      const slug = site.slug?.trim() || fallbackSlug(ctx.org.id, ctx.org.name);
+      const payload = { ...site, slug, orgId: ctx.org.id, id: ctx.org.id };
       const { error } = await supabase.from("websites").upsert(
         {
           org_id: ctx.org.id,
           payload,
+          slug,
+          custom_domain: site.customDomain?.trim()
+            ? normalizeHost(site.customDomain)
+            : null,
+          published: Boolean(site.published),
           updated_at: new Date().toISOString(),
         },
         { onConflict: "org_id" },

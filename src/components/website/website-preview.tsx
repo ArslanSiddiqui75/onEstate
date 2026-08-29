@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { formatMoney } from "@/lib/utils";
 import { getTemplate } from "@/lib/website/templates";
@@ -31,6 +32,7 @@ export function WebsiteCanvas({
   uploadingHero,
   onChange,
   onHeroFile,
+  contactForm,
 }: {
   site: WebsiteSite;
   orgName: string;
@@ -40,6 +42,8 @@ export function WebsiteCanvas({
   uploadingHero?: boolean;
   onChange?: (field: WebsiteField, value: string) => void;
   onHeroFile?: (file: File) => void;
+  /** Live capture form for the public render; the editor shows placeholders. */
+  contactForm?: ReactNode;
 }) {
   const hydrated = hydrateWebsiteSite(site, orgName);
   const template = getTemplate(hydrated.templateId);
@@ -331,26 +335,28 @@ export function WebsiteCanvas({
               className="text-3xl font-semibold tracking-tight"
             />
           </div>
-          <div
-            className="grid gap-3 rounded-[1.75rem] p-3 sm:grid-cols-[1fr_1fr_auto]"
-            style={{ backgroundColor: isDark ? tc.surface : "#ececec" }}
-          >
+          {contactForm ?? (
             <div
-              className="rounded-2xl px-4 py-3 text-sm"
-              style={{ backgroundColor: tc.surface, color: tc.muted }}
+              className="grid gap-3 rounded-[1.75rem] p-3 sm:grid-cols-[1fr_1fr_auto]"
+              style={{ backgroundColor: isDark ? tc.surface : "#ececec" }}
             >
-              Your name
+              <div
+                className="rounded-2xl px-4 py-3 text-sm"
+                style={{ backgroundColor: tc.surface, color: tc.muted }}
+              >
+                Your name
+              </div>
+              <div
+                className="rounded-2xl px-4 py-3 text-sm"
+                style={{ backgroundColor: tc.surface, color: tc.muted }}
+              >
+                Email / phone
+              </div>
+              <span className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium" style={pill}>
+                {hydrated.primaryCta}
+              </span>
             </div>
-            <div
-              className="rounded-2xl px-4 py-3 text-sm"
-              style={{ backgroundColor: tc.surface, color: tc.muted }}
-            >
-              Email / phone
-            </div>
-            <span className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium" style={pill}>
-              {hydrated.primaryCta}
-            </span>
-          </div>
+          )}
         </section>
       ) : null}
 
