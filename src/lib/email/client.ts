@@ -47,9 +47,12 @@ export async function sendResendEmail(input: {
     id?: string;
     message?: string;
     name?: string;
+    error?: { message?: string };
   };
   if (!res.ok) {
-    throw new Error(json.message || `Resend rejected the send (${res.status})`);
+    throw new Error(
+      json.message || json.error?.message || `Resend rejected the send (${res.status})`,
+    );
   }
 
   return {

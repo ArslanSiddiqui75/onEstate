@@ -17,21 +17,35 @@ function readEmailMode(): EmailMode {
   return "auto";
 }
 
+function fromLooksUnverified(from: string) {
+  const host = from.toLowerCase();
+  return (
+    host.includes("@example.com") ||
+    host.includes("@example.org") ||
+    host.includes("@example.net")
+  );
+}
+
 export function emailFromAddress(): string {
   return (process.env.EMAIL_FROM || "").trim();
 }
 
 export function isResendConfigured() {
-  return Boolean(process.env.RESEND_API_KEY && emailFromAddress());
+  const from = emailFromAddress();
+  return Boolean(process.env.RESEND_API_KEY && from && !fromLooksUnverified(from));
 }
 
 export function emailConfigError(): string | undefined {
   const setting = readEmailMode();
   if (setting === "simulated") return undefined;
   const hasKey = Boolean(process.env.RESEND_API_KEY);
-  const hasFrom = Boolean(emailFromAddress());
+  const from = emailFromAddress();
+  const hasFrom = Boolean(from);
   if (hasKey && !hasFrom) {
-    return "EMAIL_FROM is missing. Use a verified Resend sender, e.g. 0nEstate <beth.t@example.com>.";
+    return "EMAIL_FROM is missing. For tests use 0nEstate <onboarding@resend.dev> (your Resend account email only). To email leads, verify a domain at resend.com/domains and use that address.";
+  }
+  if (hasFrom && fromLooksUnverified(from)) {
+    return "EMAIL_FROM cannot use example.com. Use 0nEstate <onboarding@resend.dev> for tests, or a sender on a domain you verified at resend.com/domains.";
   }
   if (setting === "resend" && !hasKey) {
     return "RESEND_API_KEY is not set.";
