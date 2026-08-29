@@ -394,7 +394,7 @@ const instagramProvider: SocialProvider = {
   },
 };
 
-const LINKEDIN_VERSION = "202604";
+const LINKEDIN_VERSION = "202608";
 
 const linkedinProvider: SocialProvider = {
   platform: "linkedin",
@@ -511,7 +511,14 @@ const linkedinProvider: SocialProvider = {
       });
       if (!postRes.ok) {
         const errJson = await postRes.json().catch(() => ({}) as Record<string, unknown>);
-        throw new Error(String(errJson.message || "LinkedIn publish failed"));
+        throw new Error(
+          String(
+            errJson.message ||
+              errJson.detail ||
+              errJson.code ||
+              "LinkedIn publish failed",
+          ),
+        );
       }
       const postId =
         postRes.headers.get("x-restli-id") || postRes.headers.get("x-linkedin-id") || undefined;

@@ -1,18 +1,20 @@
 # 0nEstate (CertifiedUK / CertifiedUS) — Project Context
 
 > **Purpose**: This file preserves project context across model switches and chat sessions.
-> **Last updated**: 2026-08-29 (message sequence runner shipped)
+> **Last updated**: 2026-08-29 (FB/LI live posts confirmed; X still to connect)
 
 ---
 
-## Chat handoff — NEXT: Social live-test (2026-08-29)
+## Chat handoff — NEXT: X live-test (2026-08-29)
 
 Use this block when starting a **new Cursor chat**. Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.app
 
 If Arslan says **"continue"** / **"next task"** with no extra detail: do the first unchecked item under **Pick up here**. Do not redo shipped work below.
 
 ### Pick up here (ordered)
-1. **[START HERE] Live-test Facebook / LinkedIn / X publish** (IG is verified)
+1. **[START HERE] Live-test X (Twitter) publish** — env is on Production; no X account is connected. Facebook + LinkedIn already posted from org `c3d7bf08…` on 2026-08-16 (page “Test prod” / Arslan Siddiqui). IG remains verified. Sign in as the workspace that has those accounts — not the other `tp` org.
+
+Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page IA. Org switcher — **skip**. Themes stay at the current 4 until Arslan supplies new UIs.
 
 Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page IA. Org switcher — **skip**. Themes stay at the current 4 until Arslan supplies new UIs.
 
@@ -30,7 +32,7 @@ Out of scope for website v1: free canvas, custom HTML/CSS, full CMS / multi-page
 - **Hosted migrations 010–015 applied** on project `pruezuqdsofegzhbodnj`. 015 creates `message_sequences` / `sequence_enrollments` (they were missing on hosted).
 
 ### Key files for next work
-Facebook / LinkedIn / X live publish smoke (IG already verified)
+X OAuth + publish (`src/lib/social/providers.ts` xProvider) · Social → Connect X · paid X API tier
 
 ### Habits
 Commit + push major changes automatically (`.cursor/rules/git-auto-push.mdc`). User is **Arslan**. Verify UI in the browser when changing web app behavior.
@@ -87,7 +89,8 @@ UI shows **Workspace** name + short org id in the shell. Wrong email = empty Acc
 
 ### Still open / next product work
 - [x] **Message sequence runner** — shipped (seeded playbooks + enroll / Send next; no extra scheduler)
-- [ ] Live-test Facebook / LinkedIn / X (deferred)
+- [x] Facebook + LinkedIn live publish — 3-account post succeeded 2026-08-16 after LinkedIn version header was fixed (`20240101` was invalid; now `202608`)
+- [ ] Live-test **X** publish (env configured; Connect an X account — paid API tier required)
 - [ ] Drop legacy `social_posts` columns (`content`, `scheduled_at`, …) when safe
 - Repo habit: **commit + push major changes automatically** (see `.cursor/rules/git-auto-push.mdc`)
 
@@ -203,7 +206,11 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 6. **Website Builder** (~95%) — 4 themes, visual editor, public `/site/[slug]` + custom-domain proxy, contact form → CRM leads, **section palette + reorder + variants**, **live DNS verify + TLS probe** (optional Vercel domain attach).
 
 ### 🔴 Major Work Remaining
-- FB / LinkedIn / X live publish smoke
+- X (Twitter) live publish smoke — Connect + paid API
+- Partner portal HTTP (Rightmove/Zoopla/MLS) when commercial APIs exist
+- Inbound email webhook; automation triggers `lead_contacted` / `no_reply`
+- Transactions e-sign is UI-only
+- WhatsApp (later international SMS path)
 
 ---
 
@@ -297,7 +304,8 @@ Before this, `automations` rows were config that nothing executed.
 - [x] Cron-job.org test: `processed:1, published:1`
 - [x] Workspace identity / duplicate `tp` guidance
 - [x] Video ≤10MB upload path (signed URL)
-- [ ] Facebook / LinkedIn / X live publish
+- [x] Facebook / LinkedIn live publish (2026-08-16)
+- [ ] X live publish
 - Org switcher — **skip**
 
 ### 2. Website Builder (2026-08-29)
