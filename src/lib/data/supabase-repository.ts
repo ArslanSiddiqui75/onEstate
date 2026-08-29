@@ -1,8 +1,11 @@
 import type {
+  AutomationRun,
+  AutomationRunStep,
   CallLog,
   Contact,
   ConversationMessage,
   Lead,
+  LeadActivity,
   LeadStage,
   Listing,
   ListingStatus,
@@ -43,6 +46,7 @@ function mapLead(row: Record<string, unknown>, phones: Lead["phones"] = []): Lea
       : undefined,
     territory: row.territory ? String(row.territory) : undefined,
     priority: (row.priority as Lead["priority"]) || "medium",
+    tags: Array.isArray(row.tags) ? (row.tags as unknown[]).map(String) : [],
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -309,6 +313,17 @@ export function createSupabaseRepository(
             preferred: Boolean(p.preferred),
           })),
         );
+      } else if (lead.phone?.trim()) {
+        await supabase.from("lead_phone_numbers").insert({
+          lead_id: data.id,
+          org_id: ctx.org.id,
+          label: "Primary",
+          number: lead.phone.trim(),
+          source: lead.source || "manual",
+          consent: "unknown",
+          verification: "unverified",
+          preferred: true,
+        });
       }
 
       return mapLead(data, lead.phones);
@@ -962,6 +977,72 @@ export function createSupabaseRepository(
     async deleteAutomation(id) {
       const { error } = await supabase.from("automations").delete().eq("id", id);
       if (error) throw error;
+    },
+
+    async listAutomationRuns(leadId) {
+      let q = supabase
+        .from("automation_runs")
+        .select("*, automation_run_steps(*)")
+        .eq("org_id", ctx.org.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (leadId) q = q.eq("lead_id", leadId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []).map(
+        (row: Record<string, any>): AutomationRun => ({
+          id: String(row.id),
+          orgId: String(row.org_id),
+          automationId: String(row.automation_id),
+          leadId: String(row.lead_id),
+          trigger: row.trigger,
+          status: row.status,
+          stepIndex: Number(row.step_index || 0),
+          runAfter: String(row.run_after),
+          lastError: row.last_error ? String(row.last_error) : undefined,
+          startedAt: row.started_at ? String(row.started_at) : undefined,
+          completedAt: row.completed_at ? String(row.completed_at) : undefined,
+          createdAt: String(row.created_at),
+          updatedAt: String(row.updated_at),
+          steps: (row.automation_run_steps || [])
+            .map((s: Record<string, any>) => ({
+              id: String(s.id),
+              stepIndex: Number(s.step_index || 0),
+              stepType: String(s.step_type),
+              label: s.label ? String(s.label) : undefined,
+              status: s.status,
+              detail: s.detail ? String(s.detail) : undefined,
+              executedAt: String(s.executed_at),
+            }))
+            .sort(
+              (a: AutomationRunStep, b: AutomationRunStep) =>
+                a.stepIndex - b.stepIndex,
+            ),
+        }),
+      );
+    },
+
+    async listLeadActivities(leadId) {
+      const { data, error } = await supabase
+        .from("lead_activities")
+        .select("*")
+        .eq("org_id", ctx.org.id)
+        .eq("lead_id", leadId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data || []).map(
+        (row: Record<string, any>): LeadActivity => ({
+          id: String(row.id),
+          orgId: String(row.org_id),
+          leadId: String(row.lead_id),
+          actorId: row.actor_id ? String(row.actor_id) : undefined,
+          activityType: String(row.activity_type),
+          body: row.body ? String(row.body) : undefined,
+          metadata: (row.metadata || {}) as Record<string, unknown>,
+          createdAt: String(row.created_at),
+        }),
+      );
     },
 
     async listEnrollments(leadId) {

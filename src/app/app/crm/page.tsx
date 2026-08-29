@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import { Alert } from "@/components/ui/alert";
 import { useAppSession } from "@/lib/app/session";
@@ -13,10 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { buildPhoneContactMethod, formatDate, formatMoney } from "@/lib/utils";
 import type {
+  AutomationRun,
   Contact,
   ContactCategory,
   ContactSource,
   Lead,
+  LeadActivity,
   LeadStage,
   LeadType,
   Priority,
@@ -114,13 +116,19 @@ export default function AppCrmPage() {
     deleteContact,
     promoteContactToLead,
     sendSms,
+    receiveInboundSms,
     logCall,
     setLeadWorkflow,
     createAutomation,
     updateAutomation,
     deleteAutomation,
+    runAutomationNow,
+    runDueAutomations,
+    listAutomationRuns,
+    listLeadActivities,
     resolveTask,
     market,
+    persistence,
   } = useAppSession();
   const [tab, setTab] = useState("pipeline");
   const [showLeadForm, setShowLeadForm] = useState(false);
@@ -133,8 +141,49 @@ export default function AppCrmPage() {
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [csvText, setCsvText] = useState("");
   const [draftText, setDraftText] = useState("");
+  const [simulateReplyText, setSimulateReplyText] = useState("");
+  const [messagingMode, setMessagingMode] = useState<"live" | "simulated" | null>(null);
+  const [automationRuns, setAutomationRuns] = useState<AutomationRun[]>([]);
+  const [leadActivities, setLeadActivities] = useState<LeadActivity[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/messaging/status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.mode === "live" || json?.mode === "simulated") {
+          setMessagingMode(json.mode);
+        }
+      })
+      .catch(() => setMessagingMode(null));
+  }, []);
+
+  // Opening the CRM flushes automation waits that came due, so runs advance
+  // even on hosting plans without a frequent cron.
+  useEffect(() => {
+    void (async () => {
+      await runDueAutomations();
+      const runs = await listAutomationRuns().catch(() => []);
+      setAutomationRuns(runs);
+    })();
+  }, [listAutomationRuns, runDueAutomations]);
+
+  const detailLeadId = viewDetailLead?.id;
+  useEffect(() => {
+    if (!detailLeadId) {
+      setLeadActivities([]);
+      return;
+    }
+    void listLeadActivities(detailLeadId)
+      .then(setLeadActivities)
+      .catch(() => setLeadActivities([]));
+  }, [detailLeadId, listLeadActivities]);
+
+  async function refreshAutomationRuns() {
+    const runs = await listAutomationRuns().catch(() => []);
+    setAutomationRuns(runs);
+  }
 
   function exportLeadsCsv(leadsToExport: Lead[]) {
     if (!leadsToExport.length) {
@@ -646,10 +695,20 @@ export default function AppCrmPage() {
         <TabsContent value="inbox" className="mt-4">
           <section className="hero-card overflow-hidden rounded-[2rem]">
             <div className="border-b border-[var(--border)] px-4 py-3">
-              <h2 className="font-semibold">Texting inbox</h2>
-              <p className="text-sm text-[var(--muted)]">
-                Persisted conversations with Twilio send when configured.
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="font-semibold">Texting inbox</h2>
+                  <p className="text-sm text-[var(--muted)]">
+                    Two-way SMS threads. Outbound uses Twilio when live; use simulate reply to
+                    test inbound without a carrier.
+                  </p>
+                </div>
+                {messagingMode ? (
+                  <Badge tone={messagingMode === "live" ? "success" : "warning"}>
+                    {messagingMode === "live" ? "Live Twilio" : "Simulated messaging"}
+                  </Badge>
+                ) : null}
+              </div>
             </div>
 
             <div className="grid min-h-[30rem] lg:grid-cols-[18rem_1fr]">
@@ -703,63 +762,121 @@ export default function AppCrmPage() {
                           className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
                             message.direction === "outbound"
                               ? "ml-auto bg-[var(--accent)] text-[var(--accent-foreground)]"
-                              : "bg-[var(--surface)] text-[var(--foreground)]"
+                              : message.direction === "inbound"
+                                ? "bg-[var(--surface)] text-[var(--foreground)] border border-[var(--border)]"
+                                : "mx-auto bg-[var(--surface-muted)] text-[var(--muted)] text-center text-xs"
                           }`}
                         >
                           <p>{message.body}</p>
                           <p className="mt-2 text-[11px] opacity-70">
-                            {message.direction} · {formatDate(message.sentAt, market)}
+                            {message.direction === "system"
+                              ? formatDate(message.sentAt, market)
+                              : `${message.direction} · ${formatDate(message.sentAt, market)}`}
                           </p>
                         </div>
                       ))}
                     </div>
 
-                    <div className="border-t border-[var(--border)] p-4">
-                      <textarea
-                        className="min-h-24 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                        placeholder="Write an SMS…"
-                        value={draftText}
-                        onChange={(e) => setDraftText(e.target.value)}
-                      />
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          disabled={busy || !draftText.trim()}
-                          onClick={() => {
-                            void (async () => {
-                              setBusy(true);
-                              setError(null);
-                              try {
-                                await sendSms({
-                                  leadId: activeLead.id,
-                                  body: draftText.trim(),
-                                });
-                                setDraftText("");
-                                toast.success("Message sent");
-                              } catch (err) {
-                                const msg = err instanceof Error ? err.message : "Send failed";
-                                setError(msg);
-                                toast.error(msg);
-                              } finally {
-                                setBusy(false);
-                              }
-                            })();
-                          }}
-                        >
-                          Send text
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() =>
-                            setDraftText(
-                              `Hi ${activeLead.name.split(" ")[0]}, just checking whether you’re still available for the next step.`,
-                            )
-                          }
-                        >
-                          Insert template
-                        </Button>
+                    <div className="border-t border-[var(--border)] p-4 space-y-4">
+                      <div>
+                        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
+                          Agent outbound
+                        </p>
+                        <textarea
+                          className="min-h-24 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                          placeholder="Write an SMS…"
+                          value={draftText}
+                          onChange={(e) => setDraftText(e.target.value)}
+                        />
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            disabled={busy || !draftText.trim()}
+                            onClick={() => {
+                              void (async () => {
+                                setBusy(true);
+                                setError(null);
+                                try {
+                                  const result = await sendSms({
+                                    leadId: activeLead.id,
+                                    body: draftText.trim(),
+                                  });
+                                  setDraftText("");
+                                  toast.success(
+                                    result.mode === "live"
+                                      ? "Message sent via Twilio"
+                                      : "Message sent (simulated)",
+                                  );
+                                } catch (err) {
+                                  const msg = err instanceof Error ? err.message : "Send failed";
+                                  setError(msg);
+                                  toast.error(msg);
+                                } finally {
+                                  setBusy(false);
+                                }
+                              })();
+                            }}
+                          >
+                            Send text
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() =>
+                              setDraftText(
+                                `Hi ${activeLead.name.split(" ")[0]}, just checking whether you’re still available for the next step.`,
+                              )
+                            }
+                          >
+                            Insert template
+                          </Button>
+                        </div>
                       </div>
+
+                      {canEdit ? (
+                        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-4">
+                          <p className="text-sm font-medium">Simulate lead reply</p>
+                          <p className="mt-1 text-xs text-[var(--muted)]">
+                            Test inbound messaging without Twilio delivering to your phone — useful
+                            when your number is in a restricted region (e.g. Pakistan).
+                          </p>
+                          <textarea
+                            className="mt-3 min-h-20 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                            placeholder={`Reply as ${activeLead.name.split(" ")[0]}…`}
+                            value={simulateReplyText}
+                            onChange={(e) => setSimulateReplyText(e.target.value)}
+                          />
+                          <Button
+                            type="button"
+                            className="mt-3"
+                            variant="secondary"
+                            disabled={busy || !simulateReplyText.trim()}
+                            onClick={() => {
+                              void (async () => {
+                                setBusy(true);
+                                setError(null);
+                                try {
+                                  await receiveInboundSms({
+                                    leadId: activeLead.id,
+                                    body: simulateReplyText.trim(),
+                                  });
+                                  setSimulateReplyText("");
+                                  toast.success("Inbound reply recorded");
+                                } catch (err) {
+                                  const msg =
+                                    err instanceof Error ? err.message : "Simulate failed";
+                                  setError(msg);
+                                  toast.error(msg);
+                                } finally {
+                                  setBusy(false);
+                                }
+                              })();
+                            }}
+                          >
+                            Simulate inbound
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
                   </>
                 ) : (
@@ -858,6 +975,7 @@ export default function AppCrmPage() {
               setError(null);
               try {
                 await deleteAutomation(id);
+                await refreshAutomationRuns();
               } catch (err) {
                 setError(
                   err instanceof Error ? err.message : "Failed to delete automation",
@@ -866,7 +984,152 @@ export default function AppCrmPage() {
                 setBusy(false);
               }
             }}
+            onRunNow={
+              activeLead && persistence === "supabase"
+                ? async (id) => {
+                    setBusy(true);
+                    setError(null);
+                    try {
+                      const result = await runAutomationNow({
+                        leadId: activeLead.id,
+                        automationId: id,
+                      });
+                      await refreshAutomationRuns();
+                      if (!result?.enqueued) {
+                        toast.error(
+                          "Nothing ran — activate the workflow and give it at least one step.",
+                        );
+                      } else {
+                        toast.success(`Workflow started for ${activeLead.name}`);
+                      }
+                    } catch (err) {
+                      setError(
+                        err instanceof Error ? err.message : "Failed to run automation",
+                      );
+                    } finally {
+                      setBusy(false);
+                    }
+                  }
+                : undefined
+            }
+            runNowLabel={activeLead ? `Run for ${activeLead.name}` : undefined}
           />
+
+          <section className="hero-card rounded-[2rem] p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Run history</h2>
+                <p className="text-sm text-[var(--muted)]">
+                  Every automation execution, including waits still counting down.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  void (async () => {
+                    setBusy(true);
+                    try {
+                      await runDueAutomations();
+                      await refreshAutomationRuns();
+                      toast.success("Checked for due steps");
+                    } finally {
+                      setBusy(false);
+                    }
+                  })();
+                }}
+              >
+                Run due steps
+              </Button>
+            </div>
+
+            {persistence !== "supabase" ? (
+              <Alert className="mt-4" tone="warning">
+                Automations execute on the server. Connect Supabase to run workflows —
+                local workspace mode only stores the configuration.
+              </Alert>
+            ) : automationRuns.length ? (
+              <div className="mt-4 space-y-3">
+                {automationRuns.slice(0, 12).map((run) => {
+                  const automation = automations.find((a) => a.id === run.automationId);
+                  const lead = leads.find((l) => l.id === run.leadId);
+                  const tone =
+                    run.status === "completed"
+                      ? "success"
+                      : run.status === "failed" || run.status === "cancelled"
+                        ? "danger"
+                        : run.status === "waiting"
+                          ? "warning"
+                          : "neutral";
+                  return (
+                    <div
+                      key={run.id}
+                      className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-medium">
+                            {automation?.name || "Workflow"}
+                            <span className="text-[var(--muted)]">
+                              {" · "}
+                              {lead?.name || "Lead"}
+                            </span>
+                          </p>
+                          <p className="mt-0.5 text-xs text-[var(--muted)]">
+                            {run.trigger.replace(/_/g, " ")} ·{" "}
+                            {formatDate(run.createdAt, market)}
+                            {run.status === "waiting"
+                              ? ` · resumes ${formatDate(run.runAfter, market)}`
+                              : ""}
+                          </p>
+                        </div>
+                        <Badge tone={tone} className="capitalize">
+                          {run.status}
+                        </Badge>
+                      </div>
+
+                      {run.steps?.length ? (
+                        <ol className="mt-3 space-y-1.5 border-t border-[var(--border)] pt-3">
+                          {run.steps.map((step) => (
+                            <li
+                              key={step.id}
+                              className="flex flex-wrap items-baseline gap-2 text-xs"
+                            >
+                              <span className="font-medium">
+                                {step.stepIndex + 1}. {step.label || step.stepType}
+                              </span>
+                              <span className="text-[var(--muted)]">{step.detail}</span>
+                              {step.status !== "completed" ? (
+                                <Badge
+                                  tone={step.status === "failed" ? "danger" : "warning"}
+                                  className="capitalize"
+                                >
+                                  {step.status}
+                                </Badge>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ol>
+                      ) : null}
+
+                      {run.lastError ? (
+                        <p className="mt-2 text-xs text-[var(--danger)]">
+                          {run.lastError}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyState
+                className="mt-4"
+                title="No runs yet"
+                description="Activate a workflow, then add a lead or change a stage to trigger it."
+              />
+            )}
+          </section>
 
           {activeLead ? (
             <section className="hero-card rounded-[2rem] p-4">
@@ -1004,6 +1267,42 @@ export default function AppCrmPage() {
                   <p className="mt-1">{viewDetailLead.notes}</p>
                 </div>
               ) : null}
+
+              {viewDetailLead.tags?.length ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {viewDetailLead.tags.map((tag) => (
+                    <Badge key={tag} tone="accent">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="rounded-xl border border-[var(--border)] p-3">
+                <span className="block text-xs font-semibold text-[var(--muted)]">
+                  Activity timeline
+                </span>
+                {leadActivities.length ? (
+                  <ol className="mt-2 space-y-2">
+                    {leadActivities.map((activity) => (
+                      <li key={activity.id} className="flex gap-3 text-sm">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" />
+                        <div className="min-w-0">
+                          <p className="break-words">{activity.body}</p>
+                          <p className="text-xs text-[var(--muted)]">
+                            {activity.activityType.replace(/_/g, " ")} ·{" "}
+                            {formatDate(activity.createdAt, market)}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="mt-2 text-sm text-[var(--muted)]">
+                    No activity yet. Automation steps and SMS sends land here.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-4 border-t border-[var(--border)]">

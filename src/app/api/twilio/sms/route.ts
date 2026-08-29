@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { sendTwilioSms } from "@/lib/twilio/client";
+import { sendOutboundSms } from "@/lib/messaging/service";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
+import { sendTwilioSms } from "@/lib/twilio/client";
 
 const bodySchema = z.object({
   orgId: z.string().min(1),
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
-  // #hi
+
   if (parsed.data.consent === "opted_out") {
     return NextResponse.json(
       { error: "Cannot send SMS: contact opted out" },
@@ -26,69 +27,45 @@ export async function POST(request: Request) {
     );
   }
 
-  let result;
-  try {
-    result = await sendTwilioSms({
-      to: parsed.data.to,
-      body: parsed.data.body,
-    });
-  } catch (error) {
-    console.error("Twilio SMS Error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to send SMS" },
-      { status: 500 }
-    );
+  const supabase = createServiceSupabaseClient();
+
+  // Local-workspace mode has no Supabase to persist to; the client stores the
+  // message itself, so just relay the send.
+  if (!supabase) {
+    try {
+      const result = await sendTwilioSms({
+        to: parsed.data.to,
+        body: parsed.data.body,
+      });
+      return NextResponse.json({
+        ok: true,
+        sid: result.sid,
+        status: result.status,
+        mode: result.mode,
+        sentAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Failed to send SMS" },
+        { status: 500 },
+      );
+    }
   }
 
-  const supabase = createServiceSupabaseClient();
-  let messageId: string | undefined;
-  let threadId = parsed.data.threadId;
+  const result = await sendOutboundSms(supabase, {
+    orgId: parsed.data.orgId,
+    leadId: parsed.data.leadId,
+    to: parsed.data.to,
+    body: parsed.data.body,
+    consent: parsed.data.consent,
+    threadId: parsed.data.threadId,
+  });
 
-  if (supabase) {
-    if (!threadId) {
-      const { data: existing } = await supabase
-        .from("conversation_threads")
-        .select("id")
-        .eq("org_id", parsed.data.orgId)
-        .eq("lead_id", parsed.data.leadId)
-        .maybeSingle();
-      if (existing) threadId = existing.id;
-      else {
-        const { data: created } = await supabase
-          .from("conversation_threads")
-          .insert({
-            org_id: parsed.data.orgId,
-            lead_id: parsed.data.leadId,
-            phone_number: parsed.data.to,
-            last_message_at: new Date().toISOString(),
-          })
-          .select("id")
-          .single();
-        threadId = created?.id;
-      }
-    }
-
-    if (threadId) {
-      const { data: message } = await supabase
-        .from("messages")
-        .insert({
-          org_id: parsed.data.orgId,
-          thread_id: threadId,
-          lead_id: parsed.data.leadId,
-          direction: "outbound",
-          body: parsed.data.body,
-          status: result.status === "failed" ? "failed" : "sent",
-          provider_sid: result.sid,
-          sent_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-      messageId = message?.id;
-      await supabase
-        .from("conversation_threads")
-        .update({ last_message_at: new Date().toISOString() })
-        .eq("id", threadId);
-    }
+  if (!result.ok) {
+    return NextResponse.json(
+      { error: result.error || "Failed to send SMS" },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({
@@ -96,8 +73,8 @@ export async function POST(request: Request) {
     sid: result.sid,
     status: result.status,
     mode: result.mode,
-    messageId,
-    threadId,
-    sentAt: new Date().toISOString(),
+    messageId: result.messageId,
+    threadId: result.threadId,
+    sentAt: result.sentAt,
   });
 }

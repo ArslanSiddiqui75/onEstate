@@ -111,6 +111,8 @@ export interface Lead {
   nextActionDueAt?: string;
   territory?: string;
   priority?: Priority;
+  /** Written by automation `add_tag` steps */
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -317,6 +319,53 @@ export interface Automation {
   steps: AutomationStep[];
   createdAt: string;
   updatedAt: string;
+}
+
+export type AutomationRunStatus =
+  | "pending"
+  | "running"
+  | "waiting"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface AutomationRunStep {
+  id: string;
+  stepIndex: number;
+  stepType: AutomationActionType | string;
+  label?: string;
+  status: "completed" | "failed" | "skipped" | "waiting";
+  detail?: string;
+  executedAt: string;
+}
+
+export interface AutomationRun {
+  id: string;
+  orgId: string;
+  automationId: string;
+  leadId: string;
+  trigger: AutomationTrigger;
+  status: AutomationRunStatus;
+  stepIndex: number;
+  /** When a parked `wait` step becomes due */
+  runAfter: string;
+  lastError?: string;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  steps?: AutomationRunStep[];
+}
+
+export interface LeadActivity {
+  id: string;
+  orgId: string;
+  leadId: string;
+  actorId?: string;
+  activityType: string;
+  body?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface SequenceEnrollment {

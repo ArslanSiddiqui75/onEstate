@@ -1,3 +1,5 @@
+import { shouldUseTwilioOutbound } from "@/lib/messaging/capabilities";
+
 export function isTwilioConfigured() {
   return Boolean(
     process.env.TWILIO_ACCOUNT_SID &&
@@ -10,7 +12,7 @@ export async function sendTwilioSms(input: {
   to: string;
   body: string;
 }): Promise<{ sid: string; status: string; mode: "live" | "simulated" }> {
-  if (!isTwilioConfigured()) {
+  if (!shouldUseTwilioOutbound()) {
     return {
       sid: `sim_${Date.now()}`,
       status: "sent",

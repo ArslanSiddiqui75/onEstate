@@ -9,6 +9,7 @@ import {
   Plus,
   Bell,
   ListTodo,
+  Play,
   Tag,
   GitBranch,
   Trash2,
@@ -128,6 +129,9 @@ export interface AutomationBuilderProps {
     >,
   ) => Promise<void> | void;
   onDelete: (id: string) => Promise<void> | void;
+  /** Omitted when no lead is selected or the engine can't run (local mode). */
+  onRunNow?: (id: string) => Promise<void> | void;
+  runNowLabel?: string;
 }
 
 export function AutomationBuilder({
@@ -137,6 +141,8 @@ export function AutomationBuilder({
   onCreate,
   onUpdate,
   onDelete,
+  onRunNow,
+  runNowLabel,
 }: AutomationBuilderProps) {
   const [selectedId, setSelectedId] = useState<string | null>(
     automations[0]?.id ?? null,
@@ -376,6 +382,22 @@ export function AutomationBuilder({
               </div>
               {canEdit ? (
                 <div className="flex items-center gap-3">
+                  {onRunNow ? (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={busy || selected.status !== "active"}
+                      title={
+                        selected.status !== "active"
+                          ? "Activate the workflow first"
+                          : undefined
+                      }
+                      onClick={() => void onRunNow(selected.id)}
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                      {runNowLabel || "Run now"}
+                    </Button>
+                  ) : null}
                   <label className="flex items-center gap-2 text-xs font-medium text-[var(--muted)]">
                     <Switch
                       checked={selected.status === "active"}

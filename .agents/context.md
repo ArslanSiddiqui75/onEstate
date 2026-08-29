@@ -229,6 +229,26 @@ Session provider (`lib/app/session.tsx`) exposes all state + mutation methods vi
 
 ## Integration Status
 
+### CRM automations — ✅ Runtime built (2026-08-29)
+Before this, `automations` rows were config that nothing executed.
+- Engine: `src/lib/automations/engine.ts` — enqueue on trigger, walk steps, park on `wait`
+- Durable runs: migration `010_automation_runs.sql` (`automation_runs`, `automation_run_steps`, `leads.tags`)
+- Steps implemented: `send_sms`, `create_task`, `wait`, `update_stage`, `add_tag`, `notify_owner`
+- Templating: `{{first_name}}`, `{{last_name}}`, `{{full_name}}`, `{{email}}`, `{{phone}}`, `{{stage}}`, `{{source}}`
+- Triggers fire from `session.tsx`: `addLead` → `lead_created`, `updateLeadStage` → `stage_changed`
+- Routes: `/api/automations/trigger` (user bearer), `/api/automations/run-due` (org flush), `/api/automations/cron/run` (secret)
+- `update_stage` deliberately does NOT re-trigger `stage_changed` — prevents workflow ping-pong
+- UI: Run history + per-step detail in CRM → Automations; activity timeline in lead detail
+- **Needs**: `AUTOMATION_CRON_SECRET` (or reuses `SOCIAL_CRON_SECRET`/`CRON_SECRET`) + migration 010 applied
+- Local workspace mode has no engine (server-side service role only) — UI says so
+
+### Messaging — ✅ Two-way + simulated inbound (2026-08-22)
+- `MESSAGING_MODE=auto|simulated|twilio` (`src/lib/messaging/capabilities.ts`)
+- Shared `sendOutboundSms` / `recordInboundMessage` in `src/lib/messaging/service.ts`
+- `/api/messaging/inbound` simulates a lead reply — Twilio can't deliver to PK numbers
+- Inbound phone matching handles E.164 variants + falls back to `leads.phone`
+- New leads auto-sync `lead.phone` → `lead_phone_numbers` (required for real inbound match)
+
 ### Twilio ↔ CRM — ✅ Code Complete
 - `src/lib/twilio/client.ts` — sendTwilioSms with live/simulated fallback
 - `/api/twilio/sms` — Outbound with consent check, thread creation, message logging

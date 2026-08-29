@@ -12,10 +12,13 @@ import {
 } from "react";
 import type {
   Automation,
+  AutomationRun,
+  AutomationTrigger,
   CallLog,
   Contact,
   ConversationMessage,
   Lead,
+  LeadActivity,
   LeadTask,
   Listing,
   MessageSequence,
@@ -218,6 +221,11 @@ interface AppState {
     leadId: string;
     body: string;
   }) => Promise<{ mode: "live" | "simulated" }>;
+  /** Simulate or record an inbound SMS from the lead (in-app testing). */
+  receiveInboundSms: (input: {
+    leadId: string;
+    body: string;
+  }) => Promise<{ mode: "simulated" }>;
   logCall: (input: {
     leadId: string;
     outcome: CallLog["outcome"];
@@ -246,6 +254,15 @@ interface AppState {
     >,
   ) => Promise<void>;
   deleteAutomation: (id: string) => Promise<void>;
+  /** Start a `manual` workflow for one lead and execute it immediately. */
+  runAutomationNow: (input: {
+    leadId: string;
+    automationId: string;
+  }) => Promise<{ enqueued?: number; failed?: number } | null>;
+  /** Advance parked `wait` steps for this org. */
+  runDueAutomations: () => Promise<{ processed?: number } | null>;
+  listAutomationRuns: (leadId?: string) => Promise<AutomationRun[]>;
+  listLeadActivities: (leadId: string) => Promise<LeadActivity[]>;
   resolveTask: (taskId: string) => Promise<void>;
   saveWebsite: (site: WebsiteSite) => Promise<void>;
   upsertSocialAccount: (
@@ -681,6 +698,56 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const getAuthToken = useCallback(async () => {
+    if (authMode !== "supabase") return null;
+    const supabase = createBrowserSupabaseClient();
+    // getSession() waits on the shared auth lock. If that lock is ever stuck
+    // (e.g. another tab hung mid-refresh), fail after 10s so callers surface
+    // an error instead of leaving the UI frozen on "Uploading…"/"Saving…".
+    const result = await Promise.race([
+      supabase.auth.getSession(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000)),
+    ]);
+    if (!result) return null;
+    return result.data.session?.access_token || null;
+  }, [authMode]);
+
+  // The automation engine runs server-side against the service role, so local
+  // workspace mode has no runtime — triggers are a no-op there. Failures never
+  // block the user action that fired them.
+  const fireAutomationTrigger = useCallback(
+    async (input: {
+      leadId: string;
+      trigger: AutomationTrigger;
+      stage?: Lead["stage"];
+      automationId?: string;
+    }) => {
+      if (authMode !== "supabase") return null;
+      try {
+        const token = await getAuthToken();
+        if (!token) return null;
+        const res = await fetch("/api/automations/trigger", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(input),
+        });
+        if (!res.ok) return null;
+        return (await res.json()) as {
+          enqueued?: number;
+          completed?: number;
+          waiting?: number;
+          failed?: number;
+        };
+      } catch {
+        return null;
+      }
+    },
+    [authMode, getAuthToken],
+  );
+
   const addLead = useCallback(
     async (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => {
       if (!repoRef.current) return;
@@ -695,24 +762,78 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
               }),
             ]
           : lead.phones;
-      await repoRef.current.createLead({
+      const created = await repoRef.current.createLead({
         ...lead,
         market: brand.market,
         phones,
       });
+      if (created?.id) {
+        await fireAutomationTrigger({
+          leadId: created.id,
+          trigger: "lead_created",
+          stage: created.stage,
+        });
+      }
       await refresh();
     },
-    [brand.market, refresh],
+    [brand.market, fireAutomationTrigger, refresh],
   );
 
   const updateLeadStage = useCallback(
     async (id: string, stage: Lead["stage"]) => {
       if (!repoRef.current) return;
       await repoRef.current.updateLeadStage(id, stage);
+      await fireAutomationTrigger({
+        leadId: id,
+        trigger: "stage_changed",
+        stage,
+      });
       await refresh();
     },
-    [refresh],
+    [fireAutomationTrigger, refresh],
   );
+
+  const runAutomationNow = useCallback(
+    async (input: { leadId: string; automationId: string }) => {
+      const result = await fireAutomationTrigger({
+        leadId: input.leadId,
+        trigger: "manual",
+        automationId: input.automationId,
+      });
+      await refresh();
+      return result;
+    },
+    [fireAutomationTrigger, refresh],
+  );
+
+  /** Advance parked `wait` steps without relying on cron cadence. */
+  const runDueAutomations = useCallback(async () => {
+    if (authMode !== "supabase") return null;
+    try {
+      const token = await getAuthToken();
+      if (!token) return null;
+      const res = await fetch("/api/automations/run-due", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const json = (await res.json()) as { processed?: number };
+      if (json.processed) await refresh();
+      return json;
+    } catch {
+      return null;
+    }
+  }, [authMode, getAuthToken, refresh]);
+
+  const listAutomationRuns = useCallback(async (leadId?: string) => {
+    if (!repoRef.current) return [];
+    return repoRef.current.listAutomationRuns(leadId);
+  }, []);
+
+  const listLeadActivities = useCallback(async (leadId: string) => {
+    if (!repoRef.current) return [];
+    return repoRef.current.listLeadActivities(leadId);
+  }, []);
 
   const addContact = useCallback(
     async (contact: Omit<Contact, "id" | "createdAt" | "updatedAt" | "market">) => {
@@ -1175,19 +1296,50 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [org, refresh],
   );
 
-  const getAuthToken = useCallback(async () => {
-    if (authMode !== "supabase") return null;
-    const supabase = createBrowserSupabaseClient();
-    // getSession() waits on the shared auth lock. If that lock is ever stuck
-    // (e.g. another tab hung mid-refresh), fail after 10s so callers surface
-    // an error instead of leaving the UI frozen on "Uploading…"/"Saving…".
-    const result = await Promise.race([
-      supabase.auth.getSession(),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000)),
-    ]);
-    if (!result) return null;
-    return result.data.session?.access_token || null;
-  }, [authMode]);
+  const receiveInboundSms = useCallback(
+    async (input: { leadId: string; body: string }) => {
+      if (!repoRef.current || !org) {
+        throw new Error("Workspace not loaded");
+      }
+      const lead = leads.find((l) => l.id === input.leadId);
+      if (!lead) throw new Error("Lead not found");
+
+      if (repoRef.current.mode === "local") {
+        await repoRef.current.appendMessage({
+          orgId: org.id,
+          threadId: "",
+          leadId: lead.id,
+          direction: "inbound",
+          body: input.body,
+          status: "received",
+          providerSid: `sim_in_${Date.now()}`,
+          sentAt: new Date().toISOString(),
+        });
+        await refresh();
+        return { mode: "simulated" as const };
+      }
+
+      const token = await getAuthToken();
+      if (!token) throw new Error("Sign in required to simulate inbound SMS");
+
+      const res = await fetch("/api/messaging/inbound", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          leadId: input.leadId,
+          body: input.body,
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(json.error || "Failed to record inbound SMS");
+      await refresh();
+      return { mode: "simulated" as const };
+    },
+    [getAuthToken, leads, org, refresh],
+  );
 
   const publishSocialPostNow = useCallback(
     async (postId: string) => {
@@ -1322,11 +1474,16 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       updateDealChecklistItem,
       updateDealMeta,
       sendSms,
+      receiveInboundSms,
       logCall,
       setLeadWorkflow,
       createAutomation,
       updateAutomation,
       deleteAutomation,
+      runAutomationNow,
+      runDueAutomations,
+      listAutomationRuns,
+      listLeadActivities,
       resolveTask,
       saveWebsite,
       upsertSocialAccount,
@@ -1376,11 +1533,16 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       updateDealChecklistItem,
       updateDealMeta,
       sendSms,
+      receiveInboundSms,
       logCall,
       setLeadWorkflow,
       createAutomation,
       updateAutomation,
       deleteAutomation,
+      runAutomationNow,
+      runDueAutomations,
+      listAutomationRuns,
+      listLeadActivities,
       resolveTask,
       saveWebsite,
       upsertSocialAccount,

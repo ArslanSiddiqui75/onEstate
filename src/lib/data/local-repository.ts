@@ -437,6 +437,16 @@ export function createLocalRepository(
       commit(snap);
     },
 
+    // The automation engine is server-side (service role), so local workspace
+    // mode has no runs or engine-written activity to report.
+    async listAutomationRuns() {
+      return [];
+    },
+
+    async listLeadActivities() {
+      return [];
+    },
+
     async listEnrollments(leadId) {
       const rows = requireSnapshot().enrollments;
       return leadId ? rows.filter((e) => e.leadId === leadId) : rows;

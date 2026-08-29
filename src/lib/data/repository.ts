@@ -1,9 +1,11 @@
 import type {
   Automation,
+  AutomationRun,
   CallLog,
   Contact,
   ConversationMessage,
   Lead,
+  LeadActivity,
   LeadStage,
   Listing,
   ListingStatus,
@@ -130,6 +132,8 @@ export interface WorkspaceRepository {
     >,
   ): Promise<Automation>;
   deleteAutomation(id: string): Promise<void>;
+  listAutomationRuns(leadId?: string): Promise<AutomationRun[]>;
+  listLeadActivities(leadId: string): Promise<LeadActivity[]>;
   listEnrollments(leadId?: string): Promise<SequenceEnrollment[]>;
   upsertEnrollment(
     input: Omit<SequenceEnrollment, "id"> & { id?: string },
