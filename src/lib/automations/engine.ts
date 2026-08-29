@@ -22,6 +22,8 @@ import { isE164 } from "@/lib/phone/e164";
 const MAX_STEPS_PER_PASS = 25;
 /** Runs claimed per processing pass, keeping cron invocations bounded. */
 const DEFAULT_RUN_BATCH = 25;
+/** Last outbound SMS/email older than this with no inbound → `no_reply`. */
+export const NO_REPLY_SILENCE_HOURS = 48;
 
 export interface EnqueueInput {
   orgId: string;
@@ -202,6 +204,144 @@ export async function enqueueAutomationRuns(
     enqueued: inserted?.length || 0,
     automationIds: (inserted || []).map((row) => String(row.automation_id)),
   };
+}
+
+/**
+ * First agent/API outbound SMS or email on a lead. Automation sends skip this
+ * (they don't go through the CRM send routes), so a welcome SMS cannot loop.
+ */
+export async function fireLeadContactedIfFirst(
+  supabase: SupabaseClient,
+  input: { orgId: string; leadId: string },
+): Promise<EnqueueSummary & ProcessSummary> {
+  const empty = {
+    enqueued: 0,
+    automationIds: [] as string[],
+    processed: 0,
+    completed: 0,
+    waiting: 0,
+    failed: 0,
+  };
+  try {
+    const { count, error } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", input.orgId)
+      .eq("lead_id", input.leadId)
+      .eq("direction", "outbound");
+    if (error || count !== 1) return empty;
+    return triggerAndProcess(supabase, {
+      orgId: input.orgId,
+      leadId: input.leadId,
+      trigger: "lead_contacted",
+    });
+  } catch {
+    return empty;
+  }
+}
+
+/** A reply should stop a parked no-reply chase, not keep texting. */
+export async function cancelNoReplyRuns(
+  supabase: SupabaseClient,
+  input: { orgId: string; leadId: string },
+) {
+  try {
+    await supabase
+      .from("automation_runs")
+      .update({
+        status: "cancelled",
+        last_error: "Lead replied",
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("org_id", input.orgId)
+      .eq("lead_id", input.leadId)
+      .eq("trigger", "no_reply")
+      .in("status", ["pending", "waiting", "running"]);
+  } catch {
+    // Don't fail inbound if this update misses.
+  }
+}
+
+/**
+ * Find threads whose latest message is still outbound and older than
+ * {@link NO_REPLY_SILENCE_HOURS}. One `no_reply` run per outbound burst.
+ */
+export async function enqueueNoReplyTriggers(
+  supabase: SupabaseClient,
+  options: { orgId?: string; limit?: number } = {},
+): Promise<number> {
+  const { data: workflows } = await supabase
+    .from("automations")
+    .select("id, org_id")
+    .eq("status", "active")
+    .eq("trigger", "no_reply");
+  const active = (workflows || []).filter(
+    (row) => !options.orgId || String(row.org_id) === options.orgId,
+  );
+  if (!active.length) return 0;
+
+  const silentBefore = new Date(
+    Date.now() - NO_REPLY_SILENCE_HOURS * 3_600_000,
+  ).toISOString();
+  const lookback = new Date(Date.now() - 14 * 24 * 3_600_000).toISOString();
+
+  let threadQuery = supabase
+    .from("conversation_threads")
+    .select("id, org_id, lead_id, last_message_at")
+    .lte("last_message_at", silentBefore)
+    .gte("last_message_at", lookback)
+    .limit(options.limit ?? 40);
+  if (options.orgId) threadQuery = threadQuery.eq("org_id", options.orgId);
+
+  const { data: threads } = await threadQuery;
+  if (!threads?.length) return 0;
+
+  const orgSet = new Set(active.map((row) => String(row.org_id)));
+  let enqueued = 0;
+
+  for (const thread of threads) {
+    const orgId = String(thread.org_id);
+    const leadId = String(thread.lead_id);
+    if (!orgSet.has(orgId)) continue;
+
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("stage")
+      .eq("id", leadId)
+      .eq("org_id", orgId)
+      .maybeSingle();
+    if (!lead || lead.stage === "won" || lead.stage === "lost") continue;
+
+    const { data: last } = await supabase
+      .from("messages")
+      .select("direction, sent_at")
+      .eq("org_id", orgId)
+      .eq("lead_id", leadId)
+      .order("sent_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!last || last.direction !== "outbound" || !last.sent_at) continue;
+
+    const { data: existing } = await supabase
+      .from("automation_runs")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("lead_id", leadId)
+      .eq("trigger", "no_reply")
+      .gte("created_at", String(last.sent_at))
+      .limit(1);
+    if (existing?.length) continue;
+
+    const result = await enqueueAutomationRuns(supabase, {
+      orgId,
+      leadId,
+      trigger: "no_reply",
+    });
+    enqueued += result.enqueued;
+  }
+
+  return enqueued;
 }
 
 async function executeStep(
@@ -549,6 +689,12 @@ export async function processAutomationRuns(
   options: { orgId?: string; limit?: number } = {},
 ): Promise<ProcessSummary> {
   const limit = options.limit ?? DEFAULT_RUN_BATCH;
+  try {
+    await enqueueNoReplyTriggers(supabase, { orgId: options.orgId });
+  } catch {
+    // Parked wait-steps should still resume if the silence scan fails.
+  }
+
   let query = supabase
     .from("automation_runs")
     .select("id, org_id, automation_id, lead_id, trigger, status, step_index, context")

@@ -3,13 +3,14 @@ import { z } from "zod";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { recordInboundMessage } from "@/lib/messaging/service";
+import { cancelNoReplyRuns } from "@/lib/automations/engine";
 
 const bodySchema = z.object({
   leadId: z.string().min(1),
   body: z.string().min(1).max(1600),
 });
 
-/** Simulate an inbound SMS from a lead (for dev / regions Twilio cannot reach). */
+/** Simulate an inbound SMS from a lead (Twilio cannot receive from PK numbers). */
 export async function POST(request: Request) {
   const profile = await resolveProfileFromRequest(request);
   if (!profile) {
@@ -51,6 +52,11 @@ export async function POST(request: Request) {
   if (!result.ok) {
     return NextResponse.json({ error: result.error || "Failed" }, { status: 500 });
   }
+
+  await cancelNoReplyRuns(supabase, {
+    orgId: profile.orgId,
+    leadId: parsed.data.leadId,
+  });
 
   return NextResponse.json({
     ok: true,

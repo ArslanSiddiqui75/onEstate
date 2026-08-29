@@ -37,8 +37,8 @@ function newStepId() {
 const TRIGGERS: { value: AutomationTrigger; label: string; hint: string }[] = [
   { value: "lead_created", label: "Lead created", hint: "Fires when a new lead is added" },
   { value: "stage_changed", label: "Stage changed", hint: "Fires when pipeline stage updates" },
-  { value: "lead_contacted", label: "Lead contacted", hint: "Fires after first outbound touch" },
-  { value: "no_reply", label: "No reply", hint: "Fires after silence on a thread" },
+  { value: "lead_contacted", label: "Lead contacted", hint: "Fires on the first CRM SMS or email (not automation sends)" },
+  { value: "no_reply", label: "No reply", hint: "Fires after 48h of silence; a reply cancels a waiting run" },
   { value: "manual", label: "Manual start", hint: "Run only when an agent starts it" },
 ];
 

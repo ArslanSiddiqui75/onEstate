@@ -988,8 +988,8 @@ export default function AppCrmPage() {
                         <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-4">
                           <p className="text-sm font-medium">Simulate lead reply</p>
                           <p className="mt-1 text-xs text-[var(--muted)]">
-                            Test inbound messaging without Twilio delivering to your phone — useful
-                            when your number is in a restricted region (e.g. Pakistan).
+                            Twilio can deliver SMS to Pakistan, but it cannot receive replies from
+                            Pakistani numbers. Use this to test inbound without a real reply.
                           </p>
                           <textarea
                             className="mt-3 min-h-20 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
@@ -1286,7 +1286,7 @@ export default function AppCrmPage() {
               <EmptyState
                 className="mt-4"
                 title="No runs yet"
-                description="Activate a workflow, then add a lead or change a stage to trigger it."
+                description="Activate a workflow, then add a lead, change a stage, send a first CRM message, or wait 48h of silence."
               />
             )}
           </section>
@@ -1301,7 +1301,7 @@ export default function AppCrmPage() {
               <div className="mt-4 space-y-3">
                 <WorkflowRow
                   title="Follow-up sequence"
-                  description="Intro SMS, a call task, then a reminder. Twilio still cannot deliver to PK numbers."
+                  description="Intro SMS, a call task, then a reminder."
                   checked={Boolean(activeWorkflow.followUp)}
                   onChange={(checked) => {
                     void (async () => {

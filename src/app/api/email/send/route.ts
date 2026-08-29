@@ -4,6 +4,7 @@ import { sendOutboundEmail } from "@/lib/email/service";
 import { sendResendEmail } from "@/lib/email/client";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { fireLeadContactedIfFirst } from "@/lib/automations/engine";
 
 const bodySchema = z.object({
   leadId: z.string().min(1),
@@ -79,6 +80,11 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+
+  await fireLeadContactedIfFirst(supabase, {
+    orgId,
+    leadId: parsed.data.leadId,
+  });
 
   return NextResponse.json({
     ok: true,

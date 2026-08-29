@@ -130,16 +130,10 @@ export function createEmptyWorkspace(input: {
         id: newId("auto"),
         orgId: input.org.id,
         name: "No-reply re-engage",
-        description: "Re-open cold threads after silence.",
+        description: "Re-open cold threads after 48 hours of silence.",
         trigger: "no_reply",
         status: "paused",
         steps: [
-          {
-            id: newId("step"),
-            type: "wait",
-            label: "Wait 72 hours",
-            config: { delayHours: 72 },
-          },
           {
             id: newId("step"),
             type: "send_sms",

@@ -4,6 +4,7 @@ import { sendOutboundSms } from "@/lib/messaging/service";
 import { isE164 } from "@/lib/phone/e164";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { sendTwilioSms } from "@/lib/twilio/client";
+import { fireLeadContactedIfFirst } from "@/lib/automations/engine";
 
 const bodySchema = z.object({
   orgId: z.string().min(1),
@@ -78,6 +79,11 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+
+  await fireLeadContactedIfFirst(supabase, {
+    orgId: parsed.data.orgId,
+    leadId: parsed.data.leadId,
+  });
 
   return NextResponse.json({
     ok: true,

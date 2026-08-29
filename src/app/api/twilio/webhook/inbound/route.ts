@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { findLeadByPhone, recordInboundMessage } from "@/lib/messaging/service";
+import { cancelNoReplyRuns } from "@/lib/automations/engine";
 
 export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
@@ -22,6 +23,10 @@ export async function POST(request: Request) {
         body,
         providerSid: sid || null,
         source: "twilio",
+      });
+      await cancelNoReplyRuns(supabase, {
+        orgId: match.orgId,
+        leadId: match.leadId,
       });
     }
   }
