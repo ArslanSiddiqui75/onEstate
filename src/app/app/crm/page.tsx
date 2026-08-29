@@ -112,6 +112,7 @@ export default function AppCrmPage() {
     members,
     leads,
     contacts,
+    listings,
     messages,
     callLogs,
     automations,
@@ -1548,6 +1549,7 @@ export default function AppCrmPage() {
                 lead={viewDetailLead}
                 busy={busy}
                 market={market}
+                listings={listings.filter((l) => l.market === market)}
                 showTerritory={flags.leadRouting}
                 onCancel={() => setEditingLead(false)}
                 onSubmit={(form) => {
@@ -1568,6 +1570,7 @@ export default function AppCrmPage() {
                         territory: String(form.get("territory") || "").trim(),
                         notes: String(form.get("notes") || "").trim(),
                         assignedTo: String(form.get("assignedTo") || ""),
+                        listingId: String(form.get("listingId") || "") || undefined,
                       });
                       setViewDetailLead(saved);
                       setEditingLead(false);
@@ -2177,6 +2180,7 @@ function ContactsDirectory({
 function LeadEditForm({
   lead,
   members,
+  listings,
   busy,
   market,
   showTerritory,
@@ -2185,6 +2189,7 @@ function LeadEditForm({
 }: {
   lead: Lead;
   members: { id: string; name: string }[];
+  listings: { id: string; title: string }[];
   busy: boolean;
   market: Market;
   showTerritory: boolean;
@@ -2251,6 +2256,18 @@ function LeadEditForm({
         {members.map((member) => (
           <option key={member.id} value={member.id}>
             {member.name}
+          </option>
+        ))}
+      </select>
+      <select
+        name="listingId"
+        className="h-10 rounded-md border border-[var(--border)] px-3 text-sm sm:col-span-2"
+        defaultValue={lead.listingId || ""}
+      >
+        <option value="">No linked listing</option>
+        {listings.map((listing) => (
+          <option key={listing.id} value={listing.id}>
+            {listing.title}
           </option>
         ))}
       </select>

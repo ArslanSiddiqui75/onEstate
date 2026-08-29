@@ -94,6 +94,10 @@ export interface WorkspaceRepository {
     checklistId: string,
     done: boolean,
   ): Promise<TransactionDeal>;
+  addDealChecklistItem(
+    dealId: string,
+    label: string,
+  ): Promise<TransactionDeal>;
   updateDealMeta(
     dealId: string,
     patch: Partial<

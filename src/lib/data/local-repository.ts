@@ -356,6 +356,20 @@ export function createLocalRepository(
       return snap.deals[idx];
     },
 
+    async addDealChecklistItem(dealId, label) {
+      const snap = requireSnapshot();
+      const idx = snap.deals.findIndex((d) => d.id === dealId);
+      if (idx < 0) throw new Error("Deal not found");
+      const item = { id: newId("chk"), label: label.trim(), done: false };
+      snap.deals[idx] = {
+        ...snap.deals[idx],
+        checklist: [...snap.deals[idx].checklist, item],
+        updatedAt: new Date().toISOString(),
+      };
+      commit(snap);
+      return snap.deals[idx];
+    },
+
     async updateDealMeta(dealId, patch) {
       const snap = requireSnapshot();
       const idx = snap.deals.findIndex((d) => d.id === dealId);

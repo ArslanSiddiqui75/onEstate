@@ -50,6 +50,7 @@ function mapLead(row: Record<string, unknown>, phones: Lead["phones"] = []): Lea
     territory: row.territory ? String(row.territory) : undefined,
     priority: (row.priority as Lead["priority"]) || "medium",
     tags: Array.isArray(row.tags) ? (row.tags as unknown[]).map(String) : [],
+    listingId: row.listing_id ? String(row.listing_id) : undefined,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -318,6 +319,7 @@ export function createSupabaseRepository(
           next_action_due_at: lead.nextActionDueAt,
           territory: lead.territory,
           priority: lead.priority,
+          listing_id: lead.listingId || null,
         })
         .select("*")
         .single();
@@ -381,6 +383,7 @@ export function createSupabaseRepository(
           ...(patch.assignedTo !== undefined ? { assigned_to: patch.assignedTo || null } : {}),
           ...(patch.score !== undefined ? { score: patch.score } : {}),
           ...(patch.territory !== undefined ? { territory: patch.territory } : {}),
+          ...(patch.listingId !== undefined ? { listing_id: patch.listingId || null } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
@@ -748,17 +751,41 @@ export function createSupabaseRepository(
       return deal;
     },
 
+    async addDealChecklistItem(dealId, label) {
+      const trimmed = label.trim();
+      if (!trimmed) throw new Error("Checklist label required");
+      const { error } = await supabase.from("transaction_checklist_items").insert({
+        transaction_id: dealId,
+        org_id: ctx.org.id,
+        label: trimmed,
+        done: false,
+        sort_order: 999,
+      });
+      if (error) throw error;
+      await supabase
+        .from("transactions")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", dealId);
+      const deals = await this.listDeals();
+      const deal = deals.find((d) => d.id === dealId);
+      if (!deal) throw new Error("Deal not found");
+      return deal;
+    },
+
     async updateDealMeta(dealId, patch) {
+      const update: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (patch.stage !== undefined) update.stage = patch.stage;
+      if (patch.eSignStatus !== undefined) update.e_sign_status = patch.eSignStatus;
+      if (patch.ledgerStatus !== undefined) update.ledger_status = patch.ledgerStatus;
+      if (patch.complianceStatus !== undefined) {
+        update.compliance_status = patch.complianceStatus;
+      }
+      if (patch.notes !== undefined) update.notes = patch.notes;
       const { error } = await supabase
         .from("transactions")
-        .update({
-          stage: patch.stage,
-          e_sign_status: patch.eSignStatus,
-          ledger_status: patch.ledgerStatus,
-          compliance_status: patch.complianceStatus,
-          notes: patch.notes,
-          updated_at: new Date().toISOString(),
-        })
+        .update(update)
         .eq("id", dealId);
       if (error) throw error;
       const deals = await this.listDeals();

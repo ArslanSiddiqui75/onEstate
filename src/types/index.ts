@@ -111,6 +111,8 @@ export interface Lead {
   nextActionDueAt?: string;
   territory?: string;
   priority?: Priority;
+  /** Optional linked listing for won→deal and context */
+  listingId?: string;
   /** Written by automation `add_tag` steps */
   tags?: string[];
   createdAt: string;
@@ -202,6 +204,25 @@ export interface TransactionDeal {
   complianceStatus?: "on_track" | "attention" | "blocked";
   notes?: string;
   updatedAt: string;
+}
+
+export type EsignDocStatus = "draft" | "sent" | "signed" | "voided";
+
+export interface TransactionEsignDocument {
+  id: string;
+  dealId: string;
+  orgId?: string;
+  name: string;
+  status: EsignDocStatus;
+  signerName?: string;
+  signerEmail?: string;
+  signToken?: string;
+  summary?: string;
+  provider?: string;
+  sentAt?: string;
+  signedAt?: string;
+  createdAt?: string;
+  signUrl?: string;
 }
 
 export interface OrgMember {

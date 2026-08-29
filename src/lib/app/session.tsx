@@ -30,6 +30,7 @@ import type {
   SocialAccount,
   SocialPost,
   TransactionDeal,
+  TransactionEsignDocument,
   WebsiteSite,
   LeadRoutingSettings,
 } from "@/types";
@@ -82,6 +83,7 @@ import {
   type WorkspaceSnapshot,
   type WorkspaceUser,
 } from "@/lib/data/workspace-store";
+import { defaultDealChecklist } from "@/lib/transactions/checklist";
 
 function buildDevSeedWorkspace(
   account: NonNullable<ReturnType<typeof findDevSeedAccount>>,
@@ -217,11 +219,19 @@ interface AppState {
   listPortalConnections: () => PortalConnection[];
   savePortalConnection: (connection: PortalConnection) => void;
   createDealFromListing: (listingId: string) => Promise<void>;
+  createManualDeal: (input: {
+    listingTitle: string;
+    value: number;
+    parties: string[];
+    targetCloseDate?: string;
+    listingId?: string;
+  }) => Promise<TransactionDeal>;
   updateDealChecklistItem: (
     dealId: string,
     checklistId: string,
     done: boolean,
   ) => Promise<void>;
+  addDealChecklistItem: (dealId: string, label: string) => Promise<void>;
   updateDealMeta: (
     dealId: string,
     patch: Partial<
@@ -231,6 +241,23 @@ interface AppState {
       >
     >,
   ) => Promise<void>;
+  requestEsign: (input: {
+    dealId: string;
+    signerName: string;
+    signerEmail: string;
+    documentName?: string;
+    summary?: string;
+  }) => Promise<{
+    mode: "live" | "simulated";
+    signUrl?: string;
+    emailed?: boolean;
+    document?: TransactionEsignDocument;
+  }>;
+  listEsignDocuments: (dealId: string) => Promise<TransactionEsignDocument[]>;
+  voidEsignDocument: (input: {
+    dealId: string;
+    documentId: string;
+  }) => Promise<void>;
   sendSms: (input: {
     leadId: string;
     body: string;
@@ -847,9 +874,51 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         trigger: "stage_changed",
         stage,
       });
+
+      if (stage === "won") {
+        const snap = await repoRef.current.getSnapshot();
+        const lead = snap?.leads.find((l) => l.id === id);
+        if (lead) {
+          const listing = lead.listingId
+            ? snap?.listings.find((l) => l.id === lead.listingId)
+            : undefined;
+          const existing = listing
+            ? snap?.deals.find((d) => d.listingId === listing.id)
+            : snap?.deals.find(
+                (d) =>
+                  d.listingTitle === lead.name ||
+                  d.notes?.includes(`lead:${lead.id}`),
+              );
+          if (!existing) {
+            await repoRef.current.createDeal({
+              listingId: listing?.id || "",
+              listingTitle: listing?.title || `Deal · ${lead.name}`,
+              parties: [
+                lead.name,
+                `Agent: ${user?.name || "Coordinator"}`,
+              ],
+              stage: "Under offer",
+              checklist: defaultDealChecklist(lead.market),
+              eSignStatus: "not_started",
+              market: lead.market,
+              value: listing?.price || lead.budget || 0,
+              currency: listing?.currency || (lead.market === "uk" ? "GBP" : "USD"),
+              coordinator: user?.name,
+              riskLevel: "medium",
+              ledgerStatus: "not_started",
+              complianceStatus: "attention",
+              notes: `Auto-created when lead won (lead:${lead.id}).`,
+            });
+            if (listing && listing.status !== "under_offer" && listing.status !== "sold") {
+              await repoRef.current.updateListingStatus(listing.id, "under_offer");
+            }
+          }
+        }
+      }
+
       await refresh();
     },
-    [fireAutomationTrigger, refresh],
+    [fireAutomationTrigger, refresh, user?.name],
   );
 
   const updateLead = useCallback(
@@ -892,11 +961,48 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           trigger: "stage_changed",
           stage: nextPatch.stage,
         });
+        if (nextPatch.stage === "won") {
+          const snap = await repoRef.current.getSnapshot();
+          const lead = snap?.leads.find((l) => l.id === id) || {
+            ...current,
+            ...nextPatch,
+            id,
+          };
+          const listing = lead.listingId
+            ? snap?.listings.find((l) => l.id === lead.listingId)
+            : undefined;
+          const existing = listing
+            ? snap?.deals.find((d) => d.listingId === listing.id)
+            : snap?.deals.find(
+                (d) =>
+                  d.listingTitle === lead.name ||
+                  d.notes?.includes(`lead:${id}`),
+              );
+          if (!existing) {
+            await repoRef.current.createDeal({
+              listingId: listing?.id || "",
+              listingTitle: listing?.title || `Deal · ${lead.name}`,
+              parties: [lead.name, `Agent: ${user?.name || "Coordinator"}`],
+              stage: "Under offer",
+              checklist: defaultDealChecklist(lead.market),
+              eSignStatus: "not_started",
+              market: lead.market,
+              value: listing?.price || lead.budget || 0,
+              currency:
+                listing?.currency || (lead.market === "uk" ? "GBP" : "USD"),
+              coordinator: user?.name,
+              riskLevel: "medium",
+              ledgerStatus: "not_started",
+              complianceStatus: "attention",
+              notes: `Auto-created when lead won (lead:${id}).`,
+            });
+          }
+        }
       }
       await refresh();
       return saved;
     },
-    [fireAutomationTrigger, leads, refresh],
+    [fireAutomationTrigger, leads, refresh, user?.name],
   );
 
   const runAutomationNow = useCallback(
@@ -1118,22 +1224,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
             listingTitle: listing.title,
             parties: ["Buyer TBD", `Seller liaison: ${user?.name || "Agent"}`],
             stage: "Under offer",
-            checklist:
-              listing.market === "uk"
-                ? [
-                    { id: newId("chk"), label: "Memorandum of sale", done: false },
-                    { id: newId("chk"), label: "AML checks", done: false },
-                    { id: newId("chk"), label: "Conveyancer instructed", done: false },
-                    { id: newId("chk"), label: "E-sign sale contract", done: false },
-                    { id: newId("chk"), label: "Client money ledger entry", done: false },
-                  ]
-                : [
-                    { id: newId("chk"), label: "Purchase agreement", done: false },
-                    { id: newId("chk"), label: "Disclosures packet", done: false },
-                    { id: newId("chk"), label: "Title company opened", done: false },
-                    { id: newId("chk"), label: "Inspection contingency", done: false },
-                    { id: newId("chk"), label: "E-sign addenda", done: false },
-                  ],
+            checklist: defaultDealChecklist(listing.market),
             eSignStatus: "not_started",
             market: listing.market,
             value: listing.price,
@@ -1206,10 +1297,61 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [updateListingStatus],
   );
 
+  const createManualDeal = useCallback(
+    async (input: {
+      listingTitle: string;
+      value: number;
+      parties: string[];
+      targetCloseDate?: string;
+      listingId?: string;
+    }) => {
+      if (!repoRef.current || !org) {
+        throw new Error("Workspace is not loaded");
+      }
+      const listing = input.listingId
+        ? (await repoRef.current.getSnapshot())?.listings.find(
+            (l) => l.id === input.listingId,
+          )
+        : undefined;
+      const created = await repoRef.current.createDeal({
+        listingId: listing?.id || input.listingId || "",
+        listingTitle: input.listingTitle.trim(),
+        parties: input.parties.filter(Boolean),
+        stage: "Instruction",
+        checklist: defaultDealChecklist(brand.market),
+        eSignStatus: "not_started",
+        market: brand.market,
+        value: input.value,
+        currency: brand.market === "uk" ? "GBP" : "USD",
+        coordinator: user?.name,
+        targetCloseDate: input.targetCloseDate || undefined,
+        riskLevel: "medium",
+        ledgerStatus: "not_started",
+        complianceStatus: "on_track",
+        notes: "Created from Transactions.",
+      });
+      if (listing && listing.status === "active") {
+        await repoRef.current.updateListingStatus(listing.id, "under_offer");
+      }
+      await refresh();
+      return created;
+    },
+    [brand.market, org, refresh, user?.name],
+  );
+
   const updateDealChecklistItem = useCallback(
     async (dealId: string, checklistId: string, done: boolean) => {
       if (!repoRef.current) return;
       await repoRef.current.updateDealChecklistItem(dealId, checklistId, done);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const addDealChecklistItem = useCallback(
+    async (dealId: string, label: string) => {
+      if (!repoRef.current) return;
+      await repoRef.current.addDealChecklistItem(dealId, label);
       await refresh();
     },
     [refresh],
@@ -1230,6 +1372,99 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
     },
     [refresh],
+  );
+
+  const getAuthTokenSafe = useCallback(async () => {
+    try {
+      return await getAuthToken();
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const requestEsign = useCallback(
+    async (input: {
+      dealId: string;
+      signerName: string;
+      signerEmail: string;
+      documentName?: string;
+      summary?: string;
+    }) => {
+      if (authMode === "local") {
+        await updateDealMeta(input.dealId, { eSignStatus: "sent" });
+        return {
+          mode: "simulated" as const,
+          signUrl: undefined,
+          emailed: false,
+        };
+      }
+      const token = await getAuthTokenSafe();
+      if (!token) throw new Error("Sign in required");
+      const res = await fetch("/api/esign/request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(input),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        mode?: "live" | "simulated";
+        signUrl?: string;
+        emailed?: boolean;
+        document?: TransactionEsignDocument;
+      };
+      if (!res.ok) throw new Error(json.error || "E-sign request failed");
+      await refresh();
+      return {
+        mode: json.mode || "simulated",
+        signUrl: json.signUrl,
+        emailed: json.emailed,
+        document: json.document,
+      };
+    },
+    [authMode, getAuthTokenSafe, refresh, updateDealMeta],
+  );
+
+  const listEsignDocuments = useCallback(
+    async (dealId: string) => {
+      if (authMode === "local") return [];
+      const token = await getAuthTokenSafe();
+      if (!token) return [];
+      const res = await fetch(
+        `/api/esign/status?dealId=${encodeURIComponent(dealId)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!res.ok) return [];
+      const json = (await res.json()) as { documents?: TransactionEsignDocument[] };
+      return json.documents || [];
+    },
+    [authMode, getAuthTokenSafe],
+  );
+
+  const voidEsignDocument = useCallback(
+    async (input: { dealId: string; documentId: string }) => {
+      if (authMode === "local") {
+        await updateDealMeta(input.dealId, { eSignStatus: "voided" });
+        return;
+      }
+      const token = await getAuthTokenSafe();
+      if (!token) throw new Error("Sign in required");
+      const res = await fetch("/api/esign/void", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(input),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(json.error || "Could not void document");
+      await refresh();
+    },
+    [authMode, getAuthTokenSafe, refresh, updateDealMeta],
   );
 
   const sendSms = useCallback(
@@ -1804,8 +2039,13 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       listPortalConnections,
       savePortalConnection,
       createDealFromListing,
+      createManualDeal,
       updateDealChecklistItem,
+      addDealChecklistItem,
       updateDealMeta,
+      requestEsign,
+      listEsignDocuments,
+      voidEsignDocument,
       sendSms,
       sendEmail,
       receiveInboundSms,
@@ -1868,8 +2108,13 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       listPortalConnections,
       savePortalConnection,
       createDealFromListing,
+      createManualDeal,
       updateDealChecklistItem,
+      addDealChecklistItem,
       updateDealMeta,
+      requestEsign,
+      listEsignDocuments,
+      voidEsignDocument,
       sendSms,
       sendEmail,
       receiveInboundSms,
