@@ -1,4 +1,8 @@
-import { shouldUseResendOutbound, emailFromAddress } from "@/lib/email/capabilities";
+import {
+  shouldUseResendOutbound,
+  emailFromAddress,
+  emailConfigError,
+} from "@/lib/email/capabilities";
 
 export async function sendResendEmail(input: {
   to: string;
@@ -6,6 +10,11 @@ export async function sendResendEmail(input: {
   body: string;
   replyTo?: string;
 }): Promise<{ sid: string; status: string; mode: "live" | "simulated" }> {
+  const configError = emailConfigError();
+  if (configError) {
+    throw new Error(configError);
+  }
+
   if (!shouldUseResendOutbound()) {
     return {
       sid: `sim_email_${Date.now()}`,

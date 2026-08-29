@@ -153,6 +153,7 @@ export default function AppCrmPage() {
   const [simulateReplyText, setSimulateReplyText] = useState("");
   const [messagingMode, setMessagingMode] = useState<"live" | "simulated" | null>(null);
   const [emailMode, setEmailMode] = useState<"live" | "simulated" | null>(null);
+  const [emailConfigError, setEmailConfigError] = useState<string | null>(null);
   const [automationRuns, setAutomationRuns] = useState<AutomationRun[]>([]);
   const [leadActivities, setLeadActivities] = useState<LeadActivity[]>([]);
   const [busy, setBusy] = useState(false);
@@ -173,8 +174,12 @@ export default function AppCrmPage() {
         if (json?.mode === "live" || json?.mode === "simulated") {
           setEmailMode(json.mode);
         }
+        setEmailConfigError(typeof json?.configError === "string" ? json.configError : null);
       })
-      .catch(() => setEmailMode(null));
+      .catch(() => {
+        setEmailMode(null);
+        setEmailConfigError(null);
+      });
   }, []);
 
   // Opening the CRM flushes automation waits that came due, so runs advance
@@ -759,6 +764,9 @@ export default function AppCrmPage() {
                   </Badge>
                 ) : null}
                 </div>
+                {emailConfigError ? (
+                  <p className="mt-2 w-full text-[11px] text-[var(--warning)]">{emailConfigError}</p>
+                ) : null}
               </div>
             </div>
 
@@ -895,11 +903,13 @@ export default function AppCrmPage() {
                                     });
                                     setDraftText("");
                                     setDraftSubject("");
-                                    toast.success(
-                                      result.mode === "live"
-                                        ? "Email sent via Resend"
-                                        : "Email sent (simulated)",
-                                    );
+                                    if (result.mode === "live") {
+                                      toast.success("Email sent via Resend");
+                                    } else {
+                                      toast.warning(
+                                        "Logged in the thread only — Resend was not called. Inbox should show Simulated email.",
+                                      );
+                                    }
                                   } else {
                                     const result = await sendSms({
                                       leadId: activeLead.id,

@@ -7,5 +7,6 @@ export async function GET() {
     mode: caps.mode,
     outbound: caps.outbound,
     resendConfigured: caps.resendConfigured,
+    configError: caps.configError || null,
   });
 }
