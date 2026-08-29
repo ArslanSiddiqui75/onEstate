@@ -5,6 +5,7 @@ import { PublicContactForm } from "@/components/website/public-contact-form";
 import { getPublicSite } from "@/lib/website/public-site";
 import { hydrateWebsiteSite } from "@/lib/website/defaults";
 import { getTemplate } from "@/lib/website/templates";
+import { resolveSections, sectionVariant } from "@/lib/website/sections";
 
 // Tenants edit their site at any time, so don't cache the render indefinitely.
 export const revalidate = 60;
@@ -42,6 +43,9 @@ export default async function PublicSitePage({
   const hydrated = hydrateWebsiteSite(published.site, published.orgName);
   const template = getTemplate(hydrated.templateId);
   const isDark = template.id === "luxury-dark";
+  const contact = resolveSections(hydrated).find((s) => s.kind === "contact");
+  const contactLayout =
+    contact && sectionVariant(contact, template) === "stacked" ? "stacked" : "compact";
 
   return (
     <main className="min-h-screen">
@@ -55,6 +59,7 @@ export default async function PublicSitePage({
           <PublicContactForm
             site={published.slug}
             ctaLabel={hydrated.primaryCta}
+            layout={contactLayout}
             colors={{
               surface: template.colors.surface,
               text: template.colors.text,

@@ -436,6 +436,44 @@ export interface WebsiteSite {
   domainVerifiedAt?: string;
   /** SSL certificate status */
   sslStatus?: SslStatus;
+  /**
+   * Ordered page blocks. Missing on older payloads — hydrate from the
+   * `show*` flags. Footer is always last and is not in this list.
+   */
+  sections?: WebsiteSectionConfig[];
+  testimonialsHeading?: string;
+  testimonials?: WebsiteQuote[];
+  statsHeading?: string;
+  stats?: WebsiteStat[];
+  ctaHeading?: string;
+  ctaBody?: string;
+}
+
+export type WebsiteSectionKind =
+  | "hero"
+  | "listings"
+  | "about"
+  | "testimonials"
+  | "stats"
+  | "cta"
+  | "contact";
+
+export interface WebsiteSectionConfig {
+  kind: WebsiteSectionKind;
+  visible: boolean;
+  /** Style variant id from the section catalog. Empty = follow the theme. */
+  variant?: string;
+}
+
+export interface WebsiteQuote {
+  quote: string;
+  name: string;
+  role?: string;
+}
+
+export interface WebsiteStat {
+  value: string;
+  label: string;
 }
 
 export type SocialPlatform = "instagram" | "facebook" | "linkedin" | "x";

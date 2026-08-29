@@ -16,11 +16,12 @@ import { LockedModule } from "@/components/ui/locked-module";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
 import { FEATURED_TEMPLATES, getTemplate } from "@/lib/website/templates";
 import { hydrateWebsiteSite } from "@/lib/website/defaults";
+import { applySectionLayout, resolveSections } from "@/lib/website/sections";
 import { WebsiteCanvas } from "@/components/website/website-preview";
+import { SectionPalette } from "@/components/website/section-palette";
 import { fileToSocialMedia, uploadSocialMediaFile } from "@/lib/social/media";
 import type { WebsiteSite, WebsiteTemplateId, DomainStatus, SslStatus } from "@/types";
 
@@ -100,7 +101,9 @@ export default function AppWebsitePage() {
     if (!canEdit) return;
     setBusy(true);
     try {
-      await saveWebsite(updated);
+      const next = { ...updated, ...applySectionLayout(resolveSections(updated)) };
+      await saveWebsite(next);
+      setDraft(next);
       setDirty(false);
       toast.success("Website saved");
     } catch {
@@ -180,7 +183,7 @@ export default function AppWebsitePage() {
     <div className="-m-4 flex min-h-[calc(100vh-10rem)] flex-col sm:-m-6 lg:-m-8">
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
         <p className="mr-auto text-xs text-[var(--muted)]">
-          Hover text to edit · hover the hero photo to replace it
+          Hover text to edit · hover the hero photo to replace it · Sections to add, hide, or reorder blocks
         </p>
         <Button
           size="sm"
@@ -269,28 +272,7 @@ export default function AppWebsitePage() {
           ) : null}
 
           {panel === "sections" ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {(
-                [
-                  ["showHero", "Hero", hydrated.showHero ?? true],
-                  ["showListings", "Listings", hydrated.showListings ?? true],
-                  ["showAgentBio", "About", hydrated.showAgentBio ?? true],
-                  ["showContactForm", "Contact", hydrated.showContactForm ?? true],
-                ] as const
-              ).map(([key, label, checked]) => (
-                <label
-                  key={key}
-                  className="flex items-center justify-between rounded-xl border border-[var(--border)] px-3 py-2 text-sm"
-                >
-                  {label}
-                  <Switch
-                    checked={checked}
-                    disabled={!canEdit}
-                    onCheckedChange={(val) => updateDraft({ [key]: val })}
-                  />
-                </label>
-              ))}
-            </div>
+            <SectionPalette site={hydrated} canEdit={canEdit} onChange={updateDraft} />
           ) : null}
 
           {panel === "domain" ? (
@@ -344,7 +326,7 @@ export default function AppWebsitePage() {
           market={market}
           editable={canEdit}
           uploadingHero={uploadingHero}
-          onChange={(field, value) => updateDraft({ [field]: value })}
+          onChange={(patch) => updateDraft(patch)}
           onHeroFile={(file) => void handleHeroFile(file)}
         />
       </div>

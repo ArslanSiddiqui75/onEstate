@@ -16,6 +16,7 @@ export interface PublicContactFormProps {
     border: string;
   };
   wrapperBackground: string;
+  layout?: "compact" | "stacked";
 }
 
 export function PublicContactForm({
@@ -23,6 +24,7 @@ export function PublicContactForm({
   ctaLabel,
   colors,
   wrapperBackground,
+  layout = "compact",
 }: PublicContactFormProps) {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
@@ -101,7 +103,13 @@ export function PublicContactForm({
         void submit();
       }}
     >
-      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+      <div
+        className={
+          layout === "stacked"
+            ? "grid gap-3"
+            : "grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+        }
+      >
         <input
           className="rounded-2xl px-4 py-3 text-sm outline-none"
           style={fieldStyle}
@@ -118,18 +126,20 @@ export function PublicContactForm({
           onChange={(e) => setContact(e.target.value)}
           required
         />
-        <button
-          type="submit"
-          disabled={status === "sending"}
-          className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium disabled:opacity-60"
-          style={{
-            backgroundColor: colors.accent,
-            color: colors.accentText,
-            borderRadius: 9999,
-          }}
-        >
-          {status === "sending" ? "Sending…" : ctaLabel}
-        </button>
+        {layout === "stacked" ? null : (
+          <button
+            type="submit"
+            disabled={status === "sending"}
+            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium disabled:opacity-60"
+            style={{
+              backgroundColor: colors.accent,
+              color: colors.accentText,
+              borderRadius: 9999,
+            }}
+          >
+            {status === "sending" ? "Sending…" : ctaLabel}
+          </button>
+        )}
       </div>
 
       <textarea
@@ -139,6 +149,21 @@ export function PublicContactForm({
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
+
+      {layout === "stacked" ? (
+        <button
+          type="submit"
+          disabled={status === "sending"}
+          className="mt-3 inline-flex w-full items-center justify-center px-6 py-3 text-sm font-medium disabled:opacity-60 sm:w-auto"
+          style={{
+            backgroundColor: colors.accent,
+            color: colors.accentText,
+            borderRadius: 9999,
+          }}
+        >
+          {status === "sending" ? "Sending…" : ctaLabel}
+        </button>
+      ) : null}
 
       {/* Spam trap — hidden from real visitors */}
       <input

@@ -1,5 +1,12 @@
 import type { WebsiteSite } from "@/types";
 import { getTemplate, resolveTemplateId } from "@/lib/website/templates";
+import {
+  CORE_SECTION_ORDER,
+  defaultQuotes,
+  defaultStats,
+  flagsFromSections,
+  resolveSections,
+} from "@/lib/website/sections";
 
 export function defaultWebsiteSite(
   orgId: string,
@@ -31,6 +38,13 @@ export function defaultWebsiteSite(
     showClientPortal: true,
     showContactForm: true,
     showAgentBio: true,
+    sections: CORE_SECTION_ORDER.map((kind) => ({ kind, visible: true })),
+    testimonialsHeading: "What clients say",
+    testimonials: defaultQuotes(),
+    statsHeading: "By the numbers",
+    stats: defaultStats(),
+    ctaHeading: `Work with ${orgName}`,
+    ctaBody: "Tell us what you’re looking for — we’ll take it from there.",
   };
 }
 
@@ -39,6 +53,7 @@ export function hydrateWebsiteSite(
   orgName: string,
 ): WebsiteSite {
   const template = getTemplate(site.templateId);
+  const sections = resolveSections(site);
   return {
     ...site,
     templateId: resolveTemplateId(site.templateId),
@@ -48,5 +63,14 @@ export function hydrateWebsiteSite(
     contactHeading: site.contactHeading || "Get in touch",
     secondaryCta: site.secondaryCta || "View listings",
     footerNote: site.footerNote || "",
+    sections,
+    ...flagsFromSections(sections),
+    testimonialsHeading: site.testimonialsHeading || "What clients say",
+    testimonials: site.testimonials?.length ? site.testimonials : defaultQuotes(),
+    statsHeading: site.statsHeading || "By the numbers",
+    stats: site.stats?.length ? site.stats : defaultStats(),
+    ctaHeading: site.ctaHeading || `Work with ${orgName}`,
+    ctaBody:
+      site.ctaBody || "Tell us what you’re looking for — we’ll take it from there.",
   };
 }
