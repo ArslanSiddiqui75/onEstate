@@ -63,7 +63,8 @@ Repo: `ArslanSiddiqui75/onEstate` (`main`). Live app: https://on-estate.vercel.a
 - **Media upload** via **signed URL** → Supabase Storage (avoids Vercel ~4.5MB body 413)
 - **Scheduled posts** via **cron-job.org** every 1–5 min hitting `/api/social/cron/publish`
   - Auth: header **`X-Cron-Secret: <SOCIAL_CRON_SECRET>`** (preferred). Query `?secret=` breaks if the secret contains `&` / special chars
-  - Verified test run **200 OK**: `{"processed":1,"published":1,"failed":0}` (2026-08-16 ~13:20 UTC)
+  - Route returns **immediately** (`{ accepted: true }`) and publishes **1 due post per tick** in the background via `after()` — avoids cron-job.org **Timeout** (~30s) while IG media polling runs up to 60s. Debug with `?sync=1` to await `{ processed, published, failed }`.
+  - Optional env **`SOCIAL_CRON_BATCH_SIZE`** (default `1`, max `5`)
 - Also: opening `/app/social` calls **`POST /api/social/publish-due`** (flushes due posts for signed-in org) — Hobby workaround
 - Vercel **Hobby**: platform cron is **daily only** (`vercel.json` → `0 12 * * *`). Do **not** put `*/5` in `vercel.json` (deploy fails)
 
