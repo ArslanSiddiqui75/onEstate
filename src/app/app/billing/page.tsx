@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { CreditCard, ShieldCheck, ListChecks, ChevronDown, ChevronUp, Download, FileText } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
@@ -17,6 +17,18 @@ import type { PlanId } from "@/types";
 import { MODULE_LABELS } from "@/lib/rbac/matrix";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { toast } from "@/components/ui/toast";
+
+type BillingInvoice = {
+  id?: string;
+  date: string;
+  description: string;
+  plan: string;
+  amount: number;
+  currency: string;
+  status: string;
+  hostedInvoiceUrl?: string | null;
+  invoicePdf?: string | null;
+};
 
 const STATUS_TONE: Record<string, "success" | "danger" | "accent" | "neutral"> = {
   active: "success",
@@ -43,6 +55,38 @@ export default function AppBillingPage() {
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [showMatrix, setShowMatrix] = useState(false);
+  const [invoices, setInvoices] = useState<BillingInvoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
+  const [invoicesMode, setInvoicesMode] = useState<"demo" | "live">("demo");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setInvoicesLoading(true);
+      try {
+        const token = await getAuthToken();
+        const res = await fetch("/api/stripe/invoices", {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error("Could not load invoices");
+        const json = await res.json();
+        if (cancelled) return;
+        setInvoicesMode(json.mode === "live" ? "live" : "demo");
+        if (Array.isArray(json.invoices) && json.invoices.length > 0) {
+          setInvoices(json.invoices);
+        } else {
+          setInvoices([]);
+        }
+      } catch {
+        if (!cancelled) setInvoices([]);
+      } finally {
+        if (!cancelled) setInvoicesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [getAuthToken]);
 
   if (!user || !org) return null;
 
@@ -339,7 +383,11 @@ export default function AppBillingPage() {
       <Card className="p-4 space-y-3">
         <CardHeader
           title="Billing & Invoice History"
-          description="Past subscription receipts and payment transactions"
+          description={
+            invoicesMode === "live"
+              ? "Receipts from your Stripe subscription"
+              : "Preview receipts — connect Stripe for live invoice history"
+          }
         />
         <TableShell>
           <Table>
@@ -354,43 +402,78 @@ export default function AppBillingPage() {
               </TR>
             </THead>
             <TBody>
-              {[
-                { date: "2026-08-01", desc: "Monthly Platform Subscription", plan: org.plan, amount: currency + (market === "uk" ? "299" : "349"), status: "paid" },
-                { date: "2026-07-01", desc: "Monthly Platform Subscription", plan: org.plan, amount: currency + (market === "uk" ? "299" : "349"), status: "paid" },
-                { date: "2026-06-01", desc: "Monthly Platform Subscription", plan: org.plan, amount: currency + (market === "uk" ? "299" : "349"), status: "paid" },
-              ].map((inv, idx) => (
-                <TR key={idx}>
-                  <TD>{inv.date}</TD>
-                  <TD className="font-medium">{inv.desc}</TD>
-                  <TD className="capitalize">{inv.plan}</TD>
-                  <TD className="font-medium">{inv.amount}</TD>
-                  <TD>
-                    <Badge tone="success" className="capitalize">{inv.status}</Badge>
-                  </TD>
-                  <TD className="text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="gap-1 text-xs"
-                      onClick={() => {
-                        const receiptText = `RECEIPT - 0nEstate\nInvoice Date: ${inv.date}\nOrganization: ${org.name}\nPlan: ${inv.plan.toUpperCase()}\nAmount Paid: ${inv.amount}\nStatus: PAID\nThank you for choosing 0nEstate!`;
-                        const blob = new Blob([receiptText], { type: "text/plain" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `invoice_${inv.date}_0nEstate.txt`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        toast.success("Receipt downloaded");
-                      }}
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      Receipt
-                    </Button>
+              {invoicesLoading ? (
+                <TR>
+                  <TD colSpan={6} className="text-center text-sm text-[var(--muted)] py-8">
+                    Loading invoices…
                   </TD>
                 </TR>
-              ))}
+              ) : invoices.length === 0 ? (
+                <TR>
+                  <TD colSpan={6} className="text-center text-sm text-[var(--muted)] py-8">
+                    No invoices yet. Your first payment will appear here.
+                  </TD>
+                </TR>
+              ) : (
+                invoices.map((inv) => {
+                  const amountLabel =
+                    inv.currency === "GBP"
+                      ? `£${inv.amount.toFixed(2)}`
+                      : inv.currency === "USD"
+                        ? `$${inv.amount.toFixed(2)}`
+                        : `${inv.amount.toFixed(2)} ${inv.currency}`;
+                  return (
+                    <TR key={inv.id || inv.date}>
+                      <TD>{inv.date}</TD>
+                      <TD className="font-medium">{inv.description}</TD>
+                      <TD className="capitalize">{inv.plan}</TD>
+                      <TD className="font-medium">{amountLabel}</TD>
+                      <TD>
+                        <Badge tone="success" className="capitalize">
+                          {inv.status}
+                        </Badge>
+                      </TD>
+                      <TD className="text-right">
+                        {inv.invoicePdf || inv.hostedInvoiceUrl ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-1 text-xs"
+                            onClick={() => {
+                              const url = inv.invoicePdf || inv.hostedInvoiceUrl;
+                              if (url) window.open(url, "_blank", "noopener,noreferrer");
+                            }}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            PDF
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="gap-1 text-xs"
+                            onClick={() => {
+                              const receiptText = `RECEIPT - 0nEstate\nInvoice Date: ${inv.date}\nOrganization: ${org.name}\nPlan: ${String(inv.plan).toUpperCase()}\nAmount Paid: ${amountLabel}\nStatus: ${inv.status.toUpperCase()}\nThank you for choosing 0nEstate!`;
+                              const blob = new Blob([receiptText], { type: "text/plain" });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement("a");
+                              a.href = url;
+                              a.download = `invoice_${inv.date}_0nEstate.txt`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              toast.success("Receipt downloaded");
+                            }}
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            Receipt
+                          </Button>
+                        )}
+                      </TD>
+                    </TR>
+                  );
+                })
+              )}
             </TBody>
           </Table>
         </TableShell>

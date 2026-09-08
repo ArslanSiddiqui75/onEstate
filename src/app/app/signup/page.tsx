@@ -35,6 +35,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
 import { signupSchema, validateForm } from "@/lib/auth/validation";
+import { PasswordStrengthBar } from "@/components/ui/password-strength";
 import type { PlanId } from "@/types";
 
 export default function AppSignupPage() {
@@ -44,6 +45,7 @@ export default function AppSignupPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [formInfo, setFormInfo] = useState("");
+  const [password, setPassword] = useState("");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -85,7 +87,7 @@ export default function AppSignupPage() {
         toast.success("Account created! Check your inbox.");
       } else {
         toast.success("Workspace created!");
-        // Guard in layout.tsx will auto-redirect to /app once user state is set
+        router.push("/app/onboarding");
       }
     } catch (err) {
       const message =
@@ -138,7 +140,10 @@ export default function AppSignupPage() {
               type="password"
               placeholder="Min. 6 characters"
               autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
+            <PasswordStrengthBar password={password} className="mt-2" />
           </FormField>
 
           <FormField

@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { sendOutboundSms } from "@/lib/messaging/service";
+import { phoneLookupVariants, sendOutboundSms } from "@/lib/messaging/service";
 import { isE164 } from "@/lib/phone/e164";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { sendTwilioSms } from "@/lib/twilio/client";
 import { fireLeadContactedIfFirst } from "@/lib/automations/engine";
+import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { shouldUseTwilioOutbound } from "@/lib/messaging/capabilities";
 
 const bodySchema = z.object({
-  orgId: z.string().min(1),
   leadId: z.string().min(1),
   to: z.string().min(5),
   body: z.string().min(1).max(1600),
@@ -40,10 +41,24 @@ export async function POST(request: Request) {
   }
 
   const supabase = createServiceSupabaseClient();
+  const profile = await resolveProfileFromRequest(request);
+
+  if (supabase && !profile) {
+    return NextResponse.json({ error: "Sign in to send SMS" }, { status: 401 });
+  }
+
+  if (process.env.NODE_ENV === "production" && !profile) {
+    return NextResponse.json({ error: "Sign in to send SMS" }, { status: 401 });
+  }
+
+  const orgId = profile?.orgId;
 
   // Local-workspace mode has no Supabase to persist to; the client stores the
-  // message itself, so just relay the send.
-  if (!supabase) {
+  // message itself, so just relay the send — never send live Twilio unauthenticated.
+  if (!supabase || !orgId) {
+    if (shouldUseTwilioOutbound() && !profile) {
+      return NextResponse.json({ error: "Sign in to send SMS" }, { status: 401 });
+    }
     try {
       const result = await sendTwilioSms({
         to: parsed.data.to,
@@ -64,8 +79,53 @@ export async function POST(request: Request) {
     }
   }
 
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("id, phone")
+    .eq("id", parsed.data.leadId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  if (!lead) {
+    return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+
+  const { data: phoneRows } = await supabase
+    .from("lead_phone_numbers")
+    .select("number, consent")
+    .eq("lead_id", lead.id)
+    .eq("org_id", orgId);
+
+  const allowed = new Set(phoneLookupVariants(String(lead.phone || "")));
+  const consentByVariant = new Map<string, string>();
+  for (const row of phoneRows || []) {
+    const variants = phoneLookupVariants(String(row.number || ""));
+    for (const variant of variants) {
+      allowed.add(variant);
+      if (row.consent) consentByVariant.set(variant, String(row.consent));
+    }
+  }
+
+  const toVariants = phoneLookupVariants(parsed.data.to);
+  if (!toVariants.some((variant) => allowed.has(variant))) {
+    return NextResponse.json(
+      { error: "Phone number does not belong to this lead" },
+      { status: 403 },
+    );
+  }
+
+  const storedConsent = toVariants
+    .map((variant) => consentByVariant.get(variant))
+    .find(Boolean);
+  if (storedConsent === "opted_out") {
+    return NextResponse.json(
+      { error: "Cannot send SMS: contact opted out" },
+      { status: 403 },
+    );
+  }
+
   const result = await sendOutboundSms(supabase, {
-    orgId: parsed.data.orgId,
+    orgId,
     leadId: parsed.data.leadId,
     to: parsed.data.to,
     body: parsed.data.body,
@@ -81,7 +141,7 @@ export async function POST(request: Request) {
   }
 
   await fireLeadContactedIfFirst(supabase, {
-    orgId: parsed.data.orgId,
+    orgId,
     leadId: parsed.data.leadId,
   });
 

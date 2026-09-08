@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { processAutomationRuns } from "@/lib/automations/engine";
+import { unauthorizedCronResponse } from "@/lib/server/cron-auth";
 
 export const maxDuration = 60;
 
@@ -10,31 +11,11 @@ export const maxDuration = 60;
  * Auth mirrors /api/social/cron/publish so one secret covers both schedulers.
  */
 async function handle(request: Request) {
-  const automationSecret = process.env.AUTOMATION_CRON_SECRET;
-  const socialSecret = process.env.SOCIAL_CRON_SECRET;
-  const vercelCronSecret = process.env.CRON_SECRET;
-
-  const url = new URL(request.url);
-  const providedHeader = request.headers.get("x-cron-secret");
-  const providedQuery = url.searchParams.get("secret");
-  const auth = request.headers.get("authorization");
-  const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
-  const isVercelCron = request.headers.get("x-vercel-cron") === "1";
-
-  const expected = [automationSecret, socialSecret, vercelCronSecret].filter(
-    Boolean,
-  ) as string[];
-
-  if (expected.length > 0) {
-    const ok =
-      isVercelCron ||
-      (providedHeader && expected.includes(providedHeader)) ||
-      (providedQuery && expected.includes(providedQuery)) ||
-      (bearer && expected.includes(bearer));
-    if (!ok) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  }
+  const denied = unauthorizedCronResponse(request, [
+    process.env.AUTOMATION_CRON_SECRET,
+    process.env.SOCIAL_CRON_SECRET,
+  ]);
+  if (denied) return denied;
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {

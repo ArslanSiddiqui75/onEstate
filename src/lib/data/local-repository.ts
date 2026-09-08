@@ -184,6 +184,14 @@ export function createLocalRepository(
       return snap.org;
     },
 
+    async updateOrganization(patch) {
+      const snap = requireSnapshot();
+      if (patch.name !== undefined) snap.org.name = patch.name;
+      if (patch.market !== undefined) snap.org.market = patch.market;
+      commit(snap);
+      return snap.org;
+    },
+
     async saveLeadRouting(settings) {
       const snap = requireSnapshot();
       snap.org.leadRouting = settings;
@@ -194,6 +202,29 @@ export function createLocalRepository(
 
     async listMembers() {
       return requireSnapshot().members;
+    },
+
+    async inviteMember(input) {
+      const snap = requireSnapshot();
+      const email = input.email.trim().toLowerCase();
+      if (snap.members.some((m) => m.email.toLowerCase() === email)) {
+        throw new Error("This email is already on the team");
+      }
+      const member: OrgMember = {
+        id: newId("member"),
+        name: input.name.trim(),
+        email: input.email.trim(),
+        role: input.role,
+        avatarInitials: input.name
+          .split(" ")
+          .map((part) => part[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase(),
+      };
+      snap.members = [...snap.members, member];
+      commit(snap);
+      return member;
     },
 
     async listLeads() {

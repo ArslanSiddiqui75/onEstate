@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ShieldCheck } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
-import { PLATFORM_ADMIN_ACCOUNTS, PLATFORM_ADMIN_PASSWORD } from "@/lib/admin/accounts";
+import { PLATFORM_ADMIN_ACCOUNTS, DEV_ADMIN_PASSWORD_HINT, isPlatformAdminDevHintsEnabled } from "@/lib/admin/accounts";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,12 @@ import { fadeUp } from "@/lib/motion";
 export default function AdminLoginPage() {
   const { signIn } = useAdminSession();
   const router = useRouter();
-  const [email, setEmail] = useState("admin@certified.local");
-  const [password, setPassword] = useState(PLATFORM_ADMIN_PASSWORD);
+  const [email, setEmail] = useState(
+    isPlatformAdminDevHintsEnabled() ? "admin@certified.local" : "",
+  );
+  const [password, setPassword] = useState(
+    isPlatformAdminDevHintsEnabled() ? DEV_ADMIN_PASSWORD_HINT : "",
+  );
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -82,12 +86,16 @@ export default function AdminLoginPage() {
         </form>
         {error ? <Alert tone="danger" className="mt-3">{error}</Alert> : null}
 
+        {isPlatformAdminDevHintsEnabled() ? (
         <div className="mt-6 rounded-[1.1rem] border border-dashed border-[var(--border-strong)] bg-[var(--surface-muted)] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-            Dev admin accounts — rotate before production
+            Dev admin accounts — not shown in production
           </p>
           <p className="mt-2 text-sm">
-            Password: <code className="font-semibold">{PLATFORM_ADMIN_PASSWORD}</code>
+            Local default password: <code className="font-semibold">{DEV_ADMIN_PASSWORD_HINT}</code>
+          </p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Production uses <code>PLATFORM_ADMIN_PASSWORD</code> on the server.
           </p>
           <ul className="mt-3 space-y-2">
             {PLATFORM_ADMIN_ACCOUNTS.map((account) => (
@@ -97,7 +105,7 @@ export default function AdminLoginPage() {
                   className="flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-left text-sm transition hover:border-[var(--accent)] hover:shadow-[var(--shadow-card)]"
                   onClick={() => {
                     setEmail(account.email);
-                    setPassword(account.password);
+                    setPassword(DEV_ADMIN_PASSWORD_HINT);
                   }}
                 >
                   <Avatar name={account.name} size="sm" />
@@ -115,6 +123,7 @@ export default function AdminLoginPage() {
             ))}
           </ul>
         </div>
+        ) : null}
       </motion.div>
     </div>
   );

@@ -142,6 +142,7 @@ export default function AppCrmPage() {
     listAutomationRuns,
     listLeadActivities,
     resolveTask,
+    inviteMember,
     market,
     persistence,
   } = useAppSession();
@@ -460,8 +461,16 @@ export default function AppCrmPage() {
                   plan={org.plan}
                   currentMemberCount={members.length}
                   onInvite={async (newMember) => {
-                    // Simulates team member invitation
-                    toast.success(`Invited ${newMember.name} (${newMember.email}) as ${newMember.role}`);
+                    try {
+                      await inviteMember(newMember);
+                      toast.success(
+                        `Invited ${newMember.name} (${newMember.email}) as ${newMember.role}`,
+                      );
+                    } catch (err) {
+                      toast.error(
+                        err instanceof Error ? err.message : "Could not send invite",
+                      );
+                    }
                   }}
                 />
                 <Button onClick={() => setShowLeadForm((v) => !v)}>

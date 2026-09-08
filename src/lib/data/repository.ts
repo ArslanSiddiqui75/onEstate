@@ -11,10 +11,13 @@ import type {
   LeadTask,
   LeadRoutingSettings,
   Listing,
+  ListingPatch,
   ListingStatus,
+  Market,
   MessageSequence,
   OrgMember,
   PlanId,
+  Role,
   SequenceEnrollment,
   SocialAccount,
   SocialPost,
@@ -33,8 +36,17 @@ export interface WorkspaceRepository {
   saveAuth(user: WorkspaceUser, org: WorkspaceOrg): Promise<void>;
   clearAuth(): Promise<void>;
   setPlan(plan: PlanId): Promise<WorkspaceOrg>;
+  updateOrganization(patch: {
+    name?: string;
+    market?: Market;
+  }): Promise<WorkspaceOrg>;
   saveLeadRouting(settings: LeadRoutingSettings): Promise<WorkspaceOrg>;
   listMembers(): Promise<OrgMember[]>;
+  inviteMember(input: {
+    name: string;
+    email: string;
+    role: Role;
+  }): Promise<OrgMember>;
   listLeads(): Promise<Lead[]>;
   createLead(lead: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead>;
   updateLeadStage(id: string, stage: LeadStage): Promise<Lead>;
@@ -71,20 +83,7 @@ export interface WorkspaceRepository {
     },
   ): Promise<Listing>;
   updateListingStatus(id: string, status: ListingStatus): Promise<Listing>;
-  updateListing(
-    id: string,
-    patch: Partial<
-      Pick<
-        Listing,
-        | "portals"
-        | "syncReadiness"
-        | "lastSyncAt"
-        | "nextMilestone"
-        | "complianceIssues"
-        | "status"
-      >
-    >,
-  ): Promise<Listing>;
+  updateListing(id: string, patch: ListingPatch): Promise<Listing>;
   listDeals(): Promise<TransactionDeal[]>;
   createDeal(
     deal: Omit<TransactionDeal, "id" | "updatedAt"> & { id?: string },

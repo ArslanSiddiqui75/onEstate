@@ -20,8 +20,9 @@ export const DEV_SEED_ORG = {
   plan: "team" as PlanId,
 };
 
-/** Shared password for all seed accounts (local/dev only). */
-export const DEV_SEED_PASSWORD = "CertifiedDev1!";
+/** Shared password for all seed accounts (local/dev only). Stripped from production builds. */
+export const DEV_SEED_PASSWORD =
+  process.env.NODE_ENV === "production" ? "" : "CertifiedDev1!";
 
 export const DEV_SEED_ACCOUNTS: DevSeedAccount[] = [
   {
@@ -75,6 +76,7 @@ export const DEV_SEED_ACCOUNTS: DevSeedAccount[] = [
 ];
 
 export function findDevSeedAccount(email: string, password?: string) {
+  if (!isDevSeedEnabled()) return null;
   const account = DEV_SEED_ACCOUNTS.find(
     (a) => a.email.toLowerCase() === email.trim().toLowerCase(),
   );

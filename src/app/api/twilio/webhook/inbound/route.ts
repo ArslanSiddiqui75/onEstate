@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { findLeadByPhone, recordInboundMessage } from "@/lib/messaging/service";
 import { cancelNoReplyRuns } from "@/lib/automations/engine";
+import {
+  assertTwilioSignature,
+  readTwilioWebhookParams,
+} from "@/lib/twilio/webhook";
 
 export async function POST(request: Request) {
-  const form = await request.formData().catch(() => null);
-  const from = String(form?.get("From") || "");
-  const body = String(form?.get("Body") || "");
-  const sid = String(form?.get("MessageSid") || "");
+  const params = await readTwilioWebhookParams(request);
+  const unauthorized = await assertTwilioSignature(request, params);
+  if (unauthorized) return unauthorized;
+
+  const from = String(params.From || "");
+  const body = String(params.Body || "");
+  const sid = String(params.MessageSid || "");
 
   if (!from || !body) {
     return NextResponse.json({ error: "Invalid webhook" }, { status: 400 });

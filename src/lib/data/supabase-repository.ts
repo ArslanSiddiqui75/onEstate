@@ -241,6 +241,21 @@ export function createSupabaseRepository(
       return ctx.org;
     },
 
+    async updateOrganization(patch) {
+      const row: Record<string, unknown> = {};
+      if (patch.name !== undefined) row.name = patch.name;
+      if (patch.market !== undefined) row.market = patch.market;
+      if (Object.keys(row).length === 0) return ctx.org;
+      const { error } = await supabase
+        .from("organizations")
+        .update(row)
+        .eq("id", ctx.org.id);
+      if (error) throw error;
+      if (patch.name !== undefined) ctx.org.name = patch.name;
+      if (patch.market !== undefined) ctx.org.market = patch.market;
+      return ctx.org;
+    },
+
     async saveLeadRouting(settings) {
       const { error } = await supabase
         .from("organizations")
@@ -257,7 +272,12 @@ export function createSupabaseRepository(
         .select("id, full_name, role")
         .eq("org_id", ctx.org.id);
       if (error) throw error;
-      return (data || []).map(
+      const { data: invites } = await supabase
+        .from("team_invites")
+        .select("id, name, email, role")
+        .eq("org_id", ctx.org.id)
+        .eq("status", "pending");
+      const members = (data || []).map(
         (p): OrgMember => ({
           id: String(p.id),
           name: String(p.full_name),
@@ -271,6 +291,27 @@ export function createSupabaseRepository(
             .toUpperCase(),
         }),
       );
+      for (const inv of invites || []) {
+        const email = String(inv.email);
+        if (members.some((m) => m.email.toLowerCase() === email.toLowerCase())) continue;
+        members.push({
+          id: `invite_${inv.id}`,
+          name: String(inv.name),
+          email,
+          role: inv.role as OrgMember["role"],
+          avatarInitials: String(inv.name)
+            .split(" ")
+            .map((x: string) => x[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase(),
+        });
+      }
+      return members;
+    },
+
+    async inviteMember() {
+      throw new Error("Use the team invite API in hosted mode");
     },
 
     async listLeads() {
@@ -593,15 +634,26 @@ export function createSupabaseRepository(
     },
 
     async updateListing(id, patch) {
+      const row: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (patch.title !== undefined) row.title = patch.title;
+      if (patch.address !== undefined) row.address = patch.address;
+      if (patch.city !== undefined) row.city = patch.city;
+      if (patch.price !== undefined) row.price = patch.price;
+      if (patch.beds !== undefined) row.beds = patch.beds;
+      if (patch.baths !== undefined) row.baths = patch.baths;
+      if (patch.sqft !== undefined) row.sqft = patch.sqft;
+      if (patch.description !== undefined) row.description = patch.description;
+      if (patch.imageUrl !== undefined) row.image_url = patch.imageUrl;
+      if (patch.status !== undefined) row.status = patch.status;
+      if (patch.syncReadiness !== undefined) row.sync_readiness = patch.syncReadiness;
+      if (patch.lastSyncAt !== undefined) row.last_sync_at = patch.lastSyncAt;
+      if (patch.nextMilestone !== undefined) row.next_milestone = patch.nextMilestone;
+
       const { data, error } = await supabase
         .from("listings")
-        .update({
-          status: patch.status,
-          sync_readiness: patch.syncReadiness,
-          last_sync_at: patch.lastSyncAt,
-          next_milestone: patch.nextMilestone,
-          updated_at: new Date().toISOString(),
-        })
+        .update(row)
         .eq("id", id)
         .select("*")
         .single();

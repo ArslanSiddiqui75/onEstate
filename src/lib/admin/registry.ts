@@ -18,7 +18,7 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function emptyUsage(): TenantUsageSnapshot {
+export function emptyUsage(): TenantUsageSnapshot {
   return {
     leads: 0,
     contacts: 0,
@@ -31,19 +31,19 @@ function emptyUsage(): TenantUsageSnapshot {
   };
 }
 
-function planAmount(plan: PlanId, market: Market) {
+export function planAmount(plan: PlanId, market: Market) {
   const def = PLANS[plan];
   if (plan === "enterprise") return 0;
   return market === "uk" ? def.monthlyPriceGbp : def.monthlyPriceUsd;
 }
 
-function seatLimit(plan: PlanId) {
+export function seatLimit(plan: PlanId) {
   if (plan === "solo") return 1;
   if (plan === "team") return 25;
   return 999;
 }
 
-function healthFrom(tenant: Pick<TenantRecord, "lifecycleStatus" | "usage" | "subscription" | "lastActiveAt">) {
+export function healthFrom(tenant: Pick<TenantRecord, "lifecycleStatus" | "usage" | "subscription" | "lastActiveAt">) {
   let score = 70;
   if (tenant.lifecycleStatus === "active") score += 15;
   if (tenant.lifecycleStatus === "trialing") score += 5;

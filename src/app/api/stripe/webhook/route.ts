@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe, isStripeConfigured, planFromPriceId } from "@/lib/stripe/config";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
+import { upsertPlatformSubscriptionFromOrg } from "@/lib/admin/platform-db";
 
 type SupabaseClient = NonNullable<ReturnType<typeof createServiceSupabaseClient>>;
 
@@ -41,6 +42,7 @@ async function applyBillingPatch(
     entity_id: audit.entityId ?? null,
     metadata: audit.metadata ?? {},
   });
+  await upsertPlatformSubscriptionFromOrg(supabase, orgId);
 }
 
 async function orgIdForCustomer(supabase: SupabaseClient, customerId: string | null | undefined) {

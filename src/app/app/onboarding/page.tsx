@@ -15,7 +15,7 @@ import type { PlanId } from "@/types";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, org, setPlan, market } = useAppSession();
+  const { user, org, setPlan, updateWorkspace, market } = useAppSession();
   const [step, setStep] = useState<1 | 2>(1);
   const [orgName, setOrgName] = useState(org?.name || "");
   const [selectedMarket, setSelectedMarket] = useState<"uk" | "us">(market || "uk");
@@ -27,6 +27,10 @@ export default function OnboardingPage() {
   async function handleComplete() {
     setBusy(true);
     try {
+      await updateWorkspace({
+        name: orgName.trim(),
+        market: selectedMarket,
+      });
       if (selectedPlan !== org?.plan) {
         await setPlan(selectedPlan);
       }

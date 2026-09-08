@@ -55,7 +55,9 @@ export interface PortalConnection {
   branchId?: string;
   /** Network / group id when the portal requires it */
   networkId?: string;
-  /** True when the user saved an API/feed key (value stored locally, not in DB) */
+  /** Write-only: sent to the API when connecting; never returned from the server */
+  apiKey?: string;
+  /** True when an API/feed key is stored encrypted for the org */
   apiKeyConfigured?: boolean;
   connectedAt?: string;
   lastVerifiedAt?: string;
@@ -185,6 +187,28 @@ export interface Listing {
   nextMilestone?: string;
   createdAt: string;
 }
+
+/** Fields editable from the listings UI (excludes market, currency, portals sync metadata). */
+export type ListingPatch = Partial<
+  Pick<
+    Listing,
+    | "title"
+    | "address"
+    | "city"
+    | "price"
+    | "beds"
+    | "baths"
+    | "sqft"
+    | "description"
+    | "imageUrl"
+    | "status"
+    | "portals"
+    | "syncReadiness"
+    | "lastSyncAt"
+    | "nextMilestone"
+    | "complianceIssues"
+  >
+>;
 
 export interface TransactionDeal {
   id: string;

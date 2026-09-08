@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
+import {
+  assertTwilioSignature,
+  readTwilioWebhookParams,
+} from "@/lib/twilio/webhook";
 
 export async function POST(request: Request) {
-  const form = await request.formData().catch(() => null);
-  const sid = String(form?.get("MessageSid") || "");
-  const status = String(form?.get("MessageStatus") || "");
+  const params = await readTwilioWebhookParams(request);
+  const unauthorized = await assertTwilioSignature(request, params);
+  if (unauthorized) return unauthorized;
+
+  const sid = String(params.MessageSid || "");
+  const status = String(params.MessageStatus || "");
 
   if (!sid) {
     return NextResponse.json({ error: "Missing MessageSid" }, { status: 400 });

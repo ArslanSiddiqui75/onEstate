@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Building2,
+  Clock,
   Download,
   Edit,
   Eye,
@@ -34,7 +35,7 @@ import {
   buildPortalFeedPayload,
   downloadPortalFeedPayload,
 } from "@/lib/portals/payload";
-import type { Listing, ListingStatus, PortalConnection, PortalId } from "@/types";
+import type { Listing, ListingStatus } from "@/types";
 
 export default function AppListingsPage() {
   const {
@@ -43,21 +44,16 @@ export default function AppListingsPage() {
     listings,
     addListing,
     updateListingStatus,
-    queuePortalSync,
+    updateListing,
     listPortalConnections,
-    savePortalConnection,
     market,
   } = useAppSession();
   const [showForm, setShowForm] = useState(false);
-  const [syncingId, setSyncingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
+  const [savingListing, setSavingListing] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [portalLogListing, setPortalLogListing] = useState<Listing | null>(null);
-  const [connectionDrafts, setConnectionDrafts] = useState<
-    Record<string, { branchId: string; networkId: string; apiKey: string }>
-  >({});
-  const [connectionsTick, setConnectionsTick] = useState(0);
 
   const marketListings = useMemo(
     () => {
@@ -74,10 +70,10 @@ export default function AppListingsPage() {
     [listings, org, market, searchQuery],
   );
 
-  const portalConnections = useMemo(() => {
-    void connectionsTick;
-    return listPortalConnections();
-  }, [listPortalConnections, connectionsTick, market]);
+  const portalConnections = useMemo(
+    () => listPortalConnections(),
+    [listPortalConnections, market],
+  );
 
   if (!user || !org) return null;
 
@@ -86,69 +82,6 @@ export default function AppListingsPage() {
   const deliveryProviders = getIntegrationStack(market).filter(
     (provider) => provider.category === "portal" || provider.category === "mls",
   );
-
-  function draftFor(portal: PortalId) {
-    const saved = portalConnections.find((c) => c.portal === portal);
-    return (
-      connectionDrafts[portal] || {
-        branchId: saved?.branchId || "",
-        networkId: saved?.networkId || "",
-        apiKey: "",
-      }
-    );
-  }
-
-  function setDraft(
-    portal: PortalId,
-    patch: Partial<{ branchId: string; networkId: string; apiKey: string }>,
-  ) {
-    setConnectionDrafts((prev) => ({
-      ...prev,
-      [portal]: { ...draftFor(portal), ...patch },
-    }));
-  }
-
-  function connectPortal(portal: PortalId) {
-    const draft = draftFor(portal);
-    if (!draft.branchId.trim()) {
-      toast.error("Branch / office ID is required");
-      return;
-    }
-    if (!draft.apiKey.trim()) {
-      toast.error("Feed / API key is required to mark this portal connected");
-      return;
-    }
-    const connection: PortalConnection = {
-      portal,
-      connected: true,
-      branchId: draft.branchId.trim(),
-      networkId: draft.networkId.trim() || undefined,
-      apiKeyConfigured: true,
-      connectedAt: new Date().toISOString(),
-      lastVerifiedAt: new Date().toISOString(),
-      notes: "Credentials stored in this browser. Live portal APIs need a commercial partnership.",
-    };
-    savePortalConnection(connection);
-    setConnectionsTick((t) => t + 1);
-    toast.success(`${PORTAL_LABEL[portal]} connected (export-ready)`);
-  }
-
-  function disconnectPortal(portal: PortalId) {
-    savePortalConnection({
-      portal,
-      connected: false,
-      branchId: undefined,
-      networkId: undefined,
-      apiKeyConfigured: false,
-    });
-    setConnectionDrafts((prev) => {
-      const next = { ...prev };
-      delete next[portal];
-      return next;
-    });
-    setConnectionsTick((t) => t + 1);
-    toast.success(`${PORTAL_LABEL[portal]} disconnected`);
-  }
 
   if (!allowed) {
     return (
@@ -273,10 +206,8 @@ export default function AppListingsPage() {
 
         <TabsContent value="portals" className="mt-4">
           <Alert tone="warning" className="mb-4">
-            Live Rightmove / Zoopla / OnTheMarket / MLS publish needs a commercial
-            portal partnership. Connect branch IDs here to validate listings, prepare
-            feed JSON exports, and track per-portal status. Partner HTTP/FTP transport
-            plugs in later without changing this UI.
+            Rightmove, Zoopla, OnTheMarket, and MLS publishing is coming soon.
+            Live feeds need a commercial portal partnership.
           </Alert>
           <motion.div
             variants={staggerContainer}
@@ -286,10 +217,9 @@ export default function AppListingsPage() {
           >
             {portalConnections.map((connection) => {
               const provider = deliveryProviders.find((p) => p.id === connection.portal);
-              const draft = draftFor(connection.portal);
               return (
                 <motion.div key={connection.portal} variants={fadeUp}>
-                  <Card hover className="space-y-3">
+                  <Card className="space-y-3 opacity-90">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="text-sm font-medium">
@@ -299,71 +229,11 @@ export default function AppListingsPage() {
                           {provider?.summary || "Listing distribution feed"}
                         </p>
                       </div>
-                      <Badge
-                        tone={connection.connected ? "success" : "neutral"}
-                      >
-                        {connection.connected ? "Connected" : "Not connected"}
-                      </Badge>
+                      <Badge tone="warning">Coming soon</Badge>
                     </div>
-                    {canEdit ? (
-                      <div className="grid gap-2">
-                        <Input
-                          placeholder="Branch / office ID"
-                          value={draft.branchId}
-                          onChange={(e) =>
-                            setDraft(connection.portal, { branchId: e.target.value })
-                          }
-                          disabled={connection.connected}
-                        />
-                        <Input
-                          placeholder="Network ID (optional)"
-                          value={draft.networkId}
-                          onChange={(e) =>
-                            setDraft(connection.portal, { networkId: e.target.value })
-                          }
-                          disabled={connection.connected}
-                        />
-                        <Input
-                          type="password"
-                          placeholder={
-                            connection.apiKeyConfigured
-                              ? "Feed key saved in this browser"
-                              : "Feed / API key"
-                          }
-                          value={draft.apiKey}
-                          onChange={(e) =>
-                            setDraft(connection.portal, { apiKey: e.target.value })
-                          }
-                          disabled={connection.connected}
-                        />
-                        {connection.connected ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => disconnectPortal(connection.portal)}
-                          >
-                            Disconnect
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => connectPortal(connection.portal)}
-                          >
-                            Save connection
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-[var(--muted)]">
-                        {connection.connected
-                          ? `Branch ${connection.branchId}`
-                          : "Ask an editor to connect this portal."}
-                      </p>
-                    )}
-                    <p className="text-[11px] uppercase tracking-[0.12em] text-[var(--muted)]">
-                      {provider?.credentialOwner || "Brokerage portal account"}
+                    <p className="inline-flex items-center gap-1.5 text-xs text-[var(--muted)]">
+                      <Clock className="h-3.5 w-3.5" />
+                      Connect and live publish will unlock when partner access is live.
                     </p>
                   </Card>
                 </motion.div>
@@ -524,20 +394,10 @@ export default function AppListingsPage() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    disabled={syncingId === listing.id}
-                    onClick={async () => {
-                      setSyncingId(listing.id);
-                      try {
-                        const msg = await queuePortalSync(listing.id);
-                        toast.success(msg || "Portal sync finished");
-                      } catch (err) {
-                        toast.error(err instanceof Error ? err.message : "Sync failed");
-                      } finally {
-                        setSyncingId(null);
-                      }
-                    }}
+                    disabled
+                    title="Portal publish is coming soon"
                   >
-                    {syncingId === listing.id ? "Syncing…" : "Validate & sync portals"}
+                    Coming soon
                   </Button>
                   {listing.status !== "under_offer" ? (
                     <Button
@@ -679,17 +539,32 @@ export default function AppListingsPage() {
                 const form = new FormData(e.currentTarget);
                 const title = String(form.get("title"));
                 const price = Number(form.get("price"));
-                editingListing.title = title;
-                editingListing.address = String(form.get("address"));
-                editingListing.city = String(form.get("city"));
-                editingListing.price = price;
-                editingListing.beds = Number(form.get("beds"));
-                editingListing.baths = Number(form.get("baths"));
-                editingListing.sqft = Number(form.get("sqft"));
-                editingListing.description = String(form.get("description"));
-                if (form.get("imageUrl")) editingListing.imageUrl = String(form.get("imageUrl"));
-                toast.success(`Updated "${title}"`);
-                setEditingListing(null);
+                void (async () => {
+                  setSavingListing(true);
+                  try {
+                    await updateListing(editingListing.id, {
+                      title,
+                      address: String(form.get("address")),
+                      city: String(form.get("city")),
+                      price,
+                      beds: Number(form.get("beds")),
+                      baths: Number(form.get("baths")),
+                      sqft: Number(form.get("sqft")),
+                      description: String(form.get("description")),
+                      imageUrl: form.get("imageUrl")
+                        ? String(form.get("imageUrl"))
+                        : editingListing.imageUrl,
+                    });
+                    toast.success(`Updated "${title}"`);
+                    setEditingListing(null);
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error ? err.message : "Could not save listing",
+                    );
+                  } finally {
+                    setSavingListing(false);
+                  }
+                })();
               }}
             >
               <Input name="title" placeholder="Title" defaultValue={editingListing.title} required className="sm:col-span-2" />
@@ -703,7 +578,9 @@ export default function AppListingsPage() {
               <Input name="description" placeholder="Description" defaultValue={editingListing.description} className="sm:col-span-2" />
               <div className="flex gap-2 sm:col-span-2 pt-2">
                 <Button type="button" variant="secondary" onClick={() => setEditingListing(null)} className="flex-1">Cancel</Button>
-                <Button type="submit" className="flex-1">Save changes</Button>
+                <Button type="submit" className="flex-1" disabled={savingListing}>
+                  {savingListing ? "Saving…" : "Save changes"}
+                </Button>
               </div>
             </form>
           </div>

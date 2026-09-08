@@ -5,6 +5,7 @@ import { triggerAndProcess } from "@/lib/automations/engine";
 import { normalizeHost } from "@/lib/website/slug";
 import { normalizePhoneNumber } from "@/lib/utils";
 import { hydrateLeadRouting, ownerId, prepareNewLead } from "@/lib/crm/routing";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import type { LeadType, PlanId, Role } from "@/types";
 
 const bodySchema = z.object({
@@ -21,19 +22,10 @@ const bodySchema = z.object({
 
 // Public endpoint, so keep a coarse per-IP ceiling. Resets on cold start, which
 // is acceptable for form spam; a durable limiter belongs in front of the app.
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 5;
-const recentSubmissions = new Map<string, number[]>();
-
-function isRateLimited(key: string): boolean {
-  const now = Date.now();
-  const hits = (recentSubmissions.get(key) || []).filter(
-    (at) => now - at < RATE_LIMIT_WINDOW_MS,
-  );
-  hits.push(now);
-  recentSubmissions.set(key, hits);
-  return hits.length > RATE_LIMIT_MAX;
-}
+const isRateLimited = createSlidingWindowLimiter({
+  windowMs: 60_000,
+  max: 5,
+});
 
 function clientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for") || "";

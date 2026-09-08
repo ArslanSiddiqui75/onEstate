@@ -6,7 +6,9 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 // SOCIAL_TOKEN_ENCRYPTION_KEY, not just a hex/base64-formatted key.
 
 function getKey(): Buffer {
-  const secret = process.env.SOCIAL_TOKEN_ENCRYPTION_KEY;
+  const secret =
+    process.env.SOCIAL_TOKEN_ENCRYPTION_KEY ||
+    process.env.PORTAL_CREDENTIALS_KEY;
   if (!secret) {
     throw new Error(
       "SOCIAL_TOKEN_ENCRYPTION_KEY is not set. Add a long random secret to your environment before connecting real social accounts.",

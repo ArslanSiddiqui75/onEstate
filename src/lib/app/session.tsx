@@ -22,6 +22,8 @@ import type {
   LeadPatch,
   LeadTask,
   Listing,
+  ListingPatch,
+  Market,
   MessageSequence,
   OrgMember,
   PlanId,
@@ -68,6 +70,7 @@ import { setTenantPlan } from "@/lib/admin/registry";
 import { syncWorkspaceToPlatformRegistry } from "@/lib/admin/sync-workspace";
 import { prepareNewLead, hydrateLeadRouting, ownerId } from "@/lib/crm/routing";
 import { scoreLead } from "@/lib/crm/scoring";
+import { checkSeatLimit } from "@/lib/access";
 import { syncListingToPortals } from "@/lib/portals/adapters";
 import {
   loadPortalConnections,
@@ -177,6 +180,7 @@ interface AppState {
   }) => Promise<void>;
   signOut: () => Promise<void>;
   setPlan: (plan: PlanId) => Promise<void>;
+  updateWorkspace: (patch: { name?: string; market?: Market }) => Promise<void>;
   refresh: () => Promise<void>;
   addLead: (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   assignLead: (id: string, assignedTo: string) => Promise<void>;
@@ -215,9 +219,15 @@ interface AppState {
     },
   ) => Promise<void>;
   updateListingStatus: (id: string, status: Listing["status"]) => Promise<void>;
+  updateListing: (id: string, patch: ListingPatch) => Promise<void>;
+  inviteMember: (input: {
+    name: string;
+    email: string;
+    role: Role;
+  }) => Promise<void>;
   queuePortalSync: (listingId: string) => Promise<string>;
   listPortalConnections: () => PortalConnection[];
-  savePortalConnection: (connection: PortalConnection) => void;
+  savePortalConnection: (connection: PortalConnection & { apiKey?: string }) => Promise<void>;
   createDealFromListing: (listingId: string) => Promise<void>;
   createManualDeal: (input: {
     listingTitle: string;
@@ -392,6 +402,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   const [website, setWebsite] = useState<WebsiteSite | null>(null);
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
   const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
+  const [portalConnections, setPortalConnections] = useState<PortalConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const repoRef = useRef<WorkspaceRepository | null>(null);
   const authMode: AppState["authMode"] = isSupabaseConfigured()
@@ -751,6 +762,15 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const updateWorkspace = useCallback(
+    async (patch: { name?: string; market?: Market }) => {
+      if (!repoRef.current) return;
+      const next = await repoRef.current.updateOrganization(patch);
+      setOrg(toAppOrg(next));
+    },
+    [],
+  );
+
   const getAuthToken = useCallback(async () => {
     if (authMode !== "supabase") return null;
     const supabase = createBrowserSupabaseClient();
@@ -764,6 +784,64 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     if (!result) return null;
     return result.data.session?.access_token || null;
   }, [authMode]);
+
+  useEffect(() => {
+    if (!org) {
+      setPortalConnections([]);
+      return;
+    }
+    const local = mergeConnectionsWithDefaults(
+      brand.market,
+      loadPortalConnections(org.id),
+    );
+    setPortalConnections(local);
+    if (authMode !== "supabase") return;
+    void (async () => {
+      const token = await getAuthToken();
+      if (!token) return;
+      const res = await fetch("/api/portals/connections", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const json = (await res.json()) as { connections?: PortalConnection[] };
+      setPortalConnections(
+        mergeConnectionsWithDefaults(brand.market, json.connections || []),
+      );
+    })();
+  }, [org, brand.market, authMode, getAuthToken]);
+
+  const inviteMember = useCallback(
+    async (input: { name: string; email: string; role: Role }) => {
+      if (!repoRef.current || !org) throw new Error("Workspace not ready");
+      const seatCheck = checkSeatLimit(members.length, org.plan);
+      if (!seatCheck.allowed) {
+        throw new Error(
+          seatCheck.maxSeats
+            ? `Seat limit reached (${seatCheck.maxSeats}). Upgrade your plan to invite more teammates.`
+            : "Seat limit reached",
+        );
+      }
+      if (authMode === "supabase") {
+        const token = await getAuthToken();
+        const res = await fetch("/api/team/invite", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(input),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || "Could not send invite");
+        }
+      } else {
+        await repoRef.current.inviteMember(input);
+      }
+      await refresh();
+    },
+    [authMode, getAuthToken, members.length, org, refresh],
+  );
 
   // The automation engine runs server-side against the service role, so local
   // workspace mode has no runtime — triggers are a no-op there. Failures never
@@ -1242,6 +1320,15 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [refresh, user?.name],
   );
 
+  const updateListing = useCallback(
+    async (id: string, patch: ListingPatch) => {
+      if (!repoRef.current) return;
+      await repoRef.current.updateListing(id, patch);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const queuePortalSync = useCallback(
     async (listingId: string) => {
       if (!repoRef.current) return "Repository unavailable";
@@ -1250,7 +1337,9 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       if (!listing) return "Listing not found";
       if (!org?.id) return "Workspace unavailable";
 
-      const connections = loadPortalConnections(org.id);
+      const connections = portalConnections.length
+        ? portalConnections
+        : loadPortalConnections(org.id);
       const { portals, results, readiness, summary } = syncListingToPortals(
         listing,
         connections,
@@ -1274,20 +1363,59 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
       return summary;
     },
-    [refresh, org?.id],
+    [refresh, org?.id, portalConnections],
   );
 
   const listPortalConnections = useCallback((): PortalConnection[] => {
     if (!org) return [];
-    return mergeConnectionsWithDefaults(brand.market, loadPortalConnections(org.id));
-  }, [org, brand.market]);
+    return mergeConnectionsWithDefaults(brand.market, portalConnections);
+  }, [org, brand.market, portalConnections]);
 
   const savePortalConnection = useCallback(
-    (connection: PortalConnection) => {
+    async (connection: PortalConnection & { apiKey?: string }) => {
       if (!org) return;
-      upsertPortalConnection(org.id, connection);
+      const stored: PortalConnection = {
+        portal: connection.portal,
+        connected: connection.connected,
+        branchId: connection.branchId,
+        networkId: connection.networkId,
+        apiKeyConfigured: connection.apiKeyConfigured,
+        connectedAt: connection.connectedAt,
+        lastVerifiedAt: connection.lastVerifiedAt,
+        notes: connection.notes,
+      };
+      const next = upsertPortalConnection(org.id, stored);
+      setPortalConnections(mergeConnectionsWithDefaults(brand.market, next));
+
+      if (authMode !== "supabase") return;
+      const token = await getAuthToken();
+      if (!token) return;
+      const res = await fetch("/api/portals/connections", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          portal: connection.portal,
+          connected: connection.connected,
+          branchId: connection.branchId,
+          networkId: connection.networkId,
+          apiKey: connection.apiKey,
+          notes: connection.notes,
+        }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(json?.error || "Could not save portal connection");
+      }
+      const json = (await res.json()) as { connection?: PortalConnection };
+      if (json.connection) {
+        const merged = upsertPortalConnection(org.id, json.connection);
+        setPortalConnections(mergeConnectionsWithDefaults(brand.market, merged));
+      }
     },
-    [org],
+    [org, brand.market, authMode, getAuthToken],
   );
 
   const createDealFromListing = useCallback(
@@ -1486,11 +1614,14 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         throw new Error("Cannot send SMS: contact opted out");
       }
 
+      const token = authMode === "supabase" ? await getAuthToken() : null;
       const res = await fetch("/api/twilio/sms", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
-          orgId: org.id,
           leadId: lead.id,
           to,
           body: input.body,
@@ -1524,7 +1655,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
       return { mode: json.mode || "simulated" };
     },
-    [leads, org, refresh],
+    [authMode, getAuthToken, leads, org, refresh],
   );
 
   const sendEmail = useCallback(
@@ -2023,6 +2154,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
       setPlan,
+      updateWorkspace,
       refresh,
       addLead,
       assignLead,
@@ -2035,6 +2167,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       promoteContactToLead,
       addListing,
       updateListingStatus,
+      updateListing,
+      inviteMember,
       queuePortalSync,
       listPortalConnections,
       savePortalConnection,
@@ -2092,6 +2226,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
       setPlan,
+      updateWorkspace,
       refresh,
       addLead,
       assignLead,
@@ -2104,6 +2239,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       promoteContactToLead,
       addListing,
       updateListingStatus,
+      updateListing,
+      inviteMember,
       queuePortalSync,
       listPortalConnections,
       savePortalConnection,
