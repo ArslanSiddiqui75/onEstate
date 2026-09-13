@@ -6,7 +6,7 @@ import { CreditCard, ShieldCheck, ListChecks, ChevronDown, ChevronUp, Download, 
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
-import { PLANS } from "@/lib/plans/catalog";
+import { PLANS, PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -96,7 +96,8 @@ export default function AppBillingPage() {
       <LockedModule
         title="Billing locked"
         reason="Billing is limited to Owner, Team Lead, and Accountant."
-        href="/app"
+        role={user.role}
+        plan={org.plan}
       />
     );
   }
@@ -191,13 +192,23 @@ export default function AppBillingPage() {
             {status.replace(/_/g, " ")}
           </Badge>
         ) : null}
-        <Button
-          variant="secondary"
-          disabled={portalLoading}
-          onClick={() => void openPaymentPortal()}
-        >
-          {portalLoading ? "Opening…" : "Manage payment method"}
-        </Button>
+        {currentOrg.stripeCustomerId ? (
+          <Button
+            variant="secondary"
+            disabled={portalLoading}
+            onClick={() => void openPaymentPortal()}
+          >
+            {portalLoading ? "Opening…" : "Manage payment method"}
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            disabled
+            title="The payment portal unlocks after your first Stripe checkout."
+          >
+            Payment portal available after first checkout
+          </Button>
+        )}
       </div>
 
       {paymentFailed ? (
@@ -338,8 +349,12 @@ export default function AppBillingPage() {
                 <TBody>
                   <TR>
                     <TD className="font-medium">Team Seats Included</TD>
-                    <TD>1 Seat</TD>
-                    <TD>Up to 10 Seats</TD>
+                    <TD>
+                      {PLAN_FEATURE_FLAGS.solo.maxSeats === 1
+                        ? "1 Seat"
+                        : `Up to ${PLAN_FEATURE_FLAGS.solo.maxSeats} Seats`}
+                    </TD>
+                    <TD>Up to {PLAN_FEATURE_FLAGS.team.maxSeats} Seats</TD>
                     <TD>Unlimited Seats</TD>
                   </TR>
                   <TR>
@@ -351,7 +366,7 @@ export default function AppBillingPage() {
                   <TR>
                     <TD className="font-medium">Portal Distribution Sync</TD>
                     <TD>Manual / 2 Portals</TD>
-                    <TD>Automated (Rightmove, Zoopla, Zillow, MLS)</TD>
+                    <TD>Automated (Rightmove, Zoopla, OnTheMarket / MLS)</TD>
                     <TD>Custom API Feeds & Real-time Webhooks</TD>
                   </TR>
                   <TR>

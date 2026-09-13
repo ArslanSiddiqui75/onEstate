@@ -137,6 +137,35 @@ export async function ensureThread(
   return { threadId: String(created.id) };
 }
 
+/**
+ * Twilio SDK errors leak provider jargon ("Authenticate", error codes).
+ * Translate them into copy an operator can act on (QA audit P1-3).
+ */
+export function mapTwilioError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error || "");
+  const status = (error as { status?: number })?.status;
+  const code = (error as { code?: number })?.code;
+
+  if (status === 401 || code === 20003 || /^authenticate$/i.test(raw.trim())) {
+    return "SMS provider credentials are invalid or expired. Ask your workspace owner to reconnect Twilio in Integrations.";
+  }
+  if (code === 21608 || /unverified/i.test(raw)) {
+    return "This number is unverified on the Twilio trial account. Verify it in Twilio or upgrade the account.";
+  }
+  if (code === 21211 || /not a valid phone number/i.test(raw)) {
+    return "That phone number is not valid. Check the country code and digits.";
+  }
+  if (code === 21610 || /blacklist|opted? ?out/i.test(raw)) {
+    return "This contact has opted out of SMS and cannot be messaged.";
+  }
+  if (code === 20429 || status === 429) {
+    return "The SMS provider is rate-limiting sends. Try again in a minute.";
+  }
+  return raw
+    ? `SMS could not be sent: ${raw}`
+    : "SMS could not be sent. Check your Twilio configuration in Integrations.";
+}
+
 export interface OutboundMessageInput {
   orgId: string;
   leadId: string;
@@ -184,7 +213,7 @@ export async function sendOutboundSms(
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : "Failed to send SMS",
+      error: mapTwilioError(error),
     };
   }
 

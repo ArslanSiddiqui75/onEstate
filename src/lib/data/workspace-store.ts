@@ -34,6 +34,7 @@ export interface WorkspaceOrg {
   lastPaymentStatus?: string;
   lastPaymentAt?: string;
   leadRouting?: LeadRoutingSettings;
+  onboardingCompleted?: boolean;
 }
 
 export interface WorkspaceUser {

@@ -245,6 +245,9 @@ export function createSupabaseRepository(
       const row: Record<string, unknown> = {};
       if (patch.name !== undefined) row.name = patch.name;
       if (patch.market !== undefined) row.market = patch.market;
+      if (patch.onboardingCompleted !== undefined) {
+        row.onboarding_completed = patch.onboardingCompleted;
+      }
       if (Object.keys(row).length === 0) return ctx.org;
       const { error } = await supabase
         .from("organizations")
@@ -253,6 +256,9 @@ export function createSupabaseRepository(
       if (error) throw error;
       if (patch.name !== undefined) ctx.org.name = patch.name;
       if (patch.market !== undefined) ctx.org.market = patch.market;
+      if (patch.onboardingCompleted !== undefined) {
+        ctx.org.onboardingCompleted = patch.onboardingCompleted;
+      }
       return ctx.org;
     },
 
@@ -264,6 +270,18 @@ export function createSupabaseRepository(
       if (error) throw error;
       ctx.org.leadRouting = settings;
       return ctx.org;
+    },
+
+    async updateProfile(patch) {
+      const name = patch.name.trim();
+      if (name.length < 2) throw new Error("Name must be at least 2 characters");
+      const { error } = await supabase
+        .from("profiles")
+        .update({ full_name: name })
+        .eq("id", ctx.user.id);
+      if (error) throw error;
+      ctx.user.name = name;
+      return ctx.user;
     },
 
     async listMembers() {
@@ -609,7 +627,7 @@ export function createSupabaseRepository(
       if (error) throw error;
 
       if (listing.portals?.length) {
-        await supabase.from("listing_portal_syncs").insert(
+        const { error: portalsError } = await supabase.from("listing_portal_syncs").insert(
           listing.portals.map((p) => ({
             listing_id: data.id,
             org_id: ctx.org.id,
@@ -617,6 +635,7 @@ export function createSupabaseRepository(
             status: p.status,
           })),
         );
+        if (portalsError) throw portalsError;
       }
 
       return mapListing(data, listing.portals, listing.complianceIssues || []);
@@ -765,7 +784,7 @@ export function createSupabaseRepository(
       if (error) throw error;
 
       if (deal.parties?.length) {
-        await supabase.from("transaction_parties").insert(
+        const { error: partiesError } = await supabase.from("transaction_parties").insert(
           deal.parties.map((name, i) => ({
             transaction_id: data.id,
             org_id: ctx.org.id,
@@ -773,18 +792,22 @@ export function createSupabaseRepository(
             sort_order: i,
           })),
         );
+        if (partiesError) throw partiesError;
       }
       if (deal.checklist?.length) {
-        await supabase.from("transaction_checklist_items").insert(
-          deal.checklist.map((item, i) => ({
-            id: item.id.match(/^[0-9a-f-]{36}$/i) ? item.id : undefined,
-            transaction_id: data.id,
-            org_id: ctx.org.id,
-            label: item.label,
-            done: item.done,
-            sort_order: i,
-          })),
-        );
+        const { error: checklistError } = await supabase
+          .from("transaction_checklist_items")
+          .insert(
+            deal.checklist.map((item, i) => ({
+              id: item.id.match(/^[0-9a-f-]{36}$/i) ? item.id : undefined,
+              transaction_id: data.id,
+              org_id: ctx.org.id,
+              label: item.label,
+              done: item.done,
+              sort_order: i,
+            })),
+          );
+        if (checklistError) throw checklistError;
       }
 
       return { ...deal, id: String(data.id), updatedAt: String(data.updated_at) };
@@ -1447,6 +1470,7 @@ export async function hydrateSupabaseSession(): Promise<{
       lastPaymentStatus: org.last_payment_status ? String(org.last_payment_status) : undefined,
       lastPaymentAt: org.last_payment_at ? String(org.last_payment_at) : undefined,
       leadRouting: (org.lead_routing as WorkspaceOrg["leadRouting"]) || undefined,
+      onboardingCompleted: Boolean(org.onboarding_completed),
     },
   };
 }

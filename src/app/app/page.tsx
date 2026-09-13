@@ -13,7 +13,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Avatar } from "@/components/ui/avatar";
 import { ROLE_LABELS } from "@/lib/rbac/matrix";
 import { PLANS } from "@/lib/plans/catalog";
-import { getIntegrationCount, getIntegrationStack } from "@/lib/integrations/registry";
+import { getIntegrationStack } from "@/lib/integrations/registry";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 
 export default function AppDashboardPage() {
@@ -42,9 +42,9 @@ export default function AppDashboardPage() {
         <div className="flex items-center gap-3">
           <Avatar name={user.name} size="lg" />
           <div>
-            <h1 className="font-display text-3xl tracking-tight">
+            <p className="font-display text-3xl tracking-tight">
               Welcome, {user.name.split(" ")[0]}
-            </h1>
+            </p>
             <p className="mt-1 text-sm text-[var(--muted)]">
               {org.name} · {ROLE_LABELS[user.role]} · {PLANS[org.plan].name} ·{" "}
               {brand.name} ({terms.agent})
@@ -171,7 +171,7 @@ export default function AppDashboardPage() {
             <CardHeader
               title="Integrations"
               action={
-                <Badge tone="accent">{getIntegrationCount(market, "attention")} needs setup</Badge>
+                <Badge tone="neutral">Coming soon</Badge>
               }
             />
             <ul className="mt-4 divide-y divide-[var(--border)]">
@@ -191,7 +191,7 @@ export default function AppDashboardPage() {
                     }
                     className="shrink-0"
                   >
-                    {provider.health}
+                    {provider.health === "connected" ? "Connected" : "Coming soon"}
                   </Badge>
                 </li>
               ))}

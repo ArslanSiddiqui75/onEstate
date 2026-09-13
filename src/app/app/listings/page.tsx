@@ -52,6 +52,7 @@ export default function AppListingsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [savingListing, setSavingListing] = useState(false);
+  const [savingNewListing, setSavingNewListing] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [portalLogListing, setPortalLogListing] = useState<Listing | null>(null);
 
@@ -88,7 +89,8 @@ export default function AppListingsPage() {
       <LockedModule
         title="Listings locked"
         reason="Your role cannot access listings."
-        href="/app/billing"
+        role={user.role}
+        plan={org.plan}
       />
     );
   }
@@ -123,7 +125,9 @@ export default function AppListingsPage() {
             className="grid gap-3 sm:grid-cols-2"
             onSubmit={(e) => {
               e.preventDefault();
-              const form = new FormData(e.currentTarget);
+              const formEl = e.currentTarget;
+              const form = new FormData(formEl);
+              setSavingNewListing(true);
               void (async () => {
                 try {
                   const title = String(form.get("title"));
@@ -147,11 +151,13 @@ export default function AppListingsPage() {
                     agentId: user.id,
                     description: String(form.get("description") || ""),
                   });
-                  e.currentTarget.reset();
+                  formEl.reset();
                   setShowForm(false);
                   toast.success(`"${title}" added as a draft listing`);
                 } catch (err) {
                   toast.error(err instanceof Error ? err.message : "Failed to add listing");
+                } finally {
+                  setSavingNewListing(false);
                 }
               })();
             }}
@@ -162,7 +168,7 @@ export default function AppListingsPage() {
             <Input name="price" type="number" placeholder="Price" required />
             <Input name="beds" type="number" placeholder="Beds" />
             <Input name="baths" type="number" placeholder="Baths" />
-            <Input name="sqft" type="number" placeholder="Sqft" />
+            <Input name="sqft" type="number" placeholder="Floor area (sq ft)" />
             {market === "uk" ? (
               <select
                 name="tenure"
@@ -183,8 +189,8 @@ export default function AppListingsPage() {
               placeholder="Description"
               className="sm:col-span-2"
             />
-            <Button type="submit" className="sm:col-span-2">
-              Save listing
+            <Button type="submit" className="sm:col-span-2" disabled={savingNewListing}>
+              {savingNewListing ? "Saving…" : "Save listing"}
             </Button>
           </form>
         </Card>
@@ -262,17 +268,23 @@ export default function AppListingsPage() {
             className="data-card data-card-hover overflow-hidden"
           >
             <div
-              className="relative h-40 w-full cursor-pointer group"
-              onClick={() => setPreviewImage(listing.imageUrl)}
-              title="Click to view full image"
+              className={`relative h-40 w-full group${listing.imageUrl ? " cursor-pointer" : ""}`}
+              onClick={() => listing.imageUrl && setPreviewImage(listing.imageUrl)}
+              title={listing.imageUrl ? "Click to view full image" : undefined}
             >
-              <Image
-                src={listing.imageUrl}
-                alt={listing.title}
-                fill
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                sizes="(max-width:768px) 100vw, 50vw"
-              />
+              {listing.imageUrl ? (
+                <Image
+                  src={listing.imageUrl}
+                  alt={listing.title}
+                  fill
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  sizes="(max-width:768px) 100vw, 50vw"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[var(--surface-2,#f1f1f1)] text-[var(--muted)]">
+                  <Building2 className="h-10 w-10 opacity-40" />
+                </div>
+              )}
               <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-sm text-white p-1.5 rounded-full">
                 <Eye className="h-4 w-4" />
@@ -573,7 +585,7 @@ export default function AppListingsPage() {
               <Input name="price" type="number" placeholder="Price" defaultValue={editingListing.price} required />
               <Input name="beds" type="number" placeholder="Beds" defaultValue={editingListing.beds} />
               <Input name="baths" type="number" placeholder="Baths" defaultValue={editingListing.baths} />
-              <Input name="sqft" type="number" placeholder="Sqft" defaultValue={editingListing.sqft} />
+              <Input name="sqft" type="number" placeholder="Floor area (sq ft)" defaultValue={editingListing.sqft} />
               <Input name="imageUrl" placeholder="Image URL" defaultValue={editingListing.imageUrl} className="sm:col-span-2" />
               <Input name="description" placeholder="Description" defaultValue={editingListing.description} className="sm:col-span-2" />
               <div className="flex gap-2 sm:col-span-2 pt-2">

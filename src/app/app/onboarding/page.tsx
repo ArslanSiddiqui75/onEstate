@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Building2, Globe2, Sparkles, CheckCircle2, ArrowRight } from "lucide-react";
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toast";
+import { validateOrgName } from "@/lib/auth/org-name";
 import type { PlanId } from "@/types";
 
 export default function OnboardingPage() {
@@ -22,14 +23,29 @@ export default function OnboardingPage() {
   const [selectedPlan, setSelectedPlan] = useState<PlanId>("team");
   const [busy, setBusy] = useState(false);
 
+  // Completed workspaces cannot re-enter onboarding (QA audit P1-9).
+  // Renaming the org afterwards lives in Settings and requires the Owner.
+  useEffect(() => {
+    if (org?.onboardingCompleted) {
+      router.replace("/app");
+    }
+  }, [org?.onboardingCompleted, router]);
+
   if (!user) return null;
+  if (org?.onboardingCompleted) return null;
 
   async function handleComplete() {
+    const checked = validateOrgName(orgName);
+    if (!checked.ok) {
+      toast.error(checked.error);
+      return;
+    }
     setBusy(true);
     try {
       await updateWorkspace({
-        name: orgName.trim(),
+        name: checked.name,
         market: selectedMarket,
+        onboardingCompleted: true,
       });
       if (selectedPlan !== org?.plan) {
         await setPlan(selectedPlan);

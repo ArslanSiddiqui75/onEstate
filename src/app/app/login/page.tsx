@@ -125,7 +125,7 @@ export default function AppLoginPage() {
         </h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
           {authMode === "supabase"
-            ? "Sign in with the same email you used before. A new Sign up creates a separate workspace — connected Instagram accounts won’t carry over."
+            ? "Sign in with the email for this workspace. Creating a new account starts a separate brokerage."
             : "Use a seed account below, or any email to create a workspace."}
         </p>
 
@@ -162,6 +162,17 @@ export default function AppLoginPage() {
               autoComplete="current-password"
             />
           </FormField>
+
+          {authMode === "supabase" ? (
+            <p className="text-right text-sm">
+              <Link
+                href="/app/reset-password"
+                className="font-medium text-[var(--accent)]"
+              >
+                Forgot password?
+              </Link>
+            </p>
+          ) : null}
 
           {/* Form-level error alert */}
           {formError && <Alert tone="danger">{formError}</Alert>}

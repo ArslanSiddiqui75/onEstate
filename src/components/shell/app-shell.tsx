@@ -14,6 +14,7 @@ import {
   X,
   Lock,
   LogOut,
+  Settings,
   Zap,
 } from "lucide-react";
 import { useState } from "react";
@@ -31,7 +32,7 @@ import { BrandMark } from "@/components/brand/brand-mark";
 import { getActiveBrand } from "@/lib/brand/config";
 
 const NAV: {
-  id: ModuleId | "dashboard";
+  id: ModuleId | "dashboard" | "settings";
   label: string;
   short: string;
   eyebrow: string;
@@ -103,6 +104,15 @@ const NAV: {
     description: "Subscription, seats, and payment method.",
     icon: CreditCard,
   },
+  {
+    id: "settings",
+    label: "Settings",
+    short: "Settings",
+    eyebrow: "Workspace",
+    title: "Settings",
+    description: "Profile, brokerage details, workspace ID, and team members.",
+    icon: Settings,
+  },
 ];
 
 interface AppShellProps {
@@ -139,6 +149,7 @@ export function AppShell({
       item.id === "dashboard" ? basePath : `${basePath}/${item.id}`;
     const locked =
       item.id !== "dashboard" &&
+      item.id !== "settings" &&
       !hasModuleAccess(role, plan, item.id as ModuleId, "view");
     return { ...item, href, locked };
   });
@@ -252,14 +263,6 @@ export function AppShell({
               <p className="mt-0.5 truncate text-sm font-semibold text-white" title={orgName}>
                 {orgName}
               </p>
-              {orgId ? (
-                <p
-                  className="mt-0.5 truncate font-mono text-[10px] text-white/35"
-                  title={orgId}
-                >
-                  id · {orgId.slice(0, 8)}
-                </p>
-              ) : null}
             </div>
             <div className="mt-3 flex flex-col gap-2">
               <p className="text-[11px] text-white/45">
@@ -328,15 +331,9 @@ export function AppShell({
               <p className="truncate text-xs font-semibold tracking-tight" title={orgName}>
                 {orgName}
               </p>
-              {orgId ? (
-                <p className="truncate font-mono text-[10px] text-[var(--muted)]" title={orgId}>
-                  {orgId.slice(0, 8)}
-                </p>
-              ) : (
-                <p className="truncate text-[11px] text-[var(--muted)]">
-                  {ROLE_LABELS[role]}
-                </p>
-              )}
+              <p className="truncate text-[11px] text-[var(--muted)]">
+                {ROLE_LABELS[role]}
+              </p>
             </div>
 
             <ThemeToggle />

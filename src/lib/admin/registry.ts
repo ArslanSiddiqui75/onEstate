@@ -1,4 +1,4 @@
-import { PLANS } from "@/lib/plans/catalog";
+import { PLANS, PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 import { getActiveBrand } from "@/lib/brand/config";
 import type { Market, PlanId, Role } from "@/types";
 import type {
@@ -37,10 +37,9 @@ export function planAmount(plan: PlanId, market: Market) {
   return market === "uk" ? def.monthlyPriceGbp : def.monthlyPriceUsd;
 }
 
+/** Single source of truth for seat caps is the plan config. */
 export function seatLimit(plan: PlanId) {
-  if (plan === "solo") return 1;
-  if (plan === "team") return 25;
-  return 999;
+  return PLAN_FEATURE_FLAGS[plan]?.maxSeats ?? 999;
 }
 
 export function healthFrom(tenant: Pick<TenantRecord, "lifecycleStatus" | "usage" | "subscription" | "lastActiveAt">) {

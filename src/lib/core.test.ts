@@ -8,6 +8,11 @@ import {
 } from "@/lib/portals/connections";
 import { scoreLead } from "@/lib/crm/scoring";
 import { planAmount, seatLimit } from "@/lib/admin/registry";
+import { canInvite, canInviteRole } from "@/lib/rbac/invites";
+import { getRoleAccess } from "@/lib/rbac/matrix";
+import { checkAdminRole } from "@/lib/admin/roles";
+import { sanitizeRedirectTo } from "@/lib/auth/redirect";
+import { validateOrgName } from "@/lib/auth/org-name";
 
 describe("E.164 phones", () => {
   it("rejects local numbers without a country code", () => {
@@ -107,5 +112,76 @@ describe("plan catalog helpers", () => {
     expect(planAmount("team", "us")).toBeGreaterThan(planAmount("solo", "us"));
     expect(seatLimit("solo")).toBe(1);
     expect(seatLimit("team")).toBe(25);
+  });
+});
+
+describe("invite allow-list", () => {
+  it("lets owners invite any role except owner", () => {
+    expect(canInvite("owner")).toBe(true);
+    expect(canInviteRole("owner", "team_lead")).toBe(true);
+    expect(canInviteRole("owner", "owner")).toBe(false);
+  });
+
+  it("limits team leads to agent and assistant", () => {
+    expect(canInviteRole("team_lead", "agent")).toBe(true);
+    expect(canInviteRole("team_lead", "team_lead")).toBe(false);
+  });
+
+  it("rejects agent invites", () => {
+    expect(canInvite("agent")).toBe(false);
+    expect(canInviteRole("agent", "team_lead")).toBe(false);
+  });
+});
+
+describe("RBAC matrix", () => {
+  it("keeps accountant read-only on ops and full on billing", () => {
+    expect(getRoleAccess("accountant", "crm")).toBe("view");
+    expect(getRoleAccess("accountant", "listings")).toBe("view");
+    expect(getRoleAccess("accountant", "transactions")).toBe("view");
+    expect(getRoleAccess("accountant", "billing")).toBe("full");
+  });
+
+  it("removes social from assistants", () => {
+    expect(getRoleAccess("assistant", "social")).toBe("none");
+  });
+});
+
+describe("admin role guard", () => {
+  const support = {
+    id: "a1",
+    name: "Support",
+    email: "support-admin@certified.local",
+    role: "support_admin" as const,
+  };
+
+  it("returns 401 without a session", () => {
+    expect(checkAdminRole(null).status).toBe(401);
+  });
+
+  it("returns 403 when the role is not allowed", () => {
+    const result = checkAdminRole(support, ["super_admin", "billing_admin"]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(403);
+  });
+
+  it("allows any signed-in admin when no roles are listed", () => {
+    expect(checkAdminRole(support).ok).toBe(true);
+  });
+});
+
+describe("redirectTo validation", () => {
+  it("only accepts in-app paths", () => {
+    expect(sanitizeRedirectTo("/app/crm")).toBe("/app/crm");
+    expect(sanitizeRedirectTo("https://evil.test")).toBe("/app");
+    expect(sanitizeRedirectTo("//evil.test")).toBe("/app");
+    expect(sanitizeRedirectTo("/app/login")).toBe("/app");
+  });
+});
+
+describe("org name", () => {
+  it("rejects placeholder names", () => {
+    expect(validateOrgName("tp").ok).toBe(false);
+    expect(validateOrgName("12345").ok).toBe(false);
+    expect(validateOrgName("Northbridge Realty").ok).toBe(true);
   });
 });

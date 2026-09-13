@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -25,6 +25,10 @@ import { Avatar } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import {
+  createBrowserSupabaseClient,
+  isSupabaseConfigured,
+} from "@/lib/supabase/client";
 
 const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
@@ -33,6 +37,28 @@ const NAV = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
 ];
+
+// Per-role admin console access (QA audit P1-5). Super admin sees everything;
+// billing focuses on revenue, support on tenants/users/audit.
+const NAV_ACCESS: Record<string, string[]> = {
+  super_admin: [
+    "/admin",
+    "/admin/organizations",
+    "/admin/subscriptions",
+    "/admin/users",
+    "/admin/audit",
+  ],
+  billing_admin: ["/admin", "/admin/organizations", "/admin/subscriptions"],
+  support_admin: ["/admin", "/admin/organizations", "/admin/users", "/admin/audit"],
+};
+
+function adminCanViewPath(role: string, pathname: string): boolean {
+  const allowed = NAV_ACCESS[role] || [];
+  if (pathname === "/admin") return allowed.includes("/admin");
+  return allowed.some(
+    (href) => href !== "/admin" && pathname.startsWith(href),
+  );
+}
 
 const PAGES: Array<{
   match: (pathname: string) => boolean;
@@ -108,7 +134,8 @@ function resolvePage(
 }
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { admin, loading, signOut, getTenant } = useAdminSession();
+  const { admin, loading, signOut, getTenant, registryError, refresh } =
+    useAdminSession();
   const pathname = usePathname();
   const router = useRouter();
   const isLogin = pathname.startsWith("/admin/login");
@@ -123,6 +150,26 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     [pathname, tenant?.name],
   );
   const Icon = activePage.icon;
+
+  const [orgSessionEmail, setOrgSessionEmail] = useState<string | null>(null);
+  useEffect(() => {
+    if (!admin || !isSupabaseConfigured()) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const supabase = createBrowserSupabaseClient();
+        const { data } = await supabase.auth.getSession();
+        if (!cancelled) {
+          setOrgSessionEmail(data.session?.user?.email || null);
+        }
+      } catch {
+        // Session probe is best-effort.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [admin, pathname]);
 
   useEffect(() => {
     if (loading) return;
@@ -142,6 +189,11 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   if (isLogin) return <>{children}</>;
   if (!admin) return null;
 
+  const navItems = NAV.filter((item) =>
+    (NAV_ACCESS[admin.role] || []).includes(item.href),
+  );
+  const forbidden = !adminCanViewPath(admin.role, pathname);
+
   return (
     <div className="h-screen overflow-hidden bg-[var(--canvas)]">
       <div className="mx-auto flex h-full max-w-[1600px] gap-4 p-3 lg:p-4">
@@ -155,7 +207,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
           </div>
 
           <nav className="mt-6 flex-1 space-y-1 overflow-y-auto">
-            {NAV.map((item) => {
+            {navItems.map((item) => {
               const active =
                 pathname === item.href ||
                 (item.href !== "/admin" && pathname.startsWith(item.href));
@@ -236,7 +288,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex max-w-full flex-wrap gap-2 lg:hidden">
-                {NAV.map((item) => (
+                {navItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -250,6 +302,46 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="surface-panel min-h-0 flex-1 overflow-y-auto scrollbar-thin p-4 sm:p-6">
+            {orgSessionEmail ? (
+              <div
+                role="alert"
+                className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300"
+              >
+                <span>
+                  A brokerage session ({orgSessionEmail}) is also active in this
+                  browser. Signing out of the admin console will end it too.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      const supabase = createBrowserSupabaseClient();
+                      void supabase.auth.signOut().then(() => setOrgSessionEmail(null));
+                    } catch {
+                      setOrgSessionEmail(null);
+                    }
+                  }}
+                  className="rounded-full border border-current px-3 py-1 text-xs font-semibold"
+                >
+                  End brokerage session
+                </button>
+              </div>
+            ) : null}
+            {registryError ? (
+              <div
+                role="alert"
+                className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center justify-between gap-2 rounded-xl border border-red-300/50 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"
+              >
+                <span>Tenant data could not be loaded: {registryError}</span>
+                <button
+                  type="button"
+                  onClick={refresh}
+                  className="rounded-full border border-current px-3 py-1 text-xs font-semibold"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : null}
             <motion.div
               key={pathname}
               initial={{ opacity: 0, y: 8 }}
@@ -257,7 +349,27 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="mx-auto max-w-[1400px]"
             >
-              <ErrorBoundary>{children}</ErrorBoundary>
+              {forbidden ? (
+                <div
+                  role="alert"
+                  className="mx-auto max-w-md rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center"
+                >
+                  <ShieldCheck className="mx-auto h-8 w-8 text-[var(--muted)]" aria-hidden />
+                  <h2 className="mt-3 text-lg font-semibold">403 — Not available for your role</h2>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    Your admin role ({admin.role.replace("_", " ")}) does not have
+                    access to this area.
+                  </p>
+                  <Link
+                    href="/admin"
+                    className="mt-4 inline-block rounded-full border border-[var(--border)] px-4 py-1.5 text-sm font-semibold"
+                  >
+                    Back to overview
+                  </Link>
+                </div>
+              ) : (
+                <ErrorBoundary>{children}</ErrorBoundary>
+              )}
             </motion.div>
           </main>
         </div>

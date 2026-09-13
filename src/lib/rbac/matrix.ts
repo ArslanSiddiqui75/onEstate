@@ -39,12 +39,13 @@ export const RBAC_MATRIX: Record<Role, Record<ModuleId, AccessLevel>> = {
     listings: "view",
     transactions: "none",
     website: "none",
-    social: "edit",
+    social: "none",
     billing: "none",
   },
+  // Accountant is read-only on operations; Billing stays full.
   accountant: {
-    crm: "full",
-    listings: "full",
+    crm: "view",
+    listings: "view",
     transactions: "view",
     website: "none",
     social: "none",

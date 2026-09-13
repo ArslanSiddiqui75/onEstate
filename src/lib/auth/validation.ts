@@ -22,6 +22,7 @@
  */
 
 import { z } from "zod";
+import { validateOrgName } from "@/lib/auth/org-name";
 
 // ─── Login Schema ────────────────────────────────────────────────────────────
 // Rules for the login form: valid email + password at least 4 chars (lenient
@@ -55,10 +56,12 @@ export const signupSchema = z.object({
   password: z
     .string()
     .min(6, "Password must be at least 6 characters"),
-  orgName: z
-    .string()
-    .min(2, "Brokerage name must be at least 2 characters")
-    .max(200, "Brokerage name is too long"),
+  orgName: z.string().superRefine((val, ctx) => {
+    const checked = validateOrgName(val);
+    if (!checked.ok) {
+      ctx.addIssue({ code: "custom", message: checked.error });
+    }
+  }),
   plan: z.enum(["solo", "team", "enterprise"], {
     error: "Please select a plan",
   }),

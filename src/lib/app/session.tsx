@@ -148,6 +148,7 @@ export interface AppOrg {
   lastPaymentStatus?: string;
   lastPaymentAt?: string;
   leadRouting?: LeadRoutingSettings;
+  onboardingCompleted?: boolean;
 }
 
 interface AppState {
@@ -180,7 +181,12 @@ interface AppState {
   }) => Promise<void>;
   signOut: () => Promise<void>;
   setPlan: (plan: PlanId) => Promise<void>;
-  updateWorkspace: (patch: { name?: string; market?: Market }) => Promise<void>;
+  updateWorkspace: (patch: {
+    name?: string;
+    market?: Market;
+    onboardingCompleted?: boolean;
+  }) => Promise<void>;
+  updateProfile: (patch: { name: string }) => Promise<void>;
   refresh: () => Promise<void>;
   addLead: (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   assignLead: (id: string, assignedTo: string) => Promise<void>;
@@ -382,6 +388,7 @@ function toAppOrg(org: WorkspaceOrg): AppOrg {
     lastPaymentStatus: org.lastPaymentStatus,
     lastPaymentAt: org.lastPaymentAt,
     leadRouting: org.leadRouting,
+    onboardingCompleted: org.onboardingCompleted,
   };
 }
 
@@ -725,6 +732,13 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     if (repoRef.current) {
       await repoRef.current.clearAuth();
     }
+    // Session isolation: ending the org session also ends any platform
+    // admin session that is active in this browser.
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+    } catch {
+      // Admin session cleanup is best-effort.
+    }
     repoRef.current = null;
     setUser(null);
     setOrg(null);
@@ -763,13 +777,28 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const updateWorkspace = useCallback(
-    async (patch: { name?: string; market?: Market }) => {
+    async (patch: {
+      name?: string;
+      market?: Market;
+      onboardingCompleted?: boolean;
+    }) => {
       if (!repoRef.current) return;
       const next = await repoRef.current.updateOrganization(patch);
       setOrg(toAppOrg(next));
     },
     [],
   );
+
+  const updateProfile = useCallback(async (patch: { name: string }) => {
+    if (!repoRef.current) throw new Error("Workspace is not loaded");
+    const next = await repoRef.current.updateProfile(patch);
+    setUser({
+      id: next.id,
+      name: next.name,
+      email: next.email,
+      role: next.role,
+    });
+  }, []);
 
   const getAuthToken = useCallback(async () => {
     if (authMode !== "supabase") return null;
@@ -914,6 +943,29 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         assignedTo: prepared.assignedTo,
       });
       if (created?.id) {
+        // Every lead with reachable details also lands in the Contacts
+        // directory as a linked contact (QA audit P1-11).
+        if ((lead.email?.trim() || lead.phone?.trim() || phones?.length)) {
+          const alreadyLinked = contacts.some((c) => c.leadId === created.id);
+          if (!alreadyLinked) {
+            try {
+              await repoRef.current.createContact({
+                name: lead.name,
+                email: lead.email?.trim() || undefined,
+                phone: lead.phone?.trim() || phones?.[0]?.number,
+                phones,
+                category: "lead",
+                tags: [],
+                leadId: created.id,
+                assignedTo: prepared.assignedTo,
+                market: brand.market,
+              });
+            } catch (err) {
+              // The lead itself saved; contact mirroring is best-effort.
+              console.error("[addLead] linked contact create failed:", err);
+            }
+          }
+        }
         await fireAutomationTrigger({
           leadId: created.id,
           trigger: "lead_created",
@@ -922,7 +974,16 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       }
       await refresh();
     },
-    [brand.market, fireAutomationTrigger, leads, members, org, refresh, user],
+    [
+      brand.market,
+      contacts,
+      fireAutomationTrigger,
+      leads,
+      members,
+      org,
+      refresh,
+      user,
+    ],
   );
 
   const assignLead = useCallback(
@@ -1265,9 +1326,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         ...listing,
         market,
         currency: market === "uk" ? "GBP" : "USD",
-        imageUrl:
-          listing.imageUrl ||
-          "https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1200&q=80",
+        imageUrl: listing.imageUrl || "",
         agentId: listing.agentId || user.id,
         portals:
           market === "uk"
@@ -1277,8 +1336,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
                 { portal: "onthemarket", status: "not_connected" },
               ]
             : [{ portal: "mls", status: "pending" }],
-        syncReadiness: 40,
-        nextMilestone: "Complete listing pack",
+        syncReadiness: 0,
+        nextMilestone: listing.nextMilestone || undefined,
         complianceIssues: [],
         createdAt: new Date().toISOString(),
       });
@@ -1718,14 +1777,24 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       outcome: CallLog["outcome"];
       notes?: string;
     }) => {
-      if (!repoRef.current || !org) return;
+      if (!repoRef.current || !org) {
+        throw new Error("Workspace is not loaded");
+      }
       const lead = leads.find((l) => l.id === input.leadId);
-      if (!lead) return;
+      if (!lead) {
+        throw new Error("Lead not found");
+      }
+      const phoneNumber = lead.phones?.[0]?.number || lead.phone;
+      if (!phoneNumber) {
+        throw new Error(
+          `${lead.name} has no phone number on file — add one before logging a call.`,
+        );
+      }
       await repoRef.current.logCall({
         orgId: org.id,
         leadId: lead.id,
         direction: "outbound",
-        phoneNumber: lead.phones?.[0]?.number || lead.phone,
+        phoneNumber,
         outcome: input.outcome,
         notes: input.notes,
         durationSeconds: 0,
@@ -2155,6 +2224,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       signOut,
       setPlan,
       updateWorkspace,
+      updateProfile,
       refresh,
       addLead,
       assignLead,
@@ -2227,6 +2297,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       signOut,
       setPlan,
       updateWorkspace,
+      updateProfile,
       refresh,
       addLead,
       assignLead,

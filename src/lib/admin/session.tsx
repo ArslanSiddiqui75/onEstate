@@ -22,6 +22,7 @@ import type {
   TenantLifecycleStatus,
   TenantRecord,
 } from "@/lib/admin/types";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import {
   clearPlatformAdminAuth,
   getPlatformMetrics,
@@ -37,6 +38,7 @@ interface AdminState {
   admin: PlatformAdminUser | null;
   loading: boolean;
   registry: PlatformRegistry;
+  registryError: string | null;
   metrics: ReturnType<typeof getPlatformMetrics>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => void;
@@ -71,25 +73,35 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     updatedAt: new Date().toISOString(),
   });
   const [loading, setLoading] = useState(true);
+  const [registryError, setRegistryError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     void (async () => {
       try {
         const res = await fetch("/api/admin/registry");
-        if (res.ok) {
-          const json = (await res.json()) as {
-            source?: string;
-            registry?: PlatformRegistry;
-          };
-          if (json.source === "supabase" && json.registry) {
-            setRegistry(json.registry);
-            return;
-          }
+        const json = (await res.json().catch(() => null)) as {
+          source?: string;
+          registry?: PlatformRegistry;
+          error?: string;
+        } | null;
+        if (res.ok && json?.source === "supabase" && json.registry) {
+          setRegistry(json.registry);
+          setRegistryError(null);
+          return;
         }
+        if (res.ok && json?.source === "local") {
+          setRegistry(loadPlatformRegistry());
+          setRegistryError(null);
+          return;
+        }
+        // Keep whatever registry we already have; surface the failure
+        // instead of silently showing zero tenants.
+        setRegistryError(
+          json?.error || `Could not load tenants (HTTP ${res.status})`,
+        );
       } catch {
-        // Fall through to local registry.
+        setRegistryError("Could not reach the registry service");
       }
-      setRegistry(loadPlatformRegistry());
     })();
   }, []);
 
@@ -129,6 +141,14 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     void fetch("/api/admin/logout", { method: "POST" });
+    // Session isolation: ending the admin session also ends any brokerage
+    // (Supabase) session active in this browser.
+    try {
+      const supabase = createBrowserSupabaseClient();
+      if (supabase) void supabase.auth.signOut();
+    } catch {
+      // Org session cleanup is best-effort.
+    }
     clearPlatformAdminAuth();
     setAdmin(null);
   }, []);
@@ -216,6 +236,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       admin,
       loading,
       registry,
+      registryError,
       metrics: getPlatformMetrics(registry),
       signIn,
       signOut,
@@ -234,6 +255,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       admin,
       loading,
       registry,
+      registryError,
       signIn,
       signOut,
       refresh,

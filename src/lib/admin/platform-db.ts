@@ -32,7 +32,11 @@ async function countByOrg(
   supabase: ServiceClient,
   table: string,
 ): Promise<Map<string, number>> {
-  const { data } = await supabase.from(table).select("org_id");
+  const { data, error } = await supabase.from(table).select("org_id");
+  if (error) {
+    // Usage counts are non-fatal, but never fail silently.
+    console.error(`[platform-db] count query failed for ${table}:`, error.message);
+  }
   const map = new Map<string, number>();
   for (const row of data || []) {
     const id = String((row as { org_id?: string }).org_id || "");
@@ -156,6 +160,27 @@ export async function loadPlatformRegistryFromDb(
     supabase.from("lead_tasks").select("org_id, status"),
     supabase.from("websites").select("org_id, published"),
   ]);
+
+  const coreFailures = [
+    ["organizations", orgsRes.error],
+    ["platform_tenants", tenantsRes.error],
+    ["platform_subscriptions", subsRes.error],
+    ["profiles", profilesRes.error],
+    ["platform_audit_events", auditRes.error],
+  ].filter(([, err]) => err) as [string, { message: string }][];
+  if (coreFailures.length) {
+    const detail = coreFailures
+      .map(([table, err]) => `${table}: ${err.message}`)
+      .join("; ");
+    console.error(`[platform-db] registry load failed — ${detail}`);
+    throw new Error(`Platform registry query failed (${detail})`);
+  }
+  if (tasks.error) {
+    console.error("[platform-db] lead_tasks query failed:", tasks.error.message);
+  }
+  if (sites.error) {
+    console.error("[platform-db] websites query failed:", sites.error.message);
+  }
 
   const usersRes = await supabase.auth.admin.listUsers({ perPage: 1000 });
   const emailById = new Map(

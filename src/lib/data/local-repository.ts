@@ -188,6 +188,9 @@ export function createLocalRepository(
       const snap = requireSnapshot();
       if (patch.name !== undefined) snap.org.name = patch.name;
       if (patch.market !== undefined) snap.org.market = patch.market;
+      if (patch.onboardingCompleted !== undefined) {
+        snap.org.onboardingCompleted = patch.onboardingCompleted;
+      }
       commit(snap);
       return snap.org;
     },
@@ -198,6 +201,16 @@ export function createLocalRepository(
       commit(snap);
       writeAuth(snap.user, snap.org);
       return snap.org;
+    },
+
+    async updateProfile(patch) {
+      const snap = requireSnapshot();
+      const name = patch.name.trim();
+      if (name.length < 2) throw new Error("Name must be at least 2 characters");
+      snap.user.name = name;
+      commit(snap);
+      writeAuth(snap.user, snap.org);
+      return snap.user;
     },
 
     async listMembers() {

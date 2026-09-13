@@ -64,7 +64,7 @@ export function PhoneField({
       <p className="mt-1 text-[11px] text-[var(--muted)]">
         {e164
           ? `Saves as ${e164}`
-          : "Pick a country, then type the local number. Leading 0 is dropped (0333… + Pakistan → +92333…)."}
+          : "Pick a country, then type the local number. A leading 0 is dropped automatically."}
         {defaultValue && !isE164(defaultValue)
           ? " This number was stored without a country code — confirm the country before saving."
           : null}

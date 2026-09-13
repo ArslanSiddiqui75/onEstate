@@ -4,6 +4,7 @@ import { useState } from "react";
 import { UserPlus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { checkSeatLimit } from "@/lib/access";
+import { allowedInviteRoles } from "@/lib/rbac/invites";
 import { ROLE_LABELS } from "@/lib/rbac/matrix";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,22 +15,24 @@ import type { PlanId, Role } from "@/types";
 interface InviteModalProps {
   plan: PlanId;
   currentMemberCount: number;
+  callerRole: Role;
   onInvite: (member: { name: string; email: string; role: Role }) => Promise<void>;
 }
 
-const ROLES_SELECT: Role[] = [
-  "team_lead",
-  "agent",
-  "assistant",
-  "accountant",
-];
-
-export function InviteModal({ plan, currentMemberCount, onInvite }: InviteModalProps) {
+export function InviteModal({
+  plan,
+  currentMemberCount,
+  callerRole,
+  onInvite,
+}: InviteModalProps) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const seatCheck = checkSeatLimit(currentMemberCount, plan);
+  const inviteRoles = allowedInviteRoles(callerRole);
+
+  if (inviteRoles.length === 0) return null;
 
   if (!open) {
     return (
@@ -128,7 +131,7 @@ export function InviteModal({ plan, currentMemberCount, onInvite }: InviteModalP
                 defaultValue="agent"
                 className="mt-1 h-10 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm focus:ring-2 focus:ring-[var(--ring)]"
               >
-                {ROLES_SELECT.map((r) => (
+                {inviteRoles.map((r) => (
                   <option key={r} value={r}>
                     {ROLE_LABELS[r]}
                   </option>

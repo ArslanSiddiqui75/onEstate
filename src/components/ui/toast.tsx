@@ -148,8 +148,8 @@ function ToastItem({
 
   return (
     <div
-      role="status"
-      aria-live="polite"
+      role={t.tone === "error" || t.tone === "success" ? "alert" : "status"}
+      aria-live={t.tone === "error" ? "assertive" : "polite"}
       className={cn(
         // Layout
         "pointer-events-auto flex items-start gap-2.5 rounded-[var(--radius-sm)] border px-3.5 py-3",

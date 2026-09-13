@@ -2,18 +2,27 @@ import { Lock } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { hasModuleAccess } from "@/lib/access";
+import type { PlanId, Role } from "@/types";
 
 export function LockedModule({
   title,
   reason,
   href = "/app/billing",
+  role,
+  plan,
   className,
 }: {
   title: string;
   reason: string;
   href?: string;
+  role?: Role;
+  plan?: PlanId;
   className?: string;
 }) {
+  const canViewPlans =
+    role && plan ? hasModuleAccess(role, plan, "billing", "view") : false;
+
   return (
     <div
       className={cn(
@@ -28,9 +37,15 @@ export function LockedModule({
         {title}
       </h2>
       <p className="mt-2 max-w-md text-sm text-[var(--muted)]">{reason}</p>
-      <Button asChild className="mt-7 rounded-full">
-        <Link href={href}>View plans</Link>
-      </Button>
+      {canViewPlans ? (
+        <Button asChild className="mt-7 rounded-full">
+          <Link href={href}>View plans</Link>
+        </Button>
+      ) : (
+        <p className="mt-7 text-sm text-[var(--muted)]">
+          Ask your Owner to upgrade if you need this module.
+        </p>
+      )}
     </div>
   );
 }

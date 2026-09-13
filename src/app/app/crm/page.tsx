@@ -5,7 +5,6 @@ import { toast } from "@/components/ui/toast";
 import { Alert } from "@/components/ui/alert";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
-import { InviteModal } from "@/components/team/invite-modal";
 import { LockedModule } from "@/components/ui/locked-module";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -142,7 +141,6 @@ export default function AppCrmPage() {
     listAutomationRuns,
     listLeadActivities,
     resolveTask,
-    inviteMember,
     market,
     persistence,
   } = useAppSession();
@@ -295,7 +293,8 @@ export default function AppCrmPage() {
       <LockedModule
         title="CRM locked"
         reason="Your role cannot access CRM."
-        href="/app/billing"
+        role={user.role}
+        plan={org.plan}
       />
     );
   }
@@ -397,7 +396,7 @@ export default function AppCrmPage() {
         </TabsBar>
 
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-          <Kpi label="Pipeline leads" value={String(marketLeads.length)} />
+          <Kpi label="Pipeline leads" value={String(allMarketLeads.length)} />
           <Kpi label="Contacts" value={String(marketContacts.length)} />
           <Kpi label="Open tasks" value={String(inboxTasks.length)} />
           <Kpi
@@ -457,22 +456,6 @@ export default function AppCrmPage() {
                   <Upload className="h-3.5 w-3.5" />
                   Import CSV
                 </Button>
-                <InviteModal
-                  plan={org.plan}
-                  currentMemberCount={members.length}
-                  onInvite={async (newMember) => {
-                    try {
-                      await inviteMember(newMember);
-                      toast.success(
-                        `Invited ${newMember.name} (${newMember.email}) as ${newMember.role}`,
-                      );
-                    } catch (err) {
-                      toast.error(
-                        err instanceof Error ? err.message : "Could not send invite",
-                      );
-                    }
-                  }}
-                />
                 <Button onClick={() => setShowLeadForm((v) => !v)}>
                   {showLeadForm ? "Close form" : "Add lead"}
                 </Button>
@@ -621,7 +604,7 @@ export default function AppCrmPage() {
             <Table>
               <THead>
                 <TR>
-                  <TH>Name</TH>
+                  <TH className="sticky left-0 z-10 bg-[var(--surface)]">Name</TH>
                   <TH>Phone</TH>
                   <TH>Owner</TH>
                   <TH>Type</TH>
@@ -639,7 +622,7 @@ export default function AppCrmPage() {
                     lead.phones?.find((phone) => phone.preferred) || lead.phones?.[0];
                   return (
                     <TR key={lead.id}>
-                      <TD>
+                      <TD className="sticky left-0 z-10 bg-[var(--surface)]">
                         <button
                           type="button"
                           onClick={() => {
@@ -806,12 +789,16 @@ export default function AppCrmPage() {
                 <div className="flex flex-wrap gap-2">
                 {messagingMode ? (
                   <Badge tone={messagingMode === "live" ? "success" : "warning"}>
-                    {messagingMode === "live" ? "Live SMS" : "Simulated SMS"}
+                    {messagingMode === "live"
+                      ? "Live SMS"
+                      : "SMS not configured — simulated"}
                   </Badge>
                 ) : null}
                 {emailMode ? (
                   <Badge tone={emailMode === "live" ? "success" : "warning"}>
-                    {emailMode === "live" ? "Live email" : "Simulated email"}
+                    {emailMode === "live"
+                      ? "Live email"
+                      : "Email not configured — simulated"}
                   </Badge>
                 ) : null}
                 {emailInboundWebhook ? (
@@ -1037,7 +1024,7 @@ export default function AppCrmPage() {
                               ? emailInboundWebhook
                                 ? "Live replies land here via Resend. Use this to test without waiting for a real reply."
                                 : "Live inbound needs Resend Receiving + a webhook at /api/email/webhook/inbound. Use this to test a reply now."
-                              : "Twilio can deliver SMS to Pakistan, but it cannot receive replies from Pakistani numbers. Use this to test inbound without a real reply."}
+                              : "Use this to log a test inbound SMS without waiting for a real reply."}
                           </p>
                           <textarea
                             className="mt-3 min-h-20 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
@@ -1115,7 +1102,13 @@ export default function AppCrmPage() {
                       <Button
                         size="sm"
                         onClick={() => {
-                          void logCall({ leadId: lead.id, outcome: "connected" });
+                          void logCall({ leadId: lead.id, outcome: "connected" })
+                            .then(() => toast.success(`Call logged for ${lead.name}`))
+                            .catch((err) =>
+                              toast.error(
+                                err instanceof Error ? err.message : "Could not log call",
+                              ),
+                            );
                         }}
                       >
                         Log call
@@ -1124,7 +1117,13 @@ export default function AppCrmPage() {
                         size="sm"
                         variant="secondary"
                         onClick={() => {
-                          void logCall({ leadId: lead.id, outcome: "voicemail" });
+                          void logCall({ leadId: lead.id, outcome: "voicemail" })
+                            .then(() => toast.success(`Voicemail logged for ${lead.name}`))
+                            .catch((err) =>
+                              toast.error(
+                                err instanceof Error ? err.message : "Could not log call",
+                              ),
+                            );
                         }}
                       >
                         Voicemail
@@ -1145,7 +1144,14 @@ export default function AppCrmPage() {
 
         <TabsContent value="automations" className="mt-4 space-y-4">
           <section className="hero-card rounded-[2rem] p-4">
-            <h2 className="font-semibold">Sequences</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold">Sequences</h2>
+              <Badge tone="neutral">
+                {persistence === "supabase"
+                  ? "Live workflows"
+                  : "Preview only — connect a hosted workspace to run"}
+              </Badge>
+            </div>
             <p className="text-sm text-[var(--muted)]">
               Playbooks you enroll a lead onto. Turning a toggle on sends the next
               step now. Timed drips stay on Automations below.
@@ -1504,6 +1510,7 @@ export default function AppCrmPage() {
         <TabsContent value="routing" className="mt-4">
           <LeadRoutingPanel
             plan={org.plan}
+            role={user.role}
             settings={org.leadRouting}
             members={members}
             leads={leads}
@@ -2027,10 +2034,17 @@ function ContactsDirectory({
       ) : null}
 
       {filtered.length === 0 ? (
-        <EmptyState
-          title="No contacts match"
-          description="Try a different search, or add your first contact to start the address book."
-        />
+        contacts.length === 0 ? (
+          <EmptyState
+            title="No contacts yet"
+            description="Contacts are created automatically from leads with an email or phone, or add your first contact to start the address book."
+          />
+        ) : (
+          <EmptyState
+            title="No contacts match your search"
+            description="Try a different search term or category filter."
+          />
+        )
       ) : (
         <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {filtered.map((contact) => {

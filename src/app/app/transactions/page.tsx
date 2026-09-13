@@ -90,7 +90,8 @@ export default function AppTransactionsPage() {
       <LockedModule
         title="Transactions locked"
         reason="Your role cannot view transactions."
-        href="/app/billing"
+        role={user.role}
+        plan={org.plan}
       />
     );
   }
@@ -139,7 +140,7 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-xl font-semibold">Transactions & Conveyancing</h1>
+          <h2 className="text-xl font-semibold">Transactions & Conveyancing</h2>
           {canEdit ? (
             <Button onClick={() => setShowNewDealModal(true)} className="gap-1.5">
               <Plus className="h-4 w-4" />
@@ -156,9 +157,15 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
             listings={marketListings}
             onClose={() => setShowNewDealModal(false)}
             onCreate={async (input) => {
-              await createManualDeal(input);
-              toast.success(`Created transaction "${input.listingTitle}"`);
-              setShowNewDealModal(false);
+              try {
+                await createManualDeal(input);
+                toast.success(`Created transaction "${input.listingTitle}"`);
+                setShowNewDealModal(false);
+              } catch (err) {
+                toast.error(
+                  err instanceof Error ? err.message : "Failed to create transaction",
+                );
+              }
             }}
           />
         ) : null}
@@ -169,7 +176,7 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Transactions & Conveyancing</h1>
+        <h2 className="text-xl font-semibold">Transactions & Conveyancing</h2>
         {canEdit ? (
           <Button onClick={() => setShowNewDealModal(true)} className="gap-1.5">
             <Plus className="h-4 w-4" />
@@ -612,9 +619,15 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
           listings={marketListings}
           onClose={() => setShowNewDealModal(false)}
           onCreate={async (input) => {
-            await createManualDeal(input);
-            toast.success(`Created transaction "${input.listingTitle}"`);
-            setShowNewDealModal(false);
+            try {
+              await createManualDeal(input);
+              toast.success(`Created transaction "${input.listingTitle}"`);
+              setShowNewDealModal(false);
+            } catch (err) {
+              toast.error(
+                err instanceof Error ? err.message : "Failed to create transaction",
+              );
+            }
           }}
         />
       ) : null}

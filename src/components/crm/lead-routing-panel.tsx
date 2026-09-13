@@ -23,6 +23,7 @@ const ROLE_OPTIONS: { id: Role; label: string }[] = [
 
 export function LeadRoutingPanel({
   plan,
+  role,
   settings,
   members,
   leads,
@@ -30,6 +31,7 @@ export function LeadRoutingPanel({
   onSave,
 }: {
   plan: PlanId;
+  role?: Role;
   settings?: LeadRoutingSettings;
   members: OrgMember[];
   leads: Lead[];
@@ -47,7 +49,8 @@ export function LeadRoutingPanel({
       <LockedModule
         title="Lead routing is on Team and Enterprise"
         reason="Solo workspaces assign every lead to the person who adds it. Upgrade to rotate enquiries across the team."
-        href="/app/billing"
+        role={role}
+        plan={plan}
       />
     );
   }

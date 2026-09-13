@@ -38,7 +38,7 @@ export function Alert({
   const Icon = config.Icon;
   return (
     <div
-      role="status"
+      role={tone === "danger" || tone === "success" ? "alert" : "status"}
       className={cn(
         "flex items-start gap-2.5 rounded-[0.85rem] border px-3.5 py-3 text-sm",
         config.wrap,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { checkSeatLimit } from "@/lib/access";
+import { canInvite, canInviteRole } from "@/lib/rbac/invites";
 import type { PlanId, Role } from "@/types";
 
 const bodySchema = z.object({
@@ -36,6 +37,22 @@ export async function POST(request: Request) {
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid invite payload" }, { status: 400 });
+  }
+
+  const callerRole = profile.role as Role;
+  if (!canInvite(callerRole)) {
+    return NextResponse.json(
+      { error: "Your role cannot invite team members" },
+      { status: 403 },
+    );
+  }
+  if (!canInviteRole(callerRole, parsed.data.role as Role)) {
+    return NextResponse.json(
+      {
+        error: `Your role cannot invite a ${parsed.data.role.replace("_", " ")}`,
+      },
+      { status: 403 },
+    );
   }
 
   const [{ data: org }, { data: members }, { data: pending }] = await Promise.all([
@@ -105,6 +122,23 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+
+  // Operator-visible audit trail (best-effort; never blocks the invite).
+  await supabase
+    .from("platform_audit_events")
+    .insert({
+      actor_email: profile.email,
+      action: "team.member_invited",
+      entity_type: "tenant",
+      entity_id: profile.orgId,
+      summary: `Invited ${email} as ${role.replace("_", " ")}`,
+      metadata: { invited_email: email, invited_role: role, inviter_role: callerRole },
+    })
+    .then(({ error: auditError }) => {
+      if (auditError) {
+        console.error("[team/invite] audit event failed:", auditError.message);
+      }
+    });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
   const signupUrl = `${appUrl}/app/signup?email=${encodeURIComponent(email)}`;

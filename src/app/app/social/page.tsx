@@ -132,7 +132,8 @@ export default function AppSocialPage() {
       <LockedModule
         title="Social locked"
         reason="Social tools are limited for your role."
-        href="/app/billing"
+        role={user.role}
+        plan={org.plan}
       />
     );
   }
@@ -158,8 +159,8 @@ export default function AppSocialPage() {
         onPublishNow={publishSocialPostNow}
         planHint={
           flags.autoListingPosts
-            ? "Auto listing-to-post is enabled on your plan. On Vercel Hobby, due schedules also flush when you open this page (or use an external 5‑min ping)."
-            : "Manual scheduling on your plan — upgrade for auto listing-to-post. On Vercel Hobby, due schedules flush when you open this page."
+            ? "Auto listing-to-post is enabled on your plan. Due posts also flush when you open this page."
+            : "Manual scheduling on your plan — ask your Owner to upgrade for auto listing-to-post."
         }
         onUpsertAccount={upsertSocialAccount}
         onDeleteAccount={deleteSocialAccount}

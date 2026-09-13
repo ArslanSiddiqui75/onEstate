@@ -6,6 +6,7 @@ import { AppSessionProvider, useAppSession } from "@/lib/app/session";
 import { AppShell } from "@/components/shell/app-shell";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { SkeletonPage } from "@/components/ui/skeleton";
+import { sanitizeRedirectTo } from "@/lib/auth/redirect";
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { user, org, loading, signOut, brand, persistence, authMode } =
@@ -13,7 +14,9 @@ function Guard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const isAuthRoute =
-    pathname.startsWith("/app/login") || pathname.startsWith("/app/signup");
+    pathname.startsWith("/app/login") ||
+    pathname.startsWith("/app/signup") ||
+    pathname.startsWith("/app/reset-password");
 
   useEffect(() => {
     if (loading) return;
@@ -21,8 +24,10 @@ function Guard({ children }: { children: React.ReactNode }) {
       const redirectUrl = `/app/login?redirectTo=${encodeURIComponent(pathname)}`;
       router.replace(redirectUrl);
     }
-    if (user && isAuthRoute) {
-      router.replace("/app");
+    if (user && isAuthRoute && !pathname.startsWith("/app/reset-password")) {
+      // Honor the page the user originally asked for (validated in-app path).
+      const params = new URLSearchParams(window.location.search);
+      router.replace(sanitizeRedirectTo(params.get("redirectTo")));
     }
   }, [user, loading, isAuthRoute, router, pathname]);
 
@@ -52,7 +57,7 @@ function Guard({ children }: { children: React.ReactNode }) {
       orgName={org.name}
       orgId={org.id}
       onSignOut={() => signOut()}
-      headerMeta={`${org.name} · ${org.id.slice(0, 8)} · ${brand.name} · ${persistence}`}
+      headerMeta={`${org.name} · ${brand.name} · ${persistence}`}
     >
       <ErrorBoundary>{children}</ErrorBoundary>
     </AppShell>

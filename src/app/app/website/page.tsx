@@ -40,7 +40,8 @@ export default function AppWebsitePage() {
       <LockedModule
         title="Website locked"
         reason="Website builder is limited to Owner, Broker, and Team Lead."
-        href="/app/billing"
+        role={user.role}
+        plan={org.plan}
       />
     );
   }
@@ -220,7 +221,20 @@ export default function AppWebsitePage() {
               variant="secondary"
               disabled={busy}
               onClick={() => {
-                const next = { ...site, published: !site.published };
+                if (!site.published && activeListings.length === 0) {
+                  toast.error(
+                    "Add at least one listing before publishing the site.",
+                  );
+                  return;
+                }
+                const nextPublished = !site.published;
+                const confirmed = window.confirm(
+                  nextPublished
+                    ? "Publish this site so it is public?"
+                    : "Unpublish this site? Visitors will no longer see it.",
+                );
+                if (!confirmed) return;
+                const next = { ...site, published: nextPublished };
                 setDraft(next);
                 void handleSave(next);
               }}
