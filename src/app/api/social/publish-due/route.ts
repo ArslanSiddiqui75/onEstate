@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { publishDuePosts } from "@/lib/social/publish-service";
 
 // Hobby Vercel only allows daily platform crons. Opening Social (or hitting
@@ -11,6 +12,8 @@ export async function POST(request: Request) {
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
+  const denied = forbiddenIfNoModule(profile, "social", "view");
+  if (denied) return denied;
 
   const summary = await publishDuePosts(25, profile.orgId);
   return NextResponse.json({ ok: true, ...summary });

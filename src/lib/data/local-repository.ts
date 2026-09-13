@@ -14,6 +14,7 @@ import type {
   TransactionDeal,
 } from "@/types";
 import type { WorkspaceRepository } from "@/lib/data/repository";
+import { assertCanPublishWebsite } from "@/lib/website/publish";
 import { mergeDefaultSequences } from "@/lib/sequences/catalog";
 import {
   loadWorkspace,
@@ -597,6 +598,7 @@ export function createLocalRepository(
 
     async saveWebsite(site) {
       const snap = requireSnapshot();
+      assertCanPublishWebsite(Boolean(site.published), snap.listings.length);
       snap.website = { ...site, updatedAt: new Date().toISOString() };
       commit(snap);
       return snap.website;

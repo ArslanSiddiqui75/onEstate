@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { phoneLookupVariants, sendOutboundSms } from "@/lib/messaging/service";
+import { mapTwilioError, phoneLookupVariants, sendOutboundSms } from "@/lib/messaging/service";
 import { isE164 } from "@/lib/phone/e164";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { sendTwilioSms } from "@/lib/twilio/client";
 import { fireLeadContactedIfFirst } from "@/lib/automations/engine";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { shouldUseTwilioOutbound } from "@/lib/messaging/capabilities";
 
 const bodySchema = z.object({
@@ -46,6 +47,10 @@ export async function POST(request: Request) {
   if (supabase && !profile) {
     return NextResponse.json({ error: "Sign in to send SMS" }, { status: 401 });
   }
+  if (profile) {
+    const denied = forbiddenIfNoModule(profile, "crm", "edit");
+    if (denied) return denied;
+  }
 
   if (process.env.NODE_ENV === "production" && !profile) {
     return NextResponse.json({ error: "Sign in to send SMS" }, { status: 401 });
@@ -73,7 +78,7 @@ export async function POST(request: Request) {
       });
     } catch (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Failed to send SMS" },
+        { error: mapTwilioError(error) },
         { status: 500 },
       );
     }

@@ -5,6 +5,7 @@ export interface RequestProfile {
   email: string;
   orgId: string;
   role: string;
+  plan: string;
 }
 
 // Browser sessions live in the Supabase JS client's own storage, not an
@@ -27,15 +28,19 @@ export async function resolveProfileFromRequest(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, org_id, role")
+    .select("id, org_id, role, organizations(plan)")
     .eq("id", userData.user.id)
     .maybeSingle();
   if (!profile) return null;
+
+  const orgJoin = profile.organizations as { plan?: string } | { plan?: string }[] | null;
+  const plan = Array.isArray(orgJoin) ? orgJoin[0]?.plan : orgJoin?.plan;
 
   return {
     userId: String(userData.user.id),
     email: String(userData.user.email || ""),
     orgId: String(profile.org_id),
     role: String(profile.role),
+    plan: String(plan || "solo"),
   };
 }

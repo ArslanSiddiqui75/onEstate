@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { getProvider } from "@/lib/social/providers";
 import {
   buildRedirectUri,
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
+  const denied = forbiddenIfNoModule(profile, "social", "edit");
+  if (denied) return denied;
 
   const origin = getRequestOrigin(request);
   const redirectUri = buildRedirectUri(origin, platform);

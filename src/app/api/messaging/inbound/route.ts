@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { recordInboundMessage } from "@/lib/messaging/service";
 import { cancelNoReplyRuns } from "@/lib/automations/engine";
@@ -18,6 +19,8 @@ export async function POST(request: Request) {
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
+  const denied = forbiddenIfNoModule(profile, "crm", "edit");
+  if (denied) return denied;
 
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);

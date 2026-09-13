@@ -13,6 +13,9 @@ import { getRoleAccess } from "@/lib/rbac/matrix";
 import { checkAdminRole } from "@/lib/admin/roles";
 import { sanitizeRedirectTo } from "@/lib/auth/redirect";
 import { validateOrgName } from "@/lib/auth/org-name";
+import { findMatchingContact } from "@/lib/crm/contact-match";
+import { profileCanAccess } from "@/lib/server/require-module";
+import { assertCanPublishWebsite } from "@/lib/website/publish";
 
 describe("E.164 phones", () => {
   it("rejects local numbers without a country code", () => {
@@ -155,7 +158,9 @@ describe("admin role guard", () => {
   };
 
   it("returns 401 without a session", () => {
-    expect(checkAdminRole(null).status).toBe(401);
+    const result = checkAdminRole(null);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(401);
   });
 
   it("returns 403 when the role is not allowed", () => {
@@ -183,5 +188,46 @@ describe("org name", () => {
     expect(validateOrgName("tp").ok).toBe(false);
     expect(validateOrgName("12345").ok).toBe(false);
     expect(validateOrgName("Northbridge Realty").ok).toBe(true);
+  });
+});
+
+describe("API module guard", () => {
+  it("blocks accountant CRM writes and assistant social publishes", () => {
+    const accountant = { role: "accountant", plan: "team" };
+    const assistant = { role: "assistant", plan: "team" };
+    expect(profileCanAccess(accountant, "crm", "edit")).toBe(false);
+    expect(profileCanAccess(accountant, "crm", "view")).toBe(true);
+    expect(profileCanAccess(assistant, "social", "edit")).toBe(false);
+    expect(profileCanAccess({ role: "owner", plan: "team" }, "social", "edit")).toBe(true);
+  });
+});
+
+describe("contact match", () => {
+  const existing = [
+    {
+      id: "c1",
+      name: "Ada",
+      email: "ada@example.com",
+      phone: "+447700900123",
+      category: "lead" as const,
+      tags: [],
+      market: "uk" as const,
+      createdAt: "",
+      updatedAt: "",
+    },
+  ];
+
+  it("matches by email or phone and prefers an existing lead link", () => {
+    expect(findMatchingContact(existing, { email: "ada@example.com" })?.id).toBe("c1");
+    expect(findMatchingContact(existing, { phone: "+44 7700 900123" })?.id).toBe("c1");
+    expect(findMatchingContact(existing, { email: "other@example.com" })).toBeUndefined();
+  });
+});
+
+describe("website publish guard", () => {
+  it("refuses publish with zero listings", () => {
+    expect(() => assertCanPublishWebsite(true, 0)).toThrow(/listing/i);
+    expect(() => assertCanPublishWebsite(true, 1)).not.toThrow();
+    expect(() => assertCanPublishWebsite(false, 0)).not.toThrow();
   });
 });

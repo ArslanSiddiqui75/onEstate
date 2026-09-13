@@ -4,6 +4,7 @@ import { sendOutboundEmail } from "@/lib/email/service";
 import { sendResendEmail } from "@/lib/email/client";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { fireLeadContactedIfFirst } from "@/lib/automations/engine";
 
 const bodySchema = z.object({
@@ -26,6 +27,10 @@ export async function POST(request: Request) {
 
   if (supabase && !profile) {
     return NextResponse.json({ error: "Sign in to send email" }, { status: 401 });
+  }
+  if (profile) {
+    const denied = forbiddenIfNoModule(profile, "crm", "edit");
+    if (denied) return denied;
   }
 
   const orgId = profile?.orgId;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/config";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 
 export async function GET(request: Request) {
   const supabase = createServiceSupabaseClient();
@@ -14,6 +15,8 @@ export async function GET(request: Request) {
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
+  const denied = forbiddenIfNoModule(profile, "billing", "view");
+  if (denied) return denied;
 
   if (!isStripeConfigured()) {
     return NextResponse.json({ mode: "demo", invoices: [] });

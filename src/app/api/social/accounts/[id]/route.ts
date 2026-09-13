@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 
 export async function DELETE(
   request: Request,
@@ -9,6 +10,8 @@ export async function DELETE(
   const { id } = await params;
   const profile = await resolveProfileFromRequest(request);
   if (!profile) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  const denied = forbiddenIfNoModule(profile, "social", "edit");
+  if (denied) return denied;
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {

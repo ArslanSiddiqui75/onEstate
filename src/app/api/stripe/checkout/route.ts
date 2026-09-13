@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getStripe, getStripePriceId, isStripeConfigured } from "@/lib/stripe/config";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 
 const schema = z.object({
   plan: z.enum(["solo", "team", "enterprise"]),
@@ -34,6 +35,8 @@ export async function POST(request: Request) {
     if (!profile) {
       return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     }
+    const denied = forbiddenIfNoModule(profile, "billing", "view");
+    if (denied) return denied;
     orgId = profile.orgId;
     email = profile.email || email;
   }

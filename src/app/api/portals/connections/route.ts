@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { encryptToken } from "@/lib/social/crypto";
 import type { PortalConnection, PortalId } from "@/types";
@@ -44,6 +45,8 @@ export async function GET(request: Request) {
   if (!supabase || !profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
+  const deniedView = forbiddenIfNoModule(profile, "listings", "view");
+  if (deniedView) return deniedView;
 
   const { data, error } = await supabase
     .from("portal_connections")
@@ -67,6 +70,8 @@ export async function PUT(request: Request) {
   if (!supabase || !profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
+  const deniedEdit = forbiddenIfNoModule(profile, "listings", "edit");
+  if (deniedEdit) return deniedEdit;
 
   const json = await request.json().catch(() => null);
   const parsed = saveSchema.safeParse(json);

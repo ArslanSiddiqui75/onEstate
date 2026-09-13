@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { fallbackSlug, normalizeHost } from "@/lib/website/slug";
 import {
@@ -26,6 +27,14 @@ export async function POST(request: Request) {
   }
 
   const profile = await resolveProfileFromRequest(request);
+  const supabase = createServiceSupabaseClient();
+  if (supabase && !profile) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+  if (profile) {
+    const denied = forbiddenIfNoModule(profile, "website", "edit");
+    if (denied) return denied;
+  }
   const check = await checkCustomDomain(parsed.data.domain);
 
   if (check.dnsOk) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { publishSocialPost } from "@/lib/social/publish-service";
 
 // Publishing polls the platform (e.g. Instagram's container status_code)
@@ -11,6 +12,8 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   const profile = await resolveProfileFromRequest(request);
   if (!profile) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  const denied = forbiddenIfNoModule(profile, "social", "edit");
+  if (denied) return denied;
 
   const body = await request.json().catch(() => ({}) as Record<string, unknown>);
   const postId = String(body.postId || "");

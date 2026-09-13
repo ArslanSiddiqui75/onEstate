@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from "next/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoAnyModule } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 type ServiceSupabase = NonNullable<ReturnType<typeof createServiceSupabaseClient>>;
@@ -54,6 +55,11 @@ export async function POST(request: Request) {
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
+  const denied = forbiddenIfNoAnyModule(profile, [
+    ["social", "edit"],
+    ["website", "edit"],
+  ]);
+  if (denied) return denied;
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {

@@ -182,13 +182,7 @@ export default function AppDashboardPage() {
                     <p className="text-xs text-[var(--muted)]">{provider.summary}</p>
                   </div>
                   <Badge
-                    tone={
-                      provider.health === "connected"
-                        ? "success"
-                        : provider.health === "planned"
-                          ? "neutral"
-                          : "warning"
-                    }
+                    tone={provider.health === "connected" ? "success" : "neutral"}
                     className="shrink-0"
                   >
                     {provider.health === "connected" ? "Connected" : "Coming soon"}

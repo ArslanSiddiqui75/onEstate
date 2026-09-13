@@ -135,6 +135,13 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     if (!res.ok || !json?.admin) {
       throw new Error(json?.error || "Invalid admin credentials");
     }
+    // One principal per browser: admin login ends any brokerage session.
+    try {
+      const supabase = createBrowserSupabaseClient();
+      if (supabase) await supabase.auth.signOut();
+    } catch {
+      // Org session cleanup is best-effort.
+    }
     setAdmin(json.admin);
     refresh();
   }, [refresh]);

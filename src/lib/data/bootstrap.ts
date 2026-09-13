@@ -193,6 +193,7 @@ export function createLocalIdentity(input: {
     name: input.orgName || `${user.name}'s Realty`,
     plan: input.plan || "solo",
     market: input.market,
+    onboardingCompleted: false,
   };
   return { user, org };
 }

@@ -23,6 +23,7 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { WorkspaceOrg, WorkspaceSnapshot, WorkspaceUser } from "@/lib/data/workspace-store";
 import { newId } from "@/lib/data/workspace-store";
 import { toast } from "@/components/ui/toast";
+import { assertCanPublishWebsite } from "@/lib/website/publish";
 import { fallbackSlug, normalizeHost } from "@/lib/website/slug";
 import { asErrorMessage } from "@/lib/utils";
 import { ensureDefaultSequences } from "@/lib/sequences/ensure";
@@ -1298,6 +1299,14 @@ export function createSupabaseRepository(
     },
 
     async saveWebsite(site) {
+      if (site.published) {
+        const { count, error: listingError } = await supabase
+          .from("listings")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", ctx.org.id);
+        if (listingError) throw listingError;
+        assertCanPublishWebsite(true, count ?? 0);
+      }
       // `slug`, `custom_domain` and `published` are also written as columns
       // because the public renderer resolves a host without reading payloads.
       const slug = site.slug?.trim() || fallbackSlug(ctx.org.id, ctx.org.name);

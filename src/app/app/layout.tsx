@@ -29,7 +29,16 @@ function Guard({ children }: { children: React.ReactNode }) {
       const params = new URLSearchParams(window.location.search);
       router.replace(sanitizeRedirectTo(params.get("redirectTo")));
     }
-  }, [user, loading, isAuthRoute, router, pathname]);
+    if (
+      user &&
+      org &&
+      org.onboardingCompleted === false &&
+      !isAuthRoute &&
+      !pathname.startsWith("/app/onboarding")
+    ) {
+      router.replace("/app/onboarding");
+    }
+  }, [user, org, loading, isAuthRoute, router, pathname]);
 
   if (loading) {
     return (

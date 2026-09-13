@@ -71,9 +71,9 @@ export default function OnboardingPage() {
               {step}
             </span>
             <div>
-              <h1 className="font-display text-xl tracking-tight">
+              <p className="font-display text-xl tracking-tight">
                 {step === 1 ? "Workspace Details" : "Choose Your Plan"}
-              </h1>
+              </p>
               <p className="text-xs text-[var(--muted)]">Step {step} of 2</p>
             </div>
           </div>

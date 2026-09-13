@@ -38,6 +38,7 @@ import type {
 } from "@/types";
 import { isSupabaseConfigured, createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/toast";
+import { findMatchingContact } from "@/lib/crm/contact-match";
 import { getActiveBrand } from "@/lib/brand/config";
 import { buildPhoneContactMethod } from "@/lib/utils";
 import { isE164 } from "@/lib/phone/e164";
@@ -946,9 +947,22 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         // Every lead with reachable details also lands in the Contacts
         // directory as a linked contact (QA audit P1-11).
         if ((lead.email?.trim() || lead.phone?.trim() || phones?.length)) {
-          const alreadyLinked = contacts.some((c) => c.leadId === created.id);
-          if (!alreadyLinked) {
-            try {
+          try {
+            const match = findMatchingContact(contacts, {
+              email: lead.email,
+              phone: lead.phone,
+              phones,
+              leadId: created.id,
+            });
+            if (match) {
+              if (match.leadId !== created.id) {
+                await repoRef.current.updateContact(match.id, {
+                  leadId: created.id,
+                  email: match.email || lead.email?.trim(),
+                  phone: match.phone || lead.phone?.trim() || phones?.[0]?.number,
+                });
+              }
+            } else {
               await repoRef.current.createContact({
                 name: lead.name,
                 email: lead.email?.trim() || undefined,
@@ -960,10 +974,10 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
                 assignedTo: prepared.assignedTo,
                 market: brand.market,
               });
-            } catch (err) {
-              // The lead itself saved; contact mirroring is best-effort.
-              console.error("[addLead] linked contact create failed:", err);
             }
+          } catch (err) {
+            // The lead itself saved; contact mirroring is best-effort.
+            console.error("[addLead] linked contact create failed:", err);
           }
         }
         await fireAutomationTrigger({
