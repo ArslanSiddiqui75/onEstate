@@ -12,6 +12,8 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { ImpersonateButton } from "@/components/admin/impersonate-button";
 import { ProgressRing, Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -60,11 +62,14 @@ export default function AdminOrganizationDetailPage() {
     updateSubscriptionStatus,
     updateLifecycle,
     saveNotes,
+    renameTenant,
+    canImpersonate,
     recentAudit,
     refresh,
   } = useAdminSession();
   const tenant = getTenant(params.id);
   const [notes, setNotes] = useState("");
+  const [orgName, setOrgName] = useState("");
   const [notesOrgId, setNotesOrgId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -76,6 +81,7 @@ export default function AdminOrganizationDetailPage() {
   if (tenant && notesOrgId !== tenant.id) {
     setNotesOrgId(tenant.id);
     setNotes(tenant.internalNotes || "");
+    setOrgName(tenant.name);
   }
 
   const tenantAudit = recentAudit.filter(
@@ -302,6 +308,39 @@ export default function AdminOrganizationDetailPage() {
               </Select>
             </label>
           </div>
+          {canEditNotes ? (
+            <div className="mt-5 space-y-2">
+              <label className="text-sm">
+                <span className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+                  Workspace name
+                </span>
+                <div className="mt-1 flex gap-2">
+                  <Input
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() =>
+                      run(() => renameTenant(tenant.id, orgName), "Workspace renamed")
+                    }
+                  >
+                    Save name
+                  </Button>
+                </div>
+              </label>
+            </div>
+          ) : null}
+          {tenant.subscription.stripeCustomerId ? (
+            <p className="mt-3 text-xs text-[var(--muted)]">
+              Invoices appear in the tenant billing page after the first Stripe checkout.
+            </p>
+          ) : (
+            <p className="mt-3 text-xs text-[var(--muted)]">
+              No Stripe customer yet — invoice history stays empty until checkout.
+            </p>
+          )}
           <dl className="mt-5 grid gap-3 rounded-xl bg-[var(--surface-muted)] p-4 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-xs text-[var(--muted)]">Stripe customer</dt>
@@ -390,6 +429,7 @@ export default function AdminOrganizationDetailPage() {
                   <TH>Role</TH>
                   <TH>Status</TH>
                   <TH>Last seen</TH>
+                  <TH></TH>
                 </TR>
               </THead>
               <TBody>
@@ -418,6 +458,11 @@ export default function AdminOrganizationDetailPage() {
                     </TD>
                     <TD className="text-xs text-[var(--muted)]">
                       {member.lastSeenAt ? new Date(member.lastSeenAt).toLocaleString() : "—"}
+                    </TD>
+                    <TD>
+                      {canImpersonate && member.status === "active" ? (
+                        <ImpersonateButton userId={member.id} label="Open as" />
+                      ) : null}
                     </TD>
                   </TR>
                 ))}

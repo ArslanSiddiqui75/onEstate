@@ -356,8 +356,22 @@ export async function patchPlatformTenant(
     notes?: string;
     plan?: PlanId;
     subscriptionStatus?: SubscriptionStatus;
+    name?: string;
   },
 ) {
+  if (patch.name) {
+    await supabase
+      .from("organizations")
+      .update({ name: patch.name, updated_at: new Date().toISOString() })
+      .eq("id", orgId);
+    await writeAudit(supabase, {
+      actorEmail,
+      action: "tenant.renamed",
+      entityType: "tenant",
+      entityId: orgId,
+      summary: `Renamed workspace to ${patch.name}`,
+    });
+  }
   const { data: tenant } = await supabase
     .from("platform_tenants")
     .select("id, internal_notes, lifecycle_status")

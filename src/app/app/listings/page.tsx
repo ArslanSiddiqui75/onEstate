@@ -7,6 +7,7 @@ import {
   Building2,
   Clock,
   Download,
+  Trash2,
   Edit,
   Eye,
   LayoutGrid,
@@ -45,6 +46,7 @@ export default function AppListingsPage() {
     addListing,
     updateListingStatus,
     updateListing,
+    archiveListing,
     listPortalConnections,
     market,
   } = useAppSession();
@@ -421,6 +423,29 @@ export default function AppListingsPage() {
                       Start transaction
                     </Button>
                   ) : null}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Archive ${listing.title}? It leaves the inventory list.`,
+                        )
+                      ) {
+                        void archiveListing(listing.id)
+                          .then(() => toast.success("Listing archived"))
+                          .catch((err) =>
+                            toast.error(
+                              err instanceof Error ? err.message : "Could not archive",
+                            ),
+                          );
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Archive
+                  </Button>
                 </div>
               ) : null}
             </div>

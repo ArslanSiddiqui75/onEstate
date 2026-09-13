@@ -22,7 +22,11 @@ export default function AppSettingsMembersPage() {
           <h2 className="font-semibold">Team members</h2>
           <p className="text-sm text-[var(--muted)]">
             {members.length} seat{members.length === 1 ? "" : "s"} in {org.name}.
-            Team objects are out of scope — this is a flat workspace roster.
+            Flat workspace roster. Office groups are on{" "}
+            <Link href="/app/teams" className="text-[var(--accent)] hover:underline">
+              Teams
+            </Link>
+            .
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

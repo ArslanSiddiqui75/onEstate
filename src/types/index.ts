@@ -119,6 +119,7 @@ export interface Lead {
   tags?: string[];
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string;
 }
 
 /** Fields a CRM user can patch. Score is recomputed on save, not typed. */
@@ -186,6 +187,7 @@ export interface Listing {
   lastSyncAt?: string;
   nextMilestone?: string;
   createdAt: string;
+  archivedAt?: string;
 }
 
 /** Fields editable from the listings UI (excludes market, currency, portals sync metadata). */
@@ -228,6 +230,7 @@ export interface TransactionDeal {
   complianceStatus?: "on_track" | "attention" | "blocked";
   notes?: string;
   updatedAt: string;
+  archivedAt?: string;
 }
 
 export type EsignDocStatus = "draft" | "sent" | "signed" | "voided";

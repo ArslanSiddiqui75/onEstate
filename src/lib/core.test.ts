@@ -16,6 +16,8 @@ import { validateOrgName } from "@/lib/auth/org-name";
 import { findMatchingContact } from "@/lib/crm/contact-match";
 import { profileCanAccess } from "@/lib/server/require-module";
 import { assertCanPublishWebsite } from "@/lib/website/publish";
+import { isActiveRecord } from "@/lib/data/archive";
+import { adminCanImpersonate } from "@/lib/admin/accounts";
 
 describe("E.164 phones", () => {
   it("rejects local numbers without a country code", () => {
@@ -221,6 +223,21 @@ describe("contact match", () => {
     expect(findMatchingContact(existing, { email: "ada@example.com" })?.id).toBe("c1");
     expect(findMatchingContact(existing, { phone: "+44 7700 900123" })?.id).toBe("c1");
     expect(findMatchingContact(existing, { email: "other@example.com" })).toBeUndefined();
+  });
+});
+
+describe("soft archive", () => {
+  it("treats missing archivedAt as active", () => {
+    expect(isActiveRecord({})).toBe(true);
+    expect(isActiveRecord({ archivedAt: "2026-09-13T00:00:00.000Z" })).toBe(false);
+  });
+});
+
+describe("admin impersonation role", () => {
+  it("allows support and super admin only", () => {
+    expect(adminCanImpersonate("support_admin")).toBe(true);
+    expect(adminCanImpersonate("super_admin")).toBe(true);
+    expect(adminCanImpersonate("billing_admin")).toBe(false);
   });
 });
 

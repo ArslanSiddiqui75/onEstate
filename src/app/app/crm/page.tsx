@@ -123,6 +123,7 @@ export default function AppCrmPage() {
     saveLeadRouting,
     updateLeadStage,
     updateLead,
+    archiveLead,
     addContact,
     updateContact,
     deleteContact,
@@ -1538,14 +1539,42 @@ export default function AppCrmPage() {
               </div>
               <div className="flex items-center gap-1">
                 {canEdit && !editingLead ? (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setEditingLead(true)}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Edit
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setEditingLead(true)}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Archive ${viewDetailLead.name}? They leave the pipeline but stay in history.`,
+                          )
+                        ) {
+                          void archiveLead(viewDetailLead.id)
+                            .then(() => {
+                              setViewDetailLead(null);
+                              toast.success("Lead archived");
+                            })
+                            .catch((err) =>
+                              toast.error(
+                                err instanceof Error ? err.message : "Could not archive",
+                              ),
+                            );
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Archive
+                    </Button>
+                  </>
                 ) : null}
                 <button
                   type="button"

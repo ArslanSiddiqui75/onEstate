@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Table, TBody, TD, TH, THead, TR, TableShell, EmptyRow } from "@/components/ui/table";
 import { ROLE_LABELS } from "@/lib/rbac/matrix";
+import { ImpersonateButton } from "@/components/admin/impersonate-button";
 
 export default function AdminUsersPage() {
-  const { registry } = useAdminSession();
+  const { registry, canImpersonate } = useAdminSession();
   const [query, setQuery] = useState("");
 
   const users = useMemo(() => {
@@ -59,6 +60,7 @@ export default function AdminUsersPage() {
               <TH>Member status</TH>
               <TH>Tenant status</TH>
               <TH>Last seen</TH>
+              <TH></TH>
             </TR>
           </THead>
           <TBody>
@@ -100,10 +102,15 @@ export default function AdminUsersPage() {
                 <TD className="text-xs text-[var(--muted)]">
                   {user.lastSeenAt ? new Date(user.lastSeenAt).toLocaleString() : "—"}
                 </TD>
+                <TD>
+                  {canImpersonate && user.status === "active" ? (
+                    <ImpersonateButton userId={user.id} />
+                  ) : null}
+                </TD>
               </TR>
             ))}
             {users.length === 0 ? (
-              <EmptyRow colSpan={6}>No users in the platform registry yet.</EmptyRow>
+              <EmptyRow colSpan={7}>No users in the platform registry yet.</EmptyRow>
             ) : null}
           </TBody>
         </Table>

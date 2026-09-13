@@ -418,6 +418,27 @@ export function setTenantLifecycle(
   return tenant;
 }
 
+export function updateTenantName(
+  orgId: string,
+  name: string,
+  actorEmail: string,
+) {
+  const registry = loadPlatformRegistry();
+  const tenant = registry.tenants.find((t) => t.id === orgId);
+  if (!tenant) throw new Error("Tenant not found");
+  tenant.name = name;
+  tenant.updatedAt = nowIso();
+  pushAudit(registry, {
+    actorEmail,
+    action: "tenant.renamed",
+    entityType: "tenant",
+    entityId: tenant.id,
+    summary: `Renamed workspace to ${name}`,
+  });
+  savePlatformRegistry(registry);
+  return tenant;
+}
+
 export function updateTenantNotes(
   orgId: string,
   notes: string,

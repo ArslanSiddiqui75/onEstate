@@ -10,6 +10,8 @@ import {
   CreditCard,
   Users,
   ScrollText,
+  Ticket,
+  UserCog,
   LogOut,
   ShieldCheck,
   Activity,
@@ -35,6 +37,8 @@ const NAV = [
   { href: "/admin/organizations", label: "Organizations", icon: Building2 },
   { href: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/tickets", label: "Tickets", icon: Ticket },
+  { href: "/admin/impersonate", label: "Impersonate", icon: UserCog },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
 ];
 
@@ -46,10 +50,21 @@ const NAV_ACCESS: Record<string, string[]> = {
     "/admin/organizations",
     "/admin/subscriptions",
     "/admin/users",
+    "/admin/tickets",
+    "/admin/support",
+    "/admin/impersonate",
     "/admin/audit",
   ],
   billing_admin: ["/admin", "/admin/organizations", "/admin/subscriptions"],
-  support_admin: ["/admin", "/admin/organizations", "/admin/users", "/admin/audit"],
+  support_admin: [
+    "/admin",
+    "/admin/organizations",
+    "/admin/users",
+    "/admin/tickets",
+    "/admin/support",
+    "/admin/impersonate",
+    "/admin/audit",
+  ],
 };
 
 function adminCanViewPath(role: string, pathname: string): boolean {
@@ -103,6 +118,20 @@ const PAGES: Array<{
     description:
       "Cross-tenant directory of brokerage members and seat occupancy.",
     icon: Users2,
+  },
+  {
+    match: (p) => p.startsWith("/admin/tickets") || p.startsWith("/admin/support"),
+    eyebrow: "Support",
+    title: "Tickets",
+    description: "Tenant-filed issues and operator replies.",
+    icon: Ticket,
+  },
+  {
+    match: (p) => p.startsWith("/admin/impersonate"),
+    eyebrow: "Support",
+    title: "Impersonate",
+    description: "Open a workspace as an active member. Audited and time-boxed.",
+    icon: UserCog,
   },
   {
     match: (p) => p.startsWith("/admin/audit"),

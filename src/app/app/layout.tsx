@@ -7,6 +7,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { SkeletonPage } from "@/components/ui/skeleton";
 import { sanitizeRedirectTo } from "@/lib/auth/redirect";
+import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { user, org, loading, signOut, brand, persistence, authMode } =
@@ -68,7 +69,10 @@ function Guard({ children }: { children: React.ReactNode }) {
       onSignOut={() => signOut()}
       headerMeta={`${org.name} · ${brand.name} · ${persistence}`}
     >
-      <ErrorBoundary>{children}</ErrorBoundary>
+      <div className="space-y-3">
+        <ImpersonationBanner />
+        <ErrorBoundary>{children}</ErrorBoundary>
+      </div>
     </AppShell>
   );
 }

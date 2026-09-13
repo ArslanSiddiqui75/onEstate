@@ -115,6 +115,14 @@ const NAV: {
   },
 ];
 
+const WORKSPACE_NAV = [
+  { href: "/app/teams", short: "Teams", eyebrow: "Roster", title: "Teams", description: "Office groups. CRM stays shared." },
+  { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Open and done lead tasks." },
+  { href: "/app/reports", short: "Reports", eyebrow: "Snapshot", title: "Reports", description: "Live pipeline and inventory counts." },
+  { href: "/app/documents", short: "Documents", eyebrow: "Files", title: "Documents", description: "Uploads, e-sign, and listing media." },
+  { href: "/app/tickets", short: "Support", eyebrow: "Help", title: "Support", description: "File a ticket with platform support." },
+] as const;
+
 interface AppShellProps {
   children: React.ReactNode;
   role: Role;
@@ -154,7 +162,11 @@ export function AppShell({
     return { ...item, href, locked };
   });
 
+  const workspaceActive = WORKSPACE_NAV.find(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+  );
   const activePage =
+    workspaceActive ||
     items
       .filter((item) => item.id !== "dashboard")
       .find(
@@ -239,6 +251,28 @@ export function AppShell({
                       Locked
                     </Badge>
                   ) : null}
+                </Link>
+              );
+            })}
+            <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wide text-white/35">
+              Workspace
+            </p>
+            {WORKSPACE_NAV.map((item) => {
+              const active =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "relative flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-colors",
+                    active
+                      ? "bg-white/12 text-white"
+                      : "text-white/55 hover:bg-white/6 hover:text-white",
+                  )}
+                >
+                  <span className="truncate font-medium">{item.short}</span>
                 </Link>
               );
             })}

@@ -79,8 +79,11 @@ export default function AppSettingsPage() {
         <div>
           <h2 className="font-semibold">Workspace</h2>
           <p className="text-sm text-[var(--muted)]">
-            Workspace ID is used for support and billing. Team objects and a team
-            switcher are out of scope.
+            Workspace ID is used for support and billing. Groups live on{" "}
+            <Link href="/app/teams" className="text-[var(--accent)] hover:underline">
+              Teams
+            </Link>
+            . CRM stays shared.
           </p>
         </div>
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">

@@ -179,7 +179,7 @@ export function createSupabaseRepository(
           this.listSequences().catch((e) => { console.warn("listSequences error", e); return []; }),
           this.listAutomations().catch((e) => { console.warn("listAutomations error", e); return []; }),
           this.listEnrollments().catch((e) => { console.warn("listEnrollments error", e); return []; }),
-          this.listOpenTasks().catch((e) => { console.warn("listOpenTasks error", e); return []; }),
+          this.listTasks().catch((e) => { console.warn("listTasks error", e); return []; }),
         ]);
 
       const snapshot: WorkspaceSnapshot = {
@@ -338,6 +338,7 @@ export function createSupabaseRepository(
         .from("leads")
         .select("*, lead_phone_numbers(*)")
         .eq("org_id", ctx.org.id)
+        .is("archived_at", null)
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data || []).map((row) =>
@@ -423,6 +424,15 @@ export function createSupabaseRepository(
         .single();
       if (error) throw error;
       return mapLead(data);
+    },
+
+    async archiveLead(id) {
+      const { error } = await supabase
+        .from("leads")
+        .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("org_id", ctx.org.id);
+      if (error) throw error;
     },
 
     async updateLead(id, patch) {
@@ -581,6 +591,7 @@ export function createSupabaseRepository(
         .from("listings")
         .select("*, listing_portal_syncs(*), listing_compliance_issues(*)")
         .eq("org_id", ctx.org.id)
+        .is("archived_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []).map((row) =>
@@ -653,6 +664,15 @@ export function createSupabaseRepository(
       return mapListing(data);
     },
 
+    async archiveListing(id) {
+      const { error } = await supabase
+        .from("listings")
+        .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("org_id", ctx.org.id);
+      if (error) throw error;
+    },
+
     async updateListing(id, patch) {
       const row: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
@@ -722,6 +742,7 @@ export function createSupabaseRepository(
         .from("transactions")
         .select("*, transaction_parties(*), transaction_checklist_items(*)")
         .eq("org_id", ctx.org.id)
+        .is("archived_at", null)
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data || []).map(
@@ -868,6 +889,15 @@ export function createSupabaseRepository(
       const deal = deals.find((d) => d.id === dealId);
       if (!deal) throw new Error("Deal not found");
       return deal;
+    },
+
+    async archiveDeal(dealId) {
+      const { error } = await supabase
+        .from("transactions")
+        .update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq("id", dealId)
+        .eq("org_id", ctx.org.id);
+      if (error) throw error;
     },
 
     async listMessages(leadId) {
@@ -1250,11 +1280,16 @@ export function createSupabaseRepository(
     },
 
     async listOpenTasks() {
+      const rows = await this.listTasks();
+      return rows.filter((t) => t.status === "open");
+    },
+
+    async listTasks() {
       const { data, error } = await supabase
         .from("lead_tasks")
         .select("*")
         .eq("org_id", ctx.org.id)
-        .eq("status", "open");
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []).map((t) => ({
         id: String(t.id),
@@ -1303,7 +1338,8 @@ export function createSupabaseRepository(
         const { count, error: listingError } = await supabase
           .from("listings")
           .select("id", { count: "exact", head: true })
-          .eq("org_id", ctx.org.id);
+          .eq("org_id", ctx.org.id)
+          .is("archived_at", null);
         if (listingError) throw listingError;
         assertCanPublishWebsite(true, count ?? 0);
       }

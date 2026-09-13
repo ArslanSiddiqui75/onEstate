@@ -53,6 +53,7 @@ export interface WorkspaceRepository {
   createLead(lead: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead>;
   updateLeadStage(id: string, stage: LeadStage): Promise<Lead>;
   updateLead(id: string, patch: LeadPatch): Promise<Lead>;
+  archiveLead(id: string): Promise<void>;
   listContacts(): Promise<Contact[]>;
   createContact(
     contact: Omit<Contact, "id" | "createdAt" | "updatedAt">,
@@ -86,6 +87,7 @@ export interface WorkspaceRepository {
   ): Promise<Listing>;
   updateListingStatus(id: string, status: ListingStatus): Promise<Listing>;
   updateListing(id: string, patch: ListingPatch): Promise<Listing>;
+  archiveListing(id: string): Promise<void>;
   listDeals(): Promise<TransactionDeal[]>;
   createDeal(
     deal: Omit<TransactionDeal, "id" | "updatedAt"> & { id?: string },
@@ -108,6 +110,7 @@ export interface WorkspaceRepository {
       >
     >,
   ): Promise<TransactionDeal>;
+  archiveDeal(dealId: string): Promise<void>;
   listMessages(leadId: string): Promise<ConversationMessage[]>;
   appendMessage(
     message: Omit<ConversationMessage, "id"> & { id?: string },
@@ -147,6 +150,7 @@ export interface WorkspaceRepository {
   ): Promise<LeadTask>;
   resolveTask(taskId: string): Promise<void>;
   listOpenTasks(): Promise<WorkspaceSnapshot["tasks"]>;
+  listTasks(): Promise<WorkspaceSnapshot["tasks"]>;
   getWebsite(): Promise<WebsiteSite | null>;
   saveWebsite(site: WebsiteSite): Promise<WebsiteSite>;
   listSocialAccounts(): Promise<SocialAccount[]>;

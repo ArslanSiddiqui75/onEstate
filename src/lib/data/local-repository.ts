@@ -15,6 +15,7 @@ import type {
 } from "@/types";
 import type { WorkspaceRepository } from "@/lib/data/repository";
 import { assertCanPublishWebsite } from "@/lib/website/publish";
+import { archiveStamp, isActiveRecord } from "@/lib/data/archive";
 import { mergeDefaultSequences } from "@/lib/sequences/catalog";
 import {
   loadWorkspace,
@@ -242,7 +243,7 @@ export function createLocalRepository(
     },
 
     async listLeads() {
-      return requireSnapshot().leads;
+      return requireSnapshot().leads.filter(isActiveRecord);
     },
 
     async createLead(lead) {
@@ -299,6 +300,14 @@ export function createLocalRepository(
       return snap.leads[idx];
     },
 
+    async archiveLead(id) {
+      const snap = requireSnapshot();
+      const idx = snap.leads.findIndex((l) => l.id === id);
+      if (idx < 0) throw new Error("Lead not found");
+      snap.leads[idx] = { ...snap.leads[idx], archivedAt: archiveStamp() };
+      commit(snap);
+    },
+
     async listContacts() {
       return requireSnapshot().contacts;
     },
@@ -337,7 +346,7 @@ export function createLocalRepository(
     },
 
     async listListings() {
-      return requireSnapshot().listings;
+      return requireSnapshot().listings.filter(isActiveRecord);
     },
 
     async createListing(listing) {
@@ -370,8 +379,16 @@ export function createLocalRepository(
       return snap.listings[idx];
     },
 
+    async archiveListing(id) {
+      const snap = requireSnapshot();
+      const idx = snap.listings.findIndex((l) => l.id === id);
+      if (idx < 0) throw new Error("Listing not found");
+      snap.listings[idx] = { ...snap.listings[idx], archivedAt: archiveStamp() };
+      commit(snap);
+    },
+
     async listDeals() {
-      return requireSnapshot().deals;
+      return requireSnapshot().deals.filter(isActiveRecord);
     },
 
     async createDeal(deal) {
@@ -426,6 +443,14 @@ export function createLocalRepository(
       };
       commit(snap);
       return snap.deals[idx];
+    },
+
+    async archiveDeal(dealId) {
+      const snap = requireSnapshot();
+      const idx = snap.deals.findIndex((d) => d.id === dealId);
+      if (idx < 0) throw new Error("Deal not found");
+      snap.deals[idx] = { ...snap.deals[idx], archivedAt: archiveStamp() };
+      commit(snap);
     },
 
     async listMessages(leadId) {
@@ -591,6 +616,10 @@ export function createLocalRepository(
       return requireSnapshot().tasks.filter((t) => t.status === "open");
     },
 
+    async listTasks() {
+      return requireSnapshot().tasks;
+    },
+
     async getWebsite() {
       const snap = requireSnapshot();
       return snap.website || null;
@@ -598,7 +627,10 @@ export function createLocalRepository(
 
     async saveWebsite(site) {
       const snap = requireSnapshot();
-      assertCanPublishWebsite(Boolean(site.published), snap.listings.length);
+      assertCanPublishWebsite(
+        Boolean(site.published),
+        snap.listings.filter(isActiveRecord).length,
+      );
       snap.website = { ...site, updatedAt: new Date().toISOString() };
       commit(snap);
       return snap.website;

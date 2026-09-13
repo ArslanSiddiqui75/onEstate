@@ -11,6 +11,7 @@ import {
   X,
   Copy,
   PenLine,
+  Trash2,
 } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
@@ -54,6 +55,7 @@ export default function AppTransactionsPage() {
     addDealChecklistItem,
     updateDealMeta,
     createManualDeal,
+    archiveDeal,
     requestEsign,
     listEsignDocuments,
     voidEsignDocument,
@@ -235,6 +237,33 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
+                    {canEdit ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-1.5 text-xs text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Archive ${deal.listingTitle}? It leaves the deals list.`,
+                            )
+                          ) {
+                            void archiveDeal(deal.id)
+                              .then(() => toast.success("Deal archived"))
+                              .catch((err) =>
+                                toast.error(
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Could not archive",
+                                ),
+                              );
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Archive
+                      </Button>
+                    ) : null}
                     <Button
                       size="sm"
                       variant="secondary"

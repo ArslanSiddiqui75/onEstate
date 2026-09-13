@@ -194,6 +194,7 @@ interface AppState {
   saveLeadRouting: (settings: LeadRoutingSettings) => Promise<void>;
   updateLeadStage: (id: string, stage: Lead["stage"]) => Promise<void>;
   updateLead: (id: string, patch: LeadPatch) => Promise<Lead>;
+  archiveLead: (id: string) => Promise<void>;
   addContact: (
     contact: Omit<Contact, "id" | "createdAt" | "updatedAt" | "market">,
   ) => Promise<void>;
@@ -227,6 +228,7 @@ interface AppState {
   ) => Promise<void>;
   updateListingStatus: (id: string, status: Listing["status"]) => Promise<void>;
   updateListing: (id: string, patch: ListingPatch) => Promise<void>;
+  archiveListing: (id: string) => Promise<void>;
   inviteMember: (input: {
     name: string;
     email: string;
@@ -249,6 +251,7 @@ interface AppState {
     done: boolean,
   ) => Promise<void>;
   addDealChecklistItem: (dealId: string, label: string) => Promise<void>;
+  archiveDeal: (dealId: string) => Promise<void>;
   updateDealMeta: (
     dealId: string,
     patch: Partial<
@@ -333,6 +336,7 @@ interface AppState {
   listAutomationRuns: (leadId?: string) => Promise<AutomationRun[]>;
   listLeadActivities: (leadId: string) => Promise<LeadActivity[]>;
   resolveTask: (taskId: string) => Promise<void>;
+  createLeadTask: (input: Omit<LeadTask, "id" | "orgId"> & { id?: string }) => Promise<void>;
   saveWebsite: (site: WebsiteSite) => Promise<void>;
   upsertSocialAccount: (
     account: Omit<SocialAccount, "id" | "orgId"> & { id?: string },
@@ -1272,6 +1276,15 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const archiveLead = useCallback(
+    async (id: string) => {
+      if (!repoRef.current) return;
+      await repoRef.current.archiveLead(id);
+      await refresh();
+    },
+    [refresh],
+  );
+
   const promoteContactToLead = useCallback(
     async (contactId: string, input: { type: Lead["type"]; source?: string }) => {
       if (!repoRef.current) return;
@@ -1397,6 +1410,15 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     async (id: string, patch: ListingPatch) => {
       if (!repoRef.current) return;
       await repoRef.current.updateListing(id, patch);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const archiveListing = useCallback(
+    async (id: string) => {
+      if (!repoRef.current) return;
+      await repoRef.current.archiveListing(id);
       await refresh();
     },
     [refresh],
@@ -1570,6 +1592,15 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     ) => {
       if (!repoRef.current) return;
       await repoRef.current.updateDealMeta(dealId, patch);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const archiveDeal = useCallback(
+    async (dealId: string) => {
+      if (!repoRef.current) return;
+      await repoRef.current.archiveDeal(dealId);
       await refresh();
     },
     [refresh],
@@ -2020,6 +2051,18 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  const createLeadTask = useCallback(
+    async (input: Omit<LeadTask, "id" | "orgId"> & { id?: string }) => {
+      if (!repoRef.current || !org) return;
+      await repoRef.current.createLeadTask({
+        ...input,
+        orgId: org.id,
+      });
+      await refresh();
+    },
+    [org, refresh],
+  );
+
   const saveWebsite = useCallback(
     async (site: WebsiteSite) => {
       if (!repoRef.current) return;
@@ -2245,6 +2288,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       saveLeadRouting,
       updateLeadStage,
       updateLead,
+      archiveLead,
       addContact,
       updateContact,
       deleteContact,
@@ -2252,6 +2296,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       addListing,
       updateListingStatus,
       updateListing,
+      archiveListing,
       inviteMember,
       queuePortalSync,
       listPortalConnections,
@@ -2260,6 +2305,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       createManualDeal,
       updateDealChecklistItem,
       addDealChecklistItem,
+      archiveDeal,
       updateDealMeta,
       requestEsign,
       listEsignDocuments,
@@ -2278,6 +2324,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       listAutomationRuns,
       listLeadActivities,
       resolveTask,
+      createLeadTask,
       saveWebsite,
       upsertSocialAccount,
       deleteSocialAccount,
@@ -2318,6 +2365,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       saveLeadRouting,
       updateLeadStage,
       updateLead,
+      archiveLead,
       addContact,
       updateContact,
       deleteContact,
@@ -2325,6 +2373,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       addListing,
       updateListingStatus,
       updateListing,
+      archiveListing,
       inviteMember,
       queuePortalSync,
       listPortalConnections,
@@ -2333,6 +2382,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       createManualDeal,
       updateDealChecklistItem,
       addDealChecklistItem,
+      archiveDeal,
       updateDealMeta,
       requestEsign,
       listEsignDocuments,
@@ -2351,6 +2401,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       listAutomationRuns,
       listLeadActivities,
       resolveTask,
+      createLeadTask,
       saveWebsite,
       upsertSocialAccount,
       deleteSocialAccount,

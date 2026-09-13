@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   adminCanEditNotes,
+  adminCanImpersonate,
   adminCanManageBilling,
   adminCanSuspendTenants,
 } from "@/lib/admin/accounts";
@@ -31,6 +32,7 @@ import {
   setTenantPlan,
   setTenantSubscriptionStatus,
   updateTenantNotes,
+  updateTenantName,
 } from "@/lib/admin/registry";
 import type { PlanId } from "@/types";
 
@@ -58,6 +60,8 @@ interface AdminState {
     notes?: string,
   ) => void;
   saveNotes: (orgId: string, notes: string) => void;
+  renameTenant: (orgId: string, name: string) => void;
+  canImpersonate: boolean;
   getTenant: (id: string) => TenantRecord | undefined;
   recentAudit: PlatformAuditEvent[];
 }
@@ -238,6 +242,19 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     [admin, persistTenant],
   );
 
+  const renameTenant = useCallback(
+    (orgId: string, name: string) => {
+      if (!admin) throw new Error("Not authenticated");
+      if (!adminCanEditNotes(admin.role)) {
+        throw new Error("Rename permission required");
+      }
+      void persistTenant(orgId, { name }, () => {
+        updateTenantName(orgId, name, admin.email);
+      });
+    },
+    [admin, persistTenant],
+  );
+
   const value = useMemo<AdminState>(
     () => ({
       admin,
@@ -251,10 +268,12 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       canManageBilling: admin ? adminCanManageBilling(admin.role) : false,
       canSuspend: admin ? adminCanSuspendTenants(admin.role) : false,
       canEditNotes: admin ? adminCanEditNotes(admin.role) : false,
+      canImpersonate: admin ? adminCanImpersonate(admin.role) : false,
       updatePlan,
       updateSubscriptionStatus,
       updateLifecycle,
       saveNotes,
+      renameTenant,
       getTenant: (id) => registry.tenants.find((t) => t.id === id),
       recentAudit: registry.audit.slice(0, 50),
     }),
@@ -270,6 +289,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       updateSubscriptionStatus,
       updateLifecycle,
       saveNotes,
+      renameTenant,
     ],
   );
 
