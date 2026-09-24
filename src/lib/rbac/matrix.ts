@@ -54,7 +54,7 @@ export const RBAC_MATRIX: Record<Role, Record<ModuleId, AccessLevel>> = {
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
-  owner: "Owner / Admin",
+  owner: "Owner",
   broker: "Broker",
   team_lead: "Team Lead",
   agent: "Agent",

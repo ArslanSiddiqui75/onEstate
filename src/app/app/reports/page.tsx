@@ -1,31 +1,90 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
 import { Card, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
-import { Users, Building2, FileText, ListChecks } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import {
+  SNAPSHOT_RANGES,
+  countBy,
+  rowsToCsv,
+  snapshotCutoff,
+  withinSnapshot,
+  type SnapshotRange,
+} from "@/lib/reports/snapshot";
+import { Users, Building2, FileText, ListChecks, Download } from "lucide-react";
 
-function counts(items: Array<Record<string, unknown>>, key: string) {
-  const map = new Map<string, number>();
-  for (const item of items) {
-    const value = String(item[key] || "—");
-    map.set(value, (map.get(value) || 0) + 1);
+function BarList({ rows }: { rows: [string, number][] }) {
+  const max = Math.max(1, ...rows.map(([, n]) => n));
+  if (!rows.length) {
+    return <p className="mt-3 text-sm text-[var(--muted)]">Nothing in this range.</p>;
   }
-  return [...map.entries()].sort((a, b) => b[1] - a[1]);
+  return (
+    <ul className="mt-3 space-y-2">
+      {rows.map(([label, n]) => (
+        <li key={label}>
+          <div className="flex justify-between text-sm">
+            <span className="capitalize">{label.replace("_", " ")}</span>
+            <span>{n}</span>
+          </div>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+            <div
+              className="h-full rounded-full bg-[var(--accent)]"
+              style={{ width: `${(n / max) * 100}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 export default function AppReportsPage() {
   const { user, org, leads, listings, deals, tasks, callLogs, messages } =
     useAppSession();
+  const [range, setRange] = useState<SnapshotRange>("all");
 
-  const summary = useMemo(() => {
+  const snapshot = useMemo(() => {
+    const cutoff = snapshotCutoff(range);
+    const rangedLeads = leads.filter((l) => withinSnapshot(l.createdAt, cutoff));
+    const rangedListings = listings.filter((l) =>
+      withinSnapshot(l.createdAt, cutoff),
+    );
+    const rangedDeals = deals.filter((d) => withinSnapshot(d.updatedAt, cutoff));
     const openTasks = tasks.filter((t) => t.status === "open").length;
-    const sms = messages.filter((m) => m.channel !== "email").length;
-    return { openTasks, sms };
-  }, [tasks, messages]);
+    const rangedCalls = callLogs.filter((c) =>
+      withinSnapshot(c.createdAt, cutoff),
+    );
+    const rangedSms = messages.filter(
+      (m) =>
+        m.channel !== "email" && withinSnapshot(m.sentAt, cutoff),
+    );
+    return {
+      leads: rangedLeads,
+      listings: rangedListings,
+      deals: rangedDeals,
+      openTasks,
+      calls: rangedCalls.length,
+      sms: rangedSms.length,
+      leadStages: countBy(
+        rangedLeads as unknown as Array<Record<string, unknown>>,
+        "stage",
+      ),
+      listingStatuses: countBy(
+        rangedListings as unknown as Array<Record<string, unknown>>,
+        "status",
+      ),
+      dealStages: countBy(
+        rangedDeals as unknown as Array<Record<string, unknown>>,
+        "stage",
+      ),
+    };
+  }, [range, leads, listings, deals, tasks, callLogs, messages]);
 
   if (!user || !org) return null;
   if (!hasModuleAccess(user.role, org.plan, "crm", "view")) {
@@ -39,63 +98,105 @@ export default function AppReportsPage() {
     );
   }
 
+  function exportCsv() {
+    const rows: string[][] = [
+      ["Metric", "Value"],
+      ["Range", range],
+      ["Leads", String(snapshot.leads.length)],
+      ["Listings", String(snapshot.listings.length)],
+      ["Deals", String(snapshot.deals.length)],
+      ["Open tasks", String(snapshot.openTasks)],
+      ["Calls logged", String(snapshot.calls)],
+      ["SMS messages", String(snapshot.sms)],
+      [],
+      ["Leads by stage", "Count"],
+      ...snapshot.leadStages.map(([k, n]) => [k, String(n)]),
+      [],
+      ["Listings by status", "Count"],
+      ...snapshot.listingStatuses.map(([k, n]) => [k, String(n)]),
+      [],
+      ["Deals by stage", "Count"],
+      ...snapshot.dealStages.map(([k, n]) => [k, String(n)]),
+    ];
+    const blob = new Blob([rowsToCsv(rows)], { type: "text/csv;charset=utf-8" });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = `reports_snapshot_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(href);
+    toast.success("Snapshot exported");
+  }
+
   return (
     <div className="space-y-6">
-      <p className="text-sm text-[var(--muted)]">
-        Live workspace snapshot — not a historical warehouse.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-2xl text-sm text-[var(--muted)]">
+          Live workspace snapshot — not a historical warehouse. Date range
+          applies to leads, listings, deals, calls, and messages. Open tasks
+          are current.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-full border border-[var(--border)] p-0.5">
+            {SNAPSHOT_RANGES.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setRange(option.id)}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium transition",
+                  range === option.id
+                    ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+                    : "text-[var(--muted)] hover:text-[var(--foreground)]",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <Button size="sm" variant="secondary" onClick={exportCsv}>
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            Export CSV
+          </Button>
+        </div>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Leads" value={leads.length} icon={Users} />
-        <StatCard label="Listings" value={listings.length} icon={Building2} />
-        <StatCard label="Deals" value={deals.length} icon={FileText} />
-        <StatCard label="Open tasks" value={summary.openTasks} icon={ListChecks} />
+        <StatCard label="Leads" value={snapshot.leads.length} icon={Users} />
+        <StatCard
+          label="Listings"
+          value={snapshot.listings.length}
+          icon={Building2}
+        />
+        <StatCard label="Deals" value={snapshot.deals.length} icon={FileText} />
+        <StatCard
+          label="Open tasks"
+          value={snapshot.openTasks}
+          icon={ListChecks}
+        />
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="p-4">
           <CardHeader title="Leads by stage" />
-          <ul className="mt-3 space-y-1 text-sm">
-            {counts(leads as unknown as Array<Record<string, unknown>>, "stage").map(([stage, n]) => (
-              <li key={stage} className="flex justify-between">
-                <span className="capitalize">{stage}</span>
-                <span>{n}</span>
-              </li>
-            ))}
-          </ul>
+          <BarList rows={snapshot.leadStages} />
         </Card>
         <Card className="p-4">
           <CardHeader title="Listings by status" />
-          <ul className="mt-3 space-y-1 text-sm">
-            {counts(listings as unknown as Array<Record<string, unknown>>, "status").map(([status, n]) => (
-              <li key={status} className="flex justify-between">
-                <span className="capitalize">{status.replace("_", " ")}</span>
-                <span>{n}</span>
-              </li>
-            ))}
-          </ul>
+          <BarList rows={snapshot.listingStatuses} />
         </Card>
         <Card className="p-4">
           <CardHeader title="Deals by stage" />
-          <ul className="mt-3 space-y-1 text-sm">
-            {counts(deals as unknown as Array<Record<string, unknown>>, "stage").map(([stage, n]) => (
-              <li key={stage} className="flex justify-between">
-                <span>{stage}</span>
-                <span>{n}</span>
-              </li>
-            ))}
-          </ul>
+          <BarList rows={snapshot.dealStages} />
         </Card>
         <Card className="p-4">
           <CardHeader title="Activity" />
-          <ul className="mt-3 space-y-1 text-sm">
-            <li className="flex justify-between">
-              <span>Calls logged</span>
-              <span>{callLogs.length}</span>
-            </li>
-            <li className="flex justify-between">
-              <span>SMS messages</span>
-              <span>{summary.sms}</span>
-            </li>
-          </ul>
+          <BarList
+            rows={[
+              ["Calls logged", snapshot.calls],
+              ["SMS messages", snapshot.sms],
+            ]}
+          />
         </Card>
       </div>
     </div>

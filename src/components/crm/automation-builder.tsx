@@ -600,8 +600,12 @@ export function AutomationBuilder({
           </div>
         ) : (
           <EmptyState
-            title="Select or create a workflow"
-            description="Build trigger-based automations with customizable SMS, waits, tasks, and stage updates."
+            title={canEdit ? "Select or create a workflow" : "No workflow selected"}
+            description={
+              canEdit
+                ? "Build trigger-based automations with SMS, waits, tasks, and stage updates."
+                : "Workflows are set up by someone with CRM edit access."
+            }
             action={
               canEdit ? (
                 <Button onClick={() => setCreating(true)}>

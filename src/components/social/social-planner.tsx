@@ -1259,11 +1259,9 @@ function AccountsPanel({
       </div>
 
       {live && accounts.filter((a) => a.status === "connected").length === 0 ? (
-        <div className="rounded-[var(--radius-sm)] border border-[var(--warning)]/30 bg-[var(--warning-soft)] px-3 py-2 text-sm text-[var(--warning)]">
-          No connected accounts in <strong>{orgName}</strong>. If Instagram was
-          connected before, you may be signed into a different workspace —
-          check the workspace name in the sidebar, then sign out and sign in
-          with the original account.
+        <div className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--muted)]">
+          No accounts connected in <strong>{orgName}</strong> yet. Connect one
+          below to publish.
         </div>
       ) : null}
 

@@ -40,7 +40,9 @@ export default function AppTasksPage() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-[var(--muted)]">
-        Follow-ups from sequences and anything you add by hand.
+        {canEdit
+          ? "Follow-ups from sequences, plus anything you add below."
+          : "Open and completed follow-ups. Adding a task needs CRM edit access."}
       </p>
       {canEdit ? (
         <form

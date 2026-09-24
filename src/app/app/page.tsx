@@ -5,12 +5,12 @@ import { motion } from "framer-motion";
 import { Users, Building2, FileText, ListChecks, ArrowUpRight, Sparkles } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { formatMoney } from "@/lib/utils";
-import { getTerminology } from "@/lib/market/terminology";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Avatar } from "@/components/ui/avatar";
+import { hasModuleAccess } from "@/lib/access";
 import { ROLE_LABELS } from "@/lib/rbac/matrix";
 import { PLANS } from "@/lib/plans/catalog";
 import { getIntegrationStack } from "@/lib/integrations/registry";
@@ -20,7 +20,6 @@ export default function AppDashboardPage() {
   const { user, org, leads, listings, deals, tasks, market, brand } =
     useAppSession();
   if (!user || !org) return null;
-  const terms = getTerminology(market);
   const marketLeads = leads.filter((l) => l.market === market);
   const marketListings = listings.filter((l) => l.market === market);
   const marketDeals = deals.filter((d) => d.market === market);
@@ -30,6 +29,8 @@ export default function AppDashboardPage() {
     marketLeads.length === 0 &&
     marketListings.length === 0 &&
     marketDeals.length === 0;
+  const canAddLead = hasModuleAccess(user.role, org.plan, "crm", "edit");
+  const canAddListing = hasModuleAccess(user.role, org.plan, "listings", "edit");
 
   return (
     <div className="space-y-6">
@@ -42,23 +43,29 @@ export default function AppDashboardPage() {
         <div className="flex items-center gap-3">
           <Avatar name={user.name} size="lg" />
           <div>
-            <p className="font-display text-3xl tracking-tight">
+            <p className="text-lg font-semibold tracking-tight">
               Welcome, {user.name.split(" ")[0]}
             </p>
             <p className="mt-1 text-sm text-[var(--muted)]">
               {org.name} · {ROLE_LABELS[user.role]} · {PLANS[org.plan].name} ·{" "}
-              {brand.name} ({terms.agent})
+              {brand.name}
             </p>
           </div>
         </div>
+        {(canAddLead || canAddListing) ? (
         <div className="flex flex-wrap gap-2">
+          {canAddLead ? (
           <Button asChild size="sm">
             <Link href="/app/crm">Add lead</Link>
           </Button>
+          ) : null}
+          {canAddListing ? (
           <Button asChild size="sm" variant="secondary">
             <Link href="/app/listings">Add listing</Link>
           </Button>
+          ) : null}
         </div>
+        ) : null}
       </motion.div>
 
       {isEmpty ? (

@@ -38,7 +38,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     popular: true,
     modules: {
       crm: "Lead routing & scoring",
-      listings: "Full two-way portal sync",
+      listings: "Portal publishing — coming soon",
       transactions: "Compliance workflows",
       website: "Team site + client portal",
       social: "Auto listing-to-post",
@@ -55,7 +55,7 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     seats: "Unlimited, custom SLAs",
     modules: {
       crm: "Cross-office routing",
-      listings: "Unlimited feeds, multi-MLS",
+      listings: "Unlimited portal feeds",
       transactions: "Ledger + reconciliation",
       website: "Multi-office site network",
       social: "Brand governance controls",

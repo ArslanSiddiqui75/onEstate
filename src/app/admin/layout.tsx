@@ -288,8 +288,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
                 type="button"
                 className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-white/55 transition hover:bg-white/10 hover:text-white"
                 onClick={() => {
-                  signOut();
-                  router.replace("/admin/login");
+                  void signOut().then(() => router.replace("/admin/login"));
                 }}
               >
                 <LogOut className="h-3 w-3" aria-hidden />
@@ -338,7 +337,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
               >
                 <span>
                   A brokerage session ({orgSessionEmail}) is also active in this
-                  browser. Signing out of the admin console will end it too.
+                  browser. Admin sign-out ends that brokerage session too.
                 </span>
                 <button
                   type="button"
@@ -373,9 +372,6 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
             ) : null}
             <motion.div
               key={pathname}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="mx-auto max-w-[1400px]"
             >
               {forbidden ? (

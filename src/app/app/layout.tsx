@@ -5,12 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { AppSessionProvider, useAppSession } from "@/lib/app/session";
 import { AppShell } from "@/components/shell/app-shell";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { SkeletonPage } from "@/components/ui/skeleton";
 import { sanitizeRedirectTo } from "@/lib/auth/redirect";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
+import { AdminOverlapBanner } from "@/components/admin/admin-overlap-banner";
 
 function Guard({ children }: { children: React.ReactNode }) {
-  const { user, org, loading, signOut, brand, persistence, authMode } =
+  const { user, org, loading, signOut } =
     useAppSession();
   const pathname = usePathname();
   const router = useRouter();
@@ -67,10 +67,10 @@ function Guard({ children }: { children: React.ReactNode }) {
       orgName={org.name}
       orgId={org.id}
       onSignOut={() => signOut()}
-      headerMeta={`${org.name} · ${brand.name} · ${persistence}`}
     >
       <div className="space-y-3">
         <ImpersonationBanner />
+        <AdminOverlapBanner />
         <ErrorBoundary>{children}</ErrorBoundary>
       </div>
     </AppShell>

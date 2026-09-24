@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { hasModuleAccess } from "@/lib/access";
-import type { PlanId, Role } from "@/types";
+import { planIncludesModule } from "@/lib/plans/catalog";
+import type { ModuleId, PlanId, Role } from "@/types";
 
 export function LockedModule({
   title,
@@ -11,6 +12,7 @@ export function LockedModule({
   href = "/app/billing",
   role,
   plan,
+  module,
   className,
 }: {
   title: string;
@@ -18,10 +20,19 @@ export function LockedModule({
   href?: string;
   role?: Role;
   plan?: PlanId;
+  /** When set, a plan that includes this module is a role lock, not an upgrade. */
+  module?: ModuleId;
   className?: string;
 }) {
+  const roleGate =
+    role && plan && module
+      ? planIncludesModule(plan, module) &&
+        !hasModuleAccess(role, plan, module, "view")
+      : false;
   const canViewPlans =
-    role && plan ? hasModuleAccess(role, plan, "billing", "view") : false;
+    !roleGate && role && plan
+      ? hasModuleAccess(role, plan, "billing", "view")
+      : false;
 
   return (
     <div
@@ -37,7 +48,11 @@ export function LockedModule({
         {title}
       </h2>
       <p className="mt-2 max-w-md text-sm text-[var(--muted)]">{reason}</p>
-      {canViewPlans ? (
+      {roleGate ? (
+        <p className="mt-7 max-w-sm text-sm text-[var(--muted)]">
+          Ask an Owner to grant this. Your plan already includes it — this is a role limit.
+        </p>
+      ) : canViewPlans ? (
         <Button asChild className="mt-7 rounded-full">
           <Link href={href}>View plans</Link>
         </Button>

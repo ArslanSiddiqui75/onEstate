@@ -125,9 +125,9 @@ const ROADMAP = [
   },
   {
     phase: "Phase 3",
-    when: "Q1 2027",
+    when: "In the product",
     title: "Website & Social",
-    body: "Branded site builder, listing embeds, client portal, auto listing-to-post.",
+    body: "Site builder, publish, and social scheduling are already in the workspace.",
   },
   {
     phase: "Phase 4",
@@ -190,7 +190,7 @@ export default function MarketingPage() {
       <MarketingNav />
       <Hero />
 
-      <section id="problem" className="relative mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      <section id="problem" className="relative mx-auto max-w-7xl scroll-mt-28 px-5 py-24 sm:px-8">
         <p className="eyebrow">The problem</p>
         <h2 className="mt-4 max-w-4xl font-display text-[clamp(2.2rem,5vw,4.25rem)] leading-[1.02]">
           Real estate software wasn&apos;t built for how modern agencies actually
@@ -215,7 +215,7 @@ export default function MarketingPage() {
 
       <section
         id="solution"
-        className="relative mx-4 overflow-hidden rounded-[2rem] bg-[linear-gradient(145deg,#0b121a_0%,#152031_55%,#0c6e63_140%)] px-5 py-24 text-white sm:mx-6 sm:px-8 lg:mx-auto lg:max-w-7xl"
+        className="relative mx-4 scroll-mt-28 overflow-hidden rounded-[2rem] bg-[linear-gradient(145deg,#0b121a_0%,#152031_55%,#0c6e63_140%)] px-5 py-24 text-white sm:mx-6 sm:px-8 lg:mx-auto lg:max-w-7xl"
       >
         <div className="marketing-grain absolute inset-0 opacity-30" />
         <div className="relative">
@@ -247,7 +247,7 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="modules" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      <section id="modules" className="mx-auto max-w-7xl scroll-mt-28 px-5 py-24 sm:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="eyebrow">Product modules</p>
@@ -285,7 +285,7 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="markets" className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
+      <section id="markets" className="mx-auto max-w-7xl scroll-mt-28 px-5 py-10 sm:px-8">
         <div className="surface-panel overflow-hidden p-6 sm:p-10">
           <p className="eyebrow">Market fit</p>
           <h2 className="mt-4 max-w-3xl font-display text-[clamp(2rem,4.5vw,3.5rem)] leading-[1.05]">
@@ -312,7 +312,7 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="rbac" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      <section id="rbac" className="mx-auto max-w-7xl scroll-mt-28 px-5 py-24 sm:px-8">
         <p className="eyebrow">Access control</p>
         <h2 className="mt-4 font-display text-[clamp(2.2rem,5vw,4rem)] leading-[1.02]">
           RBAC matrix — six roles, six modules
@@ -372,7 +372,7 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="plans" className="mx-4 my-6 overflow-hidden rounded-[2rem] bg-[linear-gradient(160deg,#0b121a,#152031)] px-5 py-24 text-white sm:mx-6 sm:px-8 lg:mx-auto lg:max-w-7xl">
+      <section id="plans" className="mx-4 my-6 scroll-mt-28 overflow-hidden rounded-[2rem] bg-[linear-gradient(160deg,#0b121a,#152031)] px-5 py-24 text-white sm:mx-6 sm:px-8 lg:mx-auto lg:max-w-7xl">
         <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.16em] text-white/45">
           Plans & packaging
         </p>
@@ -417,7 +417,7 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="compete" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      <section id="compete" className="mx-auto max-w-7xl scroll-mt-28 px-5 py-24 sm:px-8">
         <p className="eyebrow">Operational depth</p>
         <h2 className="mt-4 font-display text-[clamp(2.2rem,5vw,4rem)] leading-[1.02]">
           Built for real brokerage operations, not surface-level feature checklists.
@@ -449,7 +449,7 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="roadmap" className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
+      <section id="roadmap" className="mx-auto max-w-7xl scroll-mt-28 px-5 py-10 sm:px-8">
         <div className="surface-panel p-6 sm:p-10">
           <p className="eyebrow">Roadmap</p>
           <h2 className="mt-4 font-display text-[clamp(2rem,4.5vw,3.5rem)] leading-[1.05]">
@@ -474,7 +474,7 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="ask" className="mx-auto max-w-7xl px-5 py-24 sm:px-8">
+      <section id="ask" className="mx-auto max-w-7xl scroll-mt-28 px-5 py-24 sm:px-8">
         <p className="eyebrow">Request a demo</p>
         <h2 className="mt-4 max-w-3xl font-display text-[clamp(2.2rem,5vw,4rem)] leading-[1.02]">
           See how {brand.name} fits your brokerage operations.

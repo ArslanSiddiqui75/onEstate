@@ -62,3 +62,10 @@ export function toE164(raw: string, dialCode: string): string {
   if (!national) return "";
   return `${code}${national}`;
 }
+
+/** Device dialer URI. Keeps + and digits; does not claim in-app calling. */
+export function toTelHref(phone: string): string {
+  const compact = phone.trim().replace(/[^\d+]/g, "");
+  if (!compact) return "";
+  return `tel:${compact}`;
+}

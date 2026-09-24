@@ -412,6 +412,19 @@ export function createSupabaseRepository(
         });
       }
 
+      if (lead.email?.trim() || lead.phone?.trim()) {
+        await supabase.from("contacts").insert({
+          org_id: ctx.org.id,
+          name: lead.name,
+          email: lead.email?.trim() || null,
+          phone: lead.phone?.trim() || null,
+          category: "lead",
+          lead_id: data.id,
+          assigned_to: lead.assignedTo || ctx.user.id,
+          market: lead.market,
+        });
+      }
+
       return mapLead(data, lead.phones);
     },
 
@@ -497,6 +510,44 @@ export function createSupabaseRepository(
     },
 
     async listContacts() {
+      const { data: leadRows } = await supabase
+        .from("leads")
+        .select("id,name,email,phone,market,assigned_to")
+        .eq("org_id", ctx.org.id)
+        .is("archived_at", null);
+      const { data: existingContacts } = await supabase
+        .from("contacts")
+        .select("email,phone,lead_id")
+        .eq("org_id", ctx.org.id);
+      const known = existingContacts || [];
+      for (const lead of leadRows || []) {
+        const email = String(lead.email || "").trim();
+        const phoneDigits = String(lead.phone || "").replace(/\D/g, "");
+        if (!email && phoneDigits.length < 7) continue;
+        const already = known.some((row) => {
+          if (row.lead_id === lead.id) return true;
+          if (email && String(row.email || "").trim().toLowerCase() === email.toLowerCase()) {
+            return true;
+          }
+          const rowDigits = String(row.phone || "").replace(/\D/g, "");
+          return phoneDigits.length >= 7 && rowDigits === phoneDigits;
+        });
+        if (already) continue;
+        const { error: insertError } = await supabase.from("contacts").insert({
+          org_id: ctx.org.id,
+          name: lead.name,
+          email: email || null,
+          phone: lead.phone || null,
+          category: "lead",
+          lead_id: lead.id,
+          assigned_to: lead.assigned_to || ctx.user.id,
+          market: lead.market,
+        });
+        if (!insertError) {
+          known.push({ email, phone: lead.phone, lead_id: lead.id });
+        }
+      }
+
       const { data, error } = await supabase
         .from("contacts")
         .select("*, contact_phone_numbers(*)")
@@ -1317,7 +1368,7 @@ export function createSupabaseRepository(
 
       const { data, error } = await supabase
         .from("websites")
-        .select("payload, slug, updated_at")
+        .select("payload, slug, published, updated_at")
         .eq("org_id", ctx.org.id)
         .maybeSingle();
       if (error || !data?.payload) return fallback;
@@ -1328,6 +1379,7 @@ export function createSupabaseRepository(
         ...payload,
         id: ctx.org.id,
         orgId: ctx.org.id,
+        published: Boolean(data.published),
         slug: data.slug ? String(data.slug) : payload.slug,
         updatedAt: String(data.updated_at || fallback.updatedAt),
       };

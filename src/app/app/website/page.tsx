@@ -42,6 +42,7 @@ export default function AppWebsitePage() {
         reason="Website builder is limited to Owner, Broker, and Team Lead."
         role={user.role}
         plan={org.plan}
+        module="website"
       />
     );
   }
@@ -56,7 +57,11 @@ export default function AppWebsitePage() {
   }
 
   const canEdit = hasModuleAccess(user.role, org.plan, "website", "edit");
-  const activeListings = listings.filter((l) => l.market === market);
+  const activeListings = listings.filter(
+    (l) =>
+      l.market === market &&
+      (l.status === "active" || l.status === "under_offer"),
+  );
   const hydrated = hydrateWebsiteSite(site, org.name);
   const template = getTemplate(hydrated.templateId);
   // Slug is assigned server-side on first save, so the link only appears once
@@ -223,7 +228,7 @@ export default function AppWebsitePage() {
               onClick={() => {
                 if (!site.published && activeListings.length === 0) {
                   toast.error(
-                    "Add at least one listing before publishing the site.",
+                    "Publish needs an active listing. Drafts stay off the public site.",
                   );
                   return;
                 }

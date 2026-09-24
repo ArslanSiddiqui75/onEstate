@@ -134,6 +134,7 @@ export default function AppSocialPage() {
         reason="Social tools are limited for your role."
         role={user.role}
         plan={org.plan}
+        module="social"
       />
     );
   }

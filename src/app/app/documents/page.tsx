@@ -62,7 +62,9 @@ export default function AppDocumentsPage() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-[var(--muted)]">
-        Uploads plus e-sign files and listing media. Not a full document system.
+        {canEdit
+          ? "Upload a file below, or browse e-sign files and listing media. This is not a full document system."
+          : "E-sign files and listing media for this workspace. Uploading needs edit access."}
       </p>
       {canEdit ? (
         <form

@@ -45,6 +45,7 @@ export function eligibleAssignees(
   settings: LeadRoutingSettings,
 ): { id: string; role: Role }[] {
   return members.filter((m) => {
+    if (m.id.startsWith("invite_")) return false;
     if (m.role === "owner") return settings.includeOwner;
     return settings.includeRoles.includes(m.role);
   });

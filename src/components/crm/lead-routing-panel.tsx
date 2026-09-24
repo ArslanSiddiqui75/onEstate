@@ -55,7 +55,10 @@ export function LeadRoutingPanel({
     );
   }
 
-  const eligible = eligibleAssignees(members, draft);
+  const eligible = eligibleAssignees(
+    members.filter((m) => !m.id.startsWith("invite_")),
+    draft,
+  );
   const preview = routeLead({
     plan,
     settings: draft,
@@ -75,7 +78,9 @@ export function LeadRoutingPanel({
       <label className="block space-y-1 text-sm">
         <span className="text-xs font-medium text-[var(--muted)]">Assignment mode</span>
         <select
-          className="h-10 w-full max-w-md rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
+          className={`h-10 w-full max-w-md rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm ${
+            canEdit ? "" : "cursor-not-allowed opacity-70"
+          }`}
           disabled={!canEdit}
           value={draft.mode}
           onChange={(e) =>
@@ -125,7 +130,7 @@ export function LeadRoutingPanel({
           </label>
         </div>
         <p className="text-xs text-[var(--muted)]">
-          Pool: {eligible.length ? eligible.map((m) => members.find((x) => m.id === x.id)?.name || m.id).join(", ") : "nobody — falls back to the whole team"}
+          Pool of accepted members: {eligible.length ? eligible.map((m) => members.find((x) => m.id === x.id)?.name || m.id).join(", ") : "nobody — falls back to the whole team"}
         </p>
       </div>
 

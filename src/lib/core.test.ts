@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultDialCode, isE164, toE164 } from "@/lib/phone/e164";
+import { defaultDialCode, isE164, toE164, toTelHref } from "@/lib/phone/e164";
 import { phoneLookupVariants } from "@/lib/messaging/service";
 import { getPasswordStrength, signupSchema, validateForm } from "@/lib/auth/validation";
 import {
@@ -18,6 +18,13 @@ import { profileCanAccess } from "@/lib/server/require-module";
 import { assertCanPublishWebsite } from "@/lib/website/publish";
 import { isActiveRecord } from "@/lib/data/archive";
 import { adminCanImpersonate } from "@/lib/admin/accounts";
+import { eligibleAssignees } from "@/lib/crm/routing";
+import {
+  countBy,
+  rowsToCsv,
+  snapshotCutoff,
+  withinSnapshot,
+} from "@/lib/reports/snapshot";
 
 describe("E.164 phones", () => {
   it("rejects local numbers without a country code", () => {
@@ -35,6 +42,11 @@ describe("E.164 phones", () => {
     expect(toE164("0333 1234567", "+92")).toBe("+923331234567");
     expect(defaultDialCode("uk")).toBe("+44");
     expect(defaultDialCode("us")).toBe("+1");
+  });
+
+  it("builds a tel: href for the device dialer", () => {
+    expect(toTelHref("+44 7700 900123")).toBe("tel:+447700900123");
+    expect(toTelHref("")).toBe("");
   });
 
   it("builds lookup variants for matching inbound SMS", () => {
@@ -246,5 +258,48 @@ describe("website publish guard", () => {
     expect(() => assertCanPublishWebsite(true, 0)).toThrow(/listing/i);
     expect(() => assertCanPublishWebsite(true, 1)).not.toThrow();
     expect(() => assertCanPublishWebsite(false, 0)).not.toThrow();
+  });
+});
+
+describe("lead routing pool", () => {
+  it("skips pending invite placeholders", () => {
+    const pool = eligibleAssignees(
+      [
+        { id: "u1", role: "agent" },
+        { id: "invite_abc", role: "agent" },
+        { id: "u2", role: "broker" },
+      ],
+      {
+        mode: "round_robin",
+        includeRoles: ["agent", "broker"],
+        includeOwner: false,
+        territories: {},
+      },
+    );
+    expect(pool.map((m) => m.id)).toEqual(["u1", "u2"]);
+  });
+});
+
+describe("reports snapshot", () => {
+  it("treats all-time as no cutoff", () => {
+    expect(snapshotCutoff("all")).toBeNull();
+    expect(withinSnapshot(undefined, null)).toBe(true);
+  });
+
+  it("keeps records inside the window", () => {
+    const now = Date.parse("2026-09-24T12:00:00.000Z");
+    const cutoff = snapshotCutoff("7d", now);
+    expect(withinSnapshot("2026-09-20T00:00:00.000Z", cutoff)).toBe(true);
+    expect(withinSnapshot("2026-09-01T00:00:00.000Z", cutoff)).toBe(false);
+  });
+
+  it("counts and CSV-escapes snapshot rows", () => {
+    expect(countBy([{ stage: "new" }, { stage: "new" }, { stage: "won" }], "stage")).toEqual([
+      ["new", 2],
+      ["won", 1],
+    ]);
+    expect(rowsToCsv([["Name", "Note"], ["Northbridge", 'Said "hello"']])).toBe(
+      'Name,Note\nNorthbridge,"Said ""hello"""',
+    );
   });
 });

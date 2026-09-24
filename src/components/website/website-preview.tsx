@@ -49,7 +49,11 @@ export function WebsiteCanvas({
   const heroLayout = heroSection ? sectionVariant(heroSection, template) : template.heroLayout;
   const isSplitHero = heroOn && heroLayout === "split";
   const isDark = template.id === "luxury-dark";
-  const activeListings = listings.filter((l) => l.market === market);
+  const activeListings = listings.filter(
+    (l) =>
+      l.market === market &&
+      (l.status === "active" || l.status === "under_offer"),
+  );
   const patch = (next: Partial<WebsiteSite>) => onChange?.(next);
 
   const pill = {
@@ -335,16 +339,20 @@ export function WebsiteCanvas({
         <div className="space-y-2 text-sm">
           <p className="text-[11px] uppercase tracking-[0.18em]">Get in touch</p>
           <EditableText
+            as="p"
             enabled={editable}
             value={hydrated.email || ""}
             onChange={(v) => patch({ email: v })}
             placeholder="Email"
+            className="block"
           />
           <EditableText
+            as="p"
             enabled={editable}
             value={hydrated.phone || ""}
             onChange={(v) => patch({ phone: v })}
             placeholder="Phone"
+            className="block"
           />
         </div>
         <div className="space-y-2 text-sm md:text-right">
@@ -426,7 +434,8 @@ function ListingsBlock({
           onChange={(v) => patch({ listingsHeading: v })}
         />
         <p className="max-w-sm text-sm leading-relaxed" style={{ color: tc.muted }}>
-          {activeListings.length} live {activeListings.length === 1 ? "home" : "homes"} from your listings.
+          {activeListings.length} published{" "}
+          {activeListings.length === 1 ? "home" : "homes"}. Drafts stay off the public site.
         </p>
       </div>
       <div className={`grid gap-6 ${cols}`}>
@@ -465,7 +474,7 @@ function ListingsBlock({
         ))}
         {activeListings.length === 0 ? (
           <p className="text-sm" style={{ color: tc.muted }}>
-            Add listings and they will appear here.
+            Active and under-offer listings appear here. Drafts stay off the public site.
           </p>
         ) : null}
       </div>

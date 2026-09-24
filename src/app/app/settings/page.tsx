@@ -62,14 +62,21 @@ export default function AppSettingsPage() {
               .finally(() => setBusy(null));
           }}
         >
-          <Input
-            value={profileName}
-            onChange={(e) => setProfileName(e.target.value)}
-            placeholder="Your name"
-            required
-          />
-          <Input value={user.email} disabled />
-          <Button type="submit" className="sm:col-span-2" disabled={busy === "profile"}>
+          <label className="block space-y-1 text-sm">
+            <span className="text-xs font-medium text-[var(--muted)]">Name</span>
+            <Input
+              id="profile-name"
+              value={profileName}
+              onChange={(e) => setProfileName(e.target.value)}
+              placeholder="Your name"
+              required
+            />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="text-xs font-medium text-[var(--muted)]">Email</span>
+            <Input value={user.email} disabled aria-label="Email" />
+          </label>
+          <Button type="submit" className="w-fit" disabled={busy === "profile"}>
             {busy === "profile" ? "Saving…" : "Save profile"}
           </Button>
         </form>

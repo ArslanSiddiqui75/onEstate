@@ -23,6 +23,12 @@ import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+function humanLabel(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toast";
 import {
@@ -300,7 +306,7 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge tone="accent">{deal.stage}</Badge>
+                  <Badge tone="accent">{humanLabel(deal.stage)}</Badge>
                   <Badge
                     tone={
                       deal.eSignStatus === "signed"
@@ -326,9 +332,9 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
                           : "success"
                     }
                   >
-                    Compliance: {deal.complianceStatus || "on_track"}
+                    Compliance: {humanLabel(deal.complianceStatus || "on_track")}
                   </Badge>
-                  <Badge>Ledger: {deal.ledgerStatus || "not_started"}</Badge>
+                  <Badge>Ledger: {humanLabel(deal.ledgerStatus || "not_started")}</Badge>
                 </div>
 
                 <Tabs defaultValue="checklist" className="mt-5">
@@ -438,9 +444,8 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
 
                   <TabsContent value="esign" className="mt-4 space-y-4">
                     <p className="text-sm text-[var(--muted)]">
-                      Request a signature link for the buyer/seller. When Resend is
-                      configured the invite emails; otherwise copy the link. Live Dropbox
-                      Sign can plug in later via <code>DROPBOX_SIGN_API_KEY</code>.
+                      Request a signature link for the buyer or seller. When email is
+                      configured the invite is sent; otherwise copy the link.
                     </p>
                     {canEdit ? (
                       <div className="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 sm:grid-cols-2">

@@ -111,7 +111,7 @@ export function DomainPanel({
         <p className="text-[11px] leading-relaxed text-[var(--muted)]">
           {apex
             ? "Root domains need an A record — CNAME is not valid on @. Use www if your registrar is limited."
-            : `Point a CNAME at ${cnameTarget()}. DNS is checked live; HTTPS is probed on port 443, not assumed.`}
+            : `Point a CNAME at ${cnameTarget()}. DNS is checked live; HTTPS is probed on port 443.`}
         </p>
         {site.published ? null : (
           <p className="text-[11px] text-[var(--muted)]">

@@ -43,7 +43,7 @@ interface AdminState {
   registryError: string | null;
   metrics: ReturnType<typeof getPlatformMetrics>;
   signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
   refresh: () => void;
   canManageBilling: boolean;
   canSuspend: boolean;
@@ -150,13 +150,15 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
-  const signOut = useCallback(() => {
-    void fetch("/api/admin/logout", { method: "POST" });
-    // Session isolation: ending the admin session also ends any brokerage
-    // (Supabase) session active in this browser.
+  const signOut = useCallback(async () => {
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+    } catch {
+      // Cookie clear is best-effort.
+    }
     try {
       const supabase = createBrowserSupabaseClient();
-      if (supabase) void supabase.auth.signOut();
+      if (supabase) await supabase.auth.signOut();
     } catch {
       // Org session cleanup is best-effort.
     }

@@ -69,7 +69,7 @@ export function dnsInstructions(rawDomain: string): DnsInstruction[] {
       type: "CNAME",
       host: recordHost,
       value: target,
-      note: `Create this CNAME at your registrar. Value must be ${target} (or cname.vercel-dns.com).`,
+      note: `Create this CNAME at your registrar. Value must be ${target}.`,
     },
   ];
 }

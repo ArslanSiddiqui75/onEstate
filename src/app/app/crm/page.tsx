@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { buildPhoneContactMethod, formatDate, formatMoney, asErrorMessage } from "@/lib/utils";
+import { toTelHref } from "@/lib/phone/e164";
 import { PhoneField } from "@/components/crm/phone-field";
 import { SequenceCatalog, SequenceProgress } from "@/components/crm/sequence-panel";
 import { findSequenceByKind } from "@/lib/sequences/catalog";
@@ -52,6 +53,12 @@ import {
   Workflow,
   X,
 } from "lucide-react";
+
+function humanLabel(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 const STAGES: LeadStage[] = [
   "new",
@@ -311,26 +318,14 @@ export default function AppCrmPage() {
         )
         .sort((a, b) => a.sentAt.localeCompare(b.sentAt))
     : [];
-  const seededMessages =
-    activeLead && activeMessages.length === 0
-      ? [
-          {
-            id: `${activeLead.id}_seed_${composeChannel}`,
-            body: `${composeChannel === "email" ? "Email" : "SMS"} thread ready · ${activeLead.source}. Next: ${activeLead.nextAction || "First outreach"}`,
-            direction: "system" as const,
-            sentAt: activeLead.updatedAt,
-            channel: composeChannel,
-            subject: undefined as string | undefined,
-          },
-        ]
-      : activeMessages.map((m) => ({
-          id: m.id,
-          body: m.body,
-          direction: m.direction,
-          sentAt: m.sentAt,
-          channel: m.channel,
-          subject: m.subject,
-        }));
+  const threadMessages = activeMessages.map((m) => ({
+    id: m.id,
+    body: m.body,
+    direction: m.direction,
+    sentAt: m.sentAt,
+    channel: m.channel,
+    subject: m.subject,
+  }));
 
   const followSeq = findSequenceByKind(sequences, "follow_up") || sequences[0];
   const nurtureSeq = findSequenceByKind(sequences, "nurture");
@@ -399,12 +394,38 @@ export default function AppCrmPage() {
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <Kpi label="Pipeline leads" value={String(allMarketLeads.length)} />
           <Kpi label="Contacts" value={String(marketContacts.length)} />
-          <Kpi label="Open tasks" value={String(inboxTasks.length)} />
+          <Kpi
+            label="Open tasks"
+            value={String(
+              tasks.filter(
+                (t) =>
+                  t.status === "open" &&
+                  allMarketLeads.some((l) => l.id === t.leadId),
+              ).length,
+            )}
+          />
           <Kpi
             label="SMS threads"
-            value={String(new Set(messages.map((m) => m.leadId)).size)}
+            value={String(
+              new Set(
+                messages
+                  .filter(
+                    (m) =>
+                      (m.channel || "sms") === "sms" &&
+                      allMarketLeads.some((l) => l.id === m.leadId),
+                  )
+                  .map((m) => m.leadId),
+              ).size,
+            )}
           />
-          <Kpi label="Calls logged" value={String(callLogs.length)} />
+          <Kpi
+            label="Calls logged"
+            value={String(
+              callLogs.filter((c) =>
+                allMarketLeads.some((l) => l.id === c.leadId),
+              ).length,
+            )}
+          />
         </div>
 
         <TabsContent value="pipeline" className="mt-4 space-y-4">
@@ -429,7 +450,7 @@ export default function AppCrmPage() {
               <option value="all">All stages</option>
               {STAGES.map((stage) => (
                 <option key={stage} value={stage}>
-                  {stage[0].toUpperCase() + stage.slice(1)}
+                  {humanLabel(stage)}
                 </option>
               ))}
             </select>
@@ -476,10 +497,16 @@ export default function AppCrmPage() {
                   setError(null);
                   try {
                     const leadName = String(form.get("name"));
+                    const leadEmail = String(form.get("email") || "").trim();
+                    const leadPhone = String(form.get("phone") || "").trim();
+                    if (!leadEmail && !leadPhone) {
+                      toast.error("Add an email or a phone number.");
+                      return;
+                    }
                     await addLead({
                       name: leadName,
-                      email: String(form.get("email")),
-                      phone: String(form.get("phone") || ""),
+                      email: leadEmail,
+                      phone: leadPhone,
                       type: String(form.get("type")) as LeadType,
                       stage: "new",
                       score: 0,
@@ -521,7 +548,7 @@ export default function AppCrmPage() {
               }}
             >
               <Input name="name" placeholder="Name" required />
-              <Input name="email" type="email" placeholder="Email" required />
+              <Input name="email" type="email" placeholder="Email (or phone below)" />
               <PhoneField name="phone" market={market} className="sm:col-span-1" />
               <select
                 name="phoneSource"
@@ -530,7 +557,7 @@ export default function AppCrmPage() {
               >
                 {PHONE_SOURCES.map((source) => (
                   <option key={source} value={source}>
-                    {source}
+                    {humanLabel(source)}
                   </option>
                 ))}
               </select>
@@ -673,7 +700,7 @@ export default function AppCrmPage() {
                           >
                             {STAGES.map((s) => (
                               <option key={s} value={s}>
-                                {s}
+                                {humanLabel(s)}
                               </option>
                             ))}
                           </select>
@@ -784,21 +811,21 @@ export default function AppCrmPage() {
                   <h2 className="font-semibold">Inbox</h2>
                   <p className="text-sm text-[var(--muted)]">
                     SMS and email are separate threads. Switch SMS / Email above the composer
-                    to open the matching thread. Live send uses Twilio / Resend when configured.
+                    to open the matching thread. Sends use Twilio or Resend when those are configured.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                 {messagingMode ? (
-                  <Badge tone={messagingMode === "live" ? "success" : "warning"}>
+                  <Badge tone={messagingMode === "live" ? "neutral" : "warning"}>
                     {messagingMode === "live"
-                      ? "Live SMS"
+                      ? "SMS via Twilio"
                       : "SMS not configured — simulated"}
                   </Badge>
                 ) : null}
                 {emailMode ? (
-                  <Badge tone={emailMode === "live" ? "success" : "warning"}>
+                  <Badge tone={emailMode === "live" ? "neutral" : "warning"}>
                     {emailMode === "live"
-                      ? "Live email"
+                      ? "Email via Resend"
                       : "Email not configured — simulated"}
                   </Badge>
                 ) : null}
@@ -848,44 +875,27 @@ export default function AppCrmPage() {
                 {activeLead ? (
                   <>
                     <div className="border-b border-[var(--border)] px-4 py-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <h3 className="font-semibold">{activeLead.name}</h3>
-                          <p className="text-sm text-[var(--muted)]">
-                            {composeChannel === "email" ? "Email thread" : "SMS thread"}
-                            {composeChannel === "email" && activeLead.email
-                              ? ` \u00b7 ${activeLead.email}`
-                              : ""}
-                            {composeChannel === "sms"
-                              ? ` \u00b7 ${(activeLead.phones || [])
-                                  .map((phone) => `${phone.label}: ${phone.number}`)
-                                  .join(" \u00b7 ") || activeLead.phone || "no number"}`
-                              : ""}
-                          </p>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={composeChannel === "sms" ? "secondary" : "ghost"}
-                            onClick={() => setComposeChannel("sms")}
-                          >
-                            SMS
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={composeChannel === "email" ? "secondary" : "ghost"}
-                            onClick={() => setComposeChannel("email")}
-                          >
-                            Email
-                          </Button>
-                        </div>
-                      </div>
+                      <h3 className="font-semibold">{activeLead.name}</h3>
+                      <p className="text-sm text-[var(--muted)]">
+                        {composeChannel === "email" ? "Email thread" : "SMS thread"}
+                        {composeChannel === "email" && activeLead.email
+                          ? ` \u00b7 ${activeLead.email}`
+                          : ""}
+                        {composeChannel === "sms"
+                          ? ` \u00b7 ${(activeLead.phones || [])
+                              .map((phone) => `${phone.label}: ${phone.number}`)
+                              .join(" \u00b7 ") || activeLead.phone || "no number"}`
+                          : ""}
+                      </p>
                     </div>
 
                     <div className="flex-1 space-y-3 bg-[var(--surface-muted)] px-4 py-4">
-                      {seededMessages.map((message) => (
+                      {threadMessages.length === 0 ? (
+                        <p className="text-center text-sm text-[var(--muted)]">
+                          No {composeChannel === "email" ? "email" : "SMS"} yet on this thread.
+                        </p>
+                      ) : (
+                      threadMessages.map((message) => (
                         <div
                           key={message.id}
                           className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
@@ -908,7 +918,8 @@ export default function AppCrmPage() {
                               : `${message.channel === "email" ? "email" : "sms"} · ${message.direction} · ${formatDate(message.sentAt, market)}`}
                           </p>
                         </div>
-                      ))}
+                      ))
+                      )}
                     </div>
 
                     <div className="border-t border-[var(--border)] p-4 space-y-4">
@@ -954,6 +965,7 @@ export default function AppCrmPage() {
                         <div className="mt-3 flex flex-wrap gap-2">
                           <Button
                             type="button"
+                            variant={draftText.trim() ? "default" : "secondary"}
                             disabled={busy || !draftText.trim()}
                             onClick={() => {
                               void (async () => {
@@ -1083,55 +1095,70 @@ export default function AppCrmPage() {
           <section className="hero-card rounded-[2rem] p-4">
             <h2 className="font-semibold">Call queue</h2>
             <p className="text-sm text-[var(--muted)]">
-              Leads with a phone number ready to dial next.
+              Dial opens your phone. We log the outcome here — there is no in-app
+              WebRTC dialer.
             </p>
             {callQueue.length ? (
               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {callQueue.map((lead) => (
-                  <div
-                    key={lead.id}
-                    className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4"
-                  >
-                    <p className="font-medium">{lead.name}</p>
-                    <p className="mt-2 text-sm">
-                      {lead.phones?.[0]?.number || lead.phone}
-                    </p>
-                    <p className="mt-2 text-sm text-[var(--muted)]">
-                      {lead.nextAction || "Call required"}
-                    </p>
-                    <div className="mt-4 flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          void logCall({ leadId: lead.id, outcome: "connected" })
-                            .then(() => toast.success(`Call logged for ${lead.name}`))
-                            .catch((err) =>
-                              toast.error(
-                                err instanceof Error ? err.message : "Could not log call",
-                              ),
-                            );
-                        }}
-                      >
-                        Log call
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          void logCall({ leadId: lead.id, outcome: "voicemail" })
-                            .then(() => toast.success(`Voicemail logged for ${lead.name}`))
-                            .catch((err) =>
-                              toast.error(
-                                err instanceof Error ? err.message : "Could not log call",
-                              ),
-                            );
-                        }}
-                      >
-                        Voicemail
-                      </Button>
+                {callQueue.map((lead) => {
+                  const phone = lead.phones?.[0]?.number || lead.phone;
+                  const tel = phone ? toTelHref(phone) : "";
+                  const logOutcome = (outcome: "connected" | "voicemail") => {
+                    void logCall({ leadId: lead.id, outcome })
+                      .then(() =>
+                        toast.success(
+                          outcome === "voicemail"
+                            ? `Voicemail logged for ${lead.name}`
+                            : `Call logged for ${lead.name}`,
+                        ),
+                      )
+                      .catch((err) =>
+                        toast.error(
+                          err instanceof Error ? err.message : "Could not log call",
+                        ),
+                      );
+                  };
+                  return (
+                    <div
+                      key={lead.id}
+                      className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4"
+                    >
+                      <p className="font-medium">{lead.name}</p>
+                      <p className="mt-2 text-sm">{phone}</p>
+                      <p className="mt-2 text-sm text-[var(--muted)]">
+                        {lead.nextAction || "Call required"}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {tel ? (
+                          <Button asChild size="sm">
+                            <a href={tel}>
+                              <Phone className="h-3.5 w-3.5" aria-hidden />
+                              Dial
+                            </a>
+                          </Button>
+                        ) : (
+                          <Button size="sm" disabled>
+                            Dial
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => logOutcome("connected")}
+                        >
+                          Log call
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => logOutcome("voicemail")}
+                        >
+                          Voicemail
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <EmptyState
@@ -1149,7 +1176,7 @@ export default function AppCrmPage() {
               <h2 className="font-semibold">Sequences</h2>
               <Badge tone="neutral">
                 {persistence === "supabase"
-                  ? "Live workflows"
+                  ? "Saved in this workspace"
                   : "Preview only — connect a hosted workspace to run"}
               </Badge>
             </div>
@@ -2066,7 +2093,11 @@ function ContactsDirectory({
         contacts.length === 0 ? (
           <EmptyState
             title="No contacts yet"
-            description="Contacts are created automatically from leads with an email or phone, or add your first contact to start the address book."
+            description={
+              canEdit
+                ? "Leads with an email or phone are added here. You can also add a contact directly."
+                : "Leads with an email or phone show up here. Adding a contact directly needs CRM edit access."
+            }
           />
         ) : (
           <EmptyState
@@ -2278,7 +2309,7 @@ function LeadEditForm({
       >
         {STAGES.map((s) => (
           <option key={s} value={s}>
-            {s}
+            {humanLabel(s)}
           </option>
         ))}
       </select>

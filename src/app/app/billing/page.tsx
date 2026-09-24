@@ -200,6 +200,10 @@ export default function AppBillingPage() {
           >
             {portalLoading ? "Opening…" : "Manage payment method"}
           </Button>
+        ) : status === "active" || status === "trialing" ? (
+          <p className="text-xs text-[var(--muted)]">
+            This plan is already active. Card management appears after Stripe checkout.
+          </p>
         ) : (
           <Button
             variant="secondary"
@@ -366,7 +370,7 @@ export default function AppBillingPage() {
                   <TR>
                     <TD className="font-medium">Portal Distribution Sync</TD>
                     <TD>Manual / 2 Portals</TD>
-                    <TD>Automated (Rightmove, Zoopla, OnTheMarket / MLS)</TD>
+                    <TD>Automated (Rightmove, Zoopla, OnTheMarket) — coming soon</TD>
                     <TD>Custom API Feeds & Real-time Webhooks</TD>
                   </TR>
                   <TR>
@@ -401,7 +405,9 @@ export default function AppBillingPage() {
           description={
             invoicesMode === "live"
               ? "Receipts from your Stripe subscription"
-              : "Preview receipts — connect Stripe for live invoice history"
+              : status === "active" || status === "trialing"
+                ? "This plan is active. Receipts appear here after Stripe checkout."
+                : "Preview receipts — connect Stripe for live invoice history"
           }
         />
         <TableShell>

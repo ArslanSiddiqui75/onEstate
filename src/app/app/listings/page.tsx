@@ -36,7 +36,42 @@ import {
   buildPortalFeedPayload,
   downloadPortalFeedPayload,
 } from "@/lib/portals/payload";
-import type { Listing, ListingStatus } from "@/types";
+import type { Listing, ListingStatus, Market } from "@/types";
+
+function tidyAddress(value: string) {
+  return value.replace(/\s+,/g, ",").replace(/,\s*/g, ", ").trim();
+}
+
+function splitStreetPostcode(address: string) {
+  const parts = tidyAddress(address)
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length >= 2) {
+    const last = parts[parts.length - 1];
+    if (/[0-9]/.test(last) && last.length <= 12) {
+      return { street: parts.slice(0, -1).join(", "), postcode: last };
+    }
+  }
+  return { street: tidyAddress(address), postcode: "" };
+}
+
+function joinStreetPostcode(street: string, postcode: string) {
+  const s = tidyAddress(street);
+  const p = postcode.trim().toUpperCase();
+  return p ? `${s}, ${p}` : s;
+}
+
+function areaToSqft(market: Market, raw: string | number) {
+  const n = Number(raw || 0);
+  if (!n) return 0;
+  return market === "uk" ? Math.round(n * 10.7639) : Math.round(n);
+}
+
+function sqftToArea(market: Market, sqft: number) {
+  if (!sqft) return "";
+  return String(market === "uk" ? Math.round(sqft / 10.7639) : sqft);
+}
 
 export default function AppListingsPage() {
   const {
@@ -133,15 +168,17 @@ export default function AppListingsPage() {
               void (async () => {
                 try {
                   const title = String(form.get("title"));
+                  const street = String(form.get("address"));
+                  const postcode = String(form.get("postcode") || "");
                   await addListing({
                     title,
-                    address: String(form.get("address")),
-                    city: String(form.get("city")),
+                    address: joinStreetPostcode(street, postcode),
+                    city: String(form.get("city")).trim(),
                     status: "draft",
                     price: Number(form.get("price")),
                     beds: Number(form.get("beds") || 0),
                     baths: Number(form.get("baths") || 0),
-                    sqft: Number(form.get("sqft") || 0),
+                    sqft: areaToSqft(market, String(form.get("sqft") || 0)),
                     tenure:
                       market === "uk"
                         ? (String(form.get("tenure")) as "freehold" | "leasehold")
@@ -165,12 +202,17 @@ export default function AppListingsPage() {
             }}
           >
             <Input name="title" placeholder="Title" required className="sm:col-span-2" />
-            <Input name="address" placeholder="Address" required />
+            <Input name="address" placeholder="Street address" required />
+            <Input name="postcode" placeholder={market === "uk" ? "Postcode" : "ZIP"} />
             <Input name="city" placeholder="City" required />
             <Input name="price" type="number" placeholder="Price" required />
             <Input name="beds" type="number" placeholder="Beds" />
             <Input name="baths" type="number" placeholder="Baths" />
-            <Input name="sqft" type="number" placeholder="Floor area (sq ft)" />
+            <Input
+              name="sqft"
+              type="number"
+              placeholder={market === "uk" ? "Floor area (sq m)" : "Floor area (sq ft)"}
+            />
             {market === "uk" ? (
               <select
                 name="tenure"
@@ -214,7 +256,7 @@ export default function AppListingsPage() {
 
         <TabsContent value="portals" className="mt-4">
           <Alert tone="warning" className="mb-4">
-            Rightmove, Zoopla, OnTheMarket, and MLS publishing is coming soon.
+            Rightmove, Zoopla, and OnTheMarket publishing is coming soon.
             Live feeds need a commercial portal partnership.
           </Alert>
           <motion.div
@@ -269,10 +311,20 @@ export default function AppListingsPage() {
             variants={fadeUp}
             className="data-card data-card-hover overflow-hidden"
           >
+            <button
+              type="button"
+              className="block w-full text-left"
+              onClick={() => setEditingListing(listing)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setEditingListing(listing);
+                }
+              }}
+            >
             <div
               className={`relative h-40 w-full group${listing.imageUrl ? " cursor-pointer" : ""}`}
-              onClick={() => listing.imageUrl && setPreviewImage(listing.imageUrl)}
-              title={listing.imageUrl ? "Click to view full image" : undefined}
+              title={listing.imageUrl ? "Open listing" : undefined}
             >
               {listing.imageUrl ? (
                 <Image
@@ -283,24 +335,30 @@ export default function AppListingsPage() {
                   sizes="(max-width:768px) 100vw, 50vw"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[var(--surface-2,#f1f1f1)] text-[var(--muted)]">
-                  <Building2 className="h-10 w-10 opacity-40" />
+                <div className="flex h-full w-full items-center justify-center bg-[var(--surface-muted)] text-[var(--muted)]">
+                  <Building2 className="h-10 w-10 opacity-70" />
                 </div>
               )}
-              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/80 to-transparent" />
               <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-sm text-white p-1.5 rounded-full">
                 <Eye className="h-4 w-4" />
               </div>
-              <div className="absolute bottom-3 left-4 font-display text-2xl text-white drop-shadow">
+              <div className="absolute bottom-3 left-4 font-display text-2xl text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 {formatMoney(listing.price, market)}
               </div>
             </div>
-            <div className="p-4">
+            <div className="p-4 pb-2">
+              <h2 className="font-semibold underline-offset-2 group-hover:underline">
+                {listing.title}
+              </h2>
+              <p className="text-xs text-[var(--muted)]">
+                {tidyAddress(`${listing.address}, ${listing.city}`)}
+              </p>
+            </div>
+            </button>
+            <div className="px-4 pb-4">
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h2 className="font-semibold">{listing.title}</h2>
-                  <p className="text-xs text-[var(--muted)]">{listing.address}, {listing.city}</p>
-                </div>
+                <span className="sr-only">Listing actions</span>
                 {canEdit ? (
                   <div className="flex items-center gap-1">
                     <Button
@@ -564,7 +622,7 @@ export default function AppListingsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="surface-panel w-full max-w-lg rounded-[1.75rem] p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Edit Listing</h2>
+              <h2 className="text-lg font-semibold">{canEdit ? "Edit listing" : "Listing"}</h2>
               <button type="button" onClick={() => setEditingListing(null)} className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-muted)]">
                 <X className="h-5 w-5" />
               </button>
@@ -581,12 +639,15 @@ export default function AppListingsPage() {
                   try {
                     await updateListing(editingListing.id, {
                       title,
-                      address: String(form.get("address")),
-                      city: String(form.get("city")),
+                      address: joinStreetPostcode(
+                        String(form.get("address")),
+                        String(form.get("postcode") || ""),
+                      ),
+                      city: String(form.get("city")).trim(),
                       price,
                       beds: Number(form.get("beds")),
                       baths: Number(form.get("baths")),
-                      sqft: Number(form.get("sqft")),
+                      sqft: areaToSqft(market, String(form.get("sqft") || 0)),
                       description: String(form.get("description")),
                       imageUrl: form.get("imageUrl")
                         ? String(form.get("imageUrl"))
@@ -605,19 +666,38 @@ export default function AppListingsPage() {
               }}
             >
               <Input name="title" placeholder="Title" defaultValue={editingListing.title} required className="sm:col-span-2" />
-              <Input name="address" placeholder="Address" defaultValue={editingListing.address} required />
+              <Input
+                name="address"
+                placeholder="Street address"
+                defaultValue={splitStreetPostcode(editingListing.address).street}
+                required
+              />
+              <Input
+                name="postcode"
+                placeholder={market === "uk" ? "Postcode" : "ZIP"}
+                defaultValue={splitStreetPostcode(editingListing.address).postcode}
+              />
               <Input name="city" placeholder="City" defaultValue={editingListing.city} required />
               <Input name="price" type="number" placeholder="Price" defaultValue={editingListing.price} required />
               <Input name="beds" type="number" placeholder="Beds" defaultValue={editingListing.beds} />
               <Input name="baths" type="number" placeholder="Baths" defaultValue={editingListing.baths} />
-              <Input name="sqft" type="number" placeholder="Floor area (sq ft)" defaultValue={editingListing.sqft} />
+              <Input
+                name="sqft"
+                type="number"
+                placeholder={market === "uk" ? "Floor area (sq m)" : "Floor area (sq ft)"}
+                defaultValue={sqftToArea(market, editingListing.sqft)}
+              />
               <Input name="imageUrl" placeholder="Image URL" defaultValue={editingListing.imageUrl} className="sm:col-span-2" />
               <Input name="description" placeholder="Description" defaultValue={editingListing.description} className="sm:col-span-2" />
               <div className="flex gap-2 sm:col-span-2 pt-2">
-                <Button type="button" variant="secondary" onClick={() => setEditingListing(null)} className="flex-1">Cancel</Button>
+                <Button type="button" variant="secondary" onClick={() => setEditingListing(null)} className="flex-1">
+                  Close
+                </Button>
+                {canEdit ? (
                 <Button type="submit" className="flex-1" disabled={savingListing}>
                   {savingListing ? "Saving…" : "Save changes"}
                 </Button>
+                ) : null}
               </div>
             </form>
           </div>
