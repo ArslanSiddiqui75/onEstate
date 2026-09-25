@@ -1,0 +1,34 @@
+---
+description: Agent vs human docs — context.md first; vault is human product/ops
+alwaysApply: true
+---
+
+# Docs split (agents vs vault)
+
+## Agents
+
+- Read `context.md` first (app root).
+- Prefer **code + `supabase/migrations/`** over Markdown when they conflict.
+- Do **not** open the whole `vault/` before every task.
+- Do not treat the vault as primary agent context.
+
+## Humans / vault updates
+
+Update `vault/` **only** when these change:
+
+- Product decisions / lifecycle / workflow
+- Launch checklist / remaining client work
+- Domain inventory (listings / portals / related entities)
+- Env, alerts, external sync/ToS, how to run
+
+Also update `context.md` for those same facts.
+
+## Do NOT update vault for
+
+- Pure refactors, UI polish, perf tweaks, test-only changes
+- Routine API/schema digests already visible in code (Architecture notes refresh rarely, for onboarding humans)
+
+## Do not
+
+- Duplicate long API/schema dumps into notes after every PR
+- Put secrets in the vault beyond what’s already needed for local demo ops (names + pointers only)

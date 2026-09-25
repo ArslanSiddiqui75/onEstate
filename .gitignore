@@ -36,3 +36,10 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Obsidian vault UI state (keep vault notes; ignore workspace noise)
+vault/.obsidian/workspace.json
+vault/.obsidian/workspace-mobile.json
+vault/.obsidian/graph.json
+vault/.obsidian/cache
+supabase/.temp/
