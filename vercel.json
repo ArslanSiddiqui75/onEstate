@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/social/cron/publish",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/automations/cron/run",
+      "schedule": "0 13 * * *"
+    }
+  ]
+}

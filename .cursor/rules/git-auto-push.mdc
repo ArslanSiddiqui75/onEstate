@@ -1,0 +1,22 @@
+---
+description: After any commit, push to origin immediately
+alwaysApply: true
+---
+
+# Git: always push after commit
+
+Arslan asked to **push all changes always**. After every successful commit on this repo:
+
+1. **Push** to `origin` on the current branch (`git push -u origin HEAD` if needed).
+2. Do not wait to be asked again.
+
+## Still skip
+- Secrets (`.env`, credentials) — never commit
+- `.github/workflows/*` unless the GitHub token has `workflow` scope
+- Destructive git (`force` push, hard reset) — never unless explicitly requested
+- Don't amend pushed commits unless the user explicitly asks and amend rules allow it
+
+## Style
+- Follow the repo’s existing commit message style
+- Prefer PowerShell-safe commit messages on Windows (multiple `-m` flags, not bash heredoc)
+- After push, briefly confirm the commit hash / that remote is updated

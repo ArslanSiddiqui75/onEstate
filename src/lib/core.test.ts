@@ -1,0 +1,305 @@
+import { describe, expect, it } from "vitest";
+import { defaultDialCode, isE164, toE164, toTelHref } from "@/lib/phone/e164";
+import { phoneLookupVariants } from "@/lib/messaging/service";
+import { getPasswordStrength, signupSchema, validateForm } from "@/lib/auth/validation";
+import {
+  isPortalConnected,
+  mergeConnectionsWithDefaults,
+} from "@/lib/portals/connections";
+import { scoreLead } from "@/lib/crm/scoring";
+import { planAmount, seatLimit } from "@/lib/admin/registry";
+import { canInvite, canInviteRole } from "@/lib/rbac/invites";
+import { getRoleAccess } from "@/lib/rbac/matrix";
+import { checkAdminRole } from "@/lib/admin/roles";
+import { sanitizeRedirectTo } from "@/lib/auth/redirect";
+import { validateOrgName } from "@/lib/auth/org-name";
+import { findMatchingContact } from "@/lib/crm/contact-match";
+import { profileCanAccess } from "@/lib/server/require-module";
+import { assertCanPublishWebsite } from "@/lib/website/publish";
+import { isActiveRecord } from "@/lib/data/archive";
+import { adminCanImpersonate } from "@/lib/admin/accounts";
+import { eligibleAssignees } from "@/lib/crm/routing";
+import {
+  countBy,
+  rowsToCsv,
+  snapshotCutoff,
+  withinSnapshot,
+} from "@/lib/reports/snapshot";
+
+describe("E.164 phones", () => {
+  it("rejects local numbers without a country code", () => {
+    expect(isE164("03331234567")).toBe(false);
+    expect(isE164("447700900123")).toBe(false);
+  });
+
+  it("accepts international numbers", () => {
+    expect(isE164("++447700900123")).toBe(false);
+    expect(isE164("+447700900123")).toBe(true);
+    expect(isE164("+923331234567")).toBe(true);
+  });
+
+  it("composes E.164 from a local trunk prefix", () => {
+    expect(toE164("0333 1234567", "+92")).toBe("+923331234567");
+    expect(defaultDialCode("uk")).toBe("+44");
+    expect(defaultDialCode("us")).toBe("+1");
+  });
+
+  it("builds a tel: href for the device dialer", () => {
+    expect(toTelHref("+44 7700 900123")).toBe("tel:+447700900123");
+    expect(toTelHref("")).toBe("");
+  });
+
+  it("builds lookup variants for matching inbound SMS", () => {
+    const variants = phoneLookupVariants("+44 7700 900123");
+    expect(variants).toEqual(expect.arrayContaining(["+447700900123", "447700900123"]));
+  });
+});
+
+describe("auth validation", () => {
+  it("requires a valid signup payload", () => {
+    const bad = validateForm(signupSchema, {
+      name: "A",
+      email: "not-an-email",
+      password: "123",
+      orgName: "X",
+      plan: "hobby",
+    });
+    expect(bad.success).toBe(false);
+    if (!bad.success) {
+      expect(bad.errors.email).toBeTruthy();
+      expect(bad.errors.password).toBeTruthy();
+      expect(bad.errors.plan).toBeTruthy();
+    }
+  });
+
+  it("accepts a complete signup", () => {
+    const ok = validateForm(signupSchema, {
+      name: "Ava North",
+      email: "ava@brokerage.com",
+      password: "longenough",
+      orgName: "Northbridge",
+      plan: "team",
+    });
+    expect(ok.success).toBe(true);
+  });
+
+  it("scores password strength", () => {
+    expect(getPasswordStrength("").score).toBe(0);
+    expect(getPasswordStrength("password").label).toBe("Weak");
+    expect(getPasswordStrength("Password1!").score).toBe(4);
+    expect(getPasswordStrength("Password1!").label).toBe("Strong");
+  });
+});
+
+describe("portal connections", () => {
+  it("fills UK defaults and keeps saved Rightmove credentials", () => {
+    const merged = mergeConnectionsWithDefaults("uk", [
+      { portal: "rightmove", connected: true, branchId: "123" },
+    ]);
+    expect(merged.map((c) => c.portal)).toEqual([
+      "rightmove",
+      "zoopla",
+      "onthemarket",
+    ]);
+    expect(isPortalConnected(merged, "rightmove")).toBe(true);
+    expect(isPortalConnected(merged, "zoopla")).toBe(false);
+  });
+});
+
+describe("lead scoring", () => {
+  it("adds points for completeness, referral source, and urgency", () => {
+    const result = scoreLead({
+      email: "lead@example.com",
+      phone: "+447700900123",
+      source: "referral",
+      type: "seller",
+      priority: "urgent",
+      budget: 500000,
+      notes: "Ready to list",
+    });
+    expect(result.score).toBeGreaterThan(70);
+    expect(result.factors.some((f) => f.label === "Source · referral")).toBe(true);
+  });
+});
+
+describe("plan catalog helpers", () => {
+  it("returns GBP/USD monthly amounts and seat ceilings", () => {
+    expect(planAmount("enterprise", "uk")).toBe(0);
+    expect(planAmount("solo", "uk")).toBeGreaterThan(0);
+    expect(planAmount("team", "us")).toBeGreaterThan(planAmount("solo", "us"));
+    expect(seatLimit("solo")).toBe(1);
+    expect(seatLimit("team")).toBe(25);
+  });
+});
+
+describe("invite allow-list", () => {
+  it("lets owners invite any role except owner", () => {
+    expect(canInvite("owner")).toBe(true);
+    expect(canInviteRole("owner", "team_lead")).toBe(true);
+    expect(canInviteRole("owner", "owner")).toBe(false);
+  });
+
+  it("limits team leads to agent and assistant", () => {
+    expect(canInviteRole("team_lead", "agent")).toBe(true);
+    expect(canInviteRole("team_lead", "team_lead")).toBe(false);
+  });
+
+  it("rejects agent invites", () => {
+    expect(canInvite("agent")).toBe(false);
+    expect(canInviteRole("agent", "team_lead")).toBe(false);
+  });
+});
+
+describe("RBAC matrix", () => {
+  it("keeps accountant read-only on ops and full on billing", () => {
+    expect(getRoleAccess("accountant", "crm")).toBe("view");
+    expect(getRoleAccess("accountant", "listings")).toBe("view");
+    expect(getRoleAccess("accountant", "transactions")).toBe("view");
+    expect(getRoleAccess("accountant", "billing")).toBe("full");
+  });
+
+  it("removes social from assistants", () => {
+    expect(getRoleAccess("assistant", "social")).toBe("none");
+  });
+});
+
+describe("admin role guard", () => {
+  const support = {
+    id: "a1",
+    name: "Support",
+    email: "support-admin@certified.local",
+    role: "support_admin" as const,
+  };
+
+  it("returns 401 without a session", () => {
+    const result = checkAdminRole(null);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(401);
+  });
+
+  it("returns 403 when the role is not allowed", () => {
+    const result = checkAdminRole(support, ["super_admin", "billing_admin"]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(403);
+  });
+
+  it("allows any signed-in admin when no roles are listed", () => {
+    expect(checkAdminRole(support).ok).toBe(true);
+  });
+});
+
+describe("redirectTo validation", () => {
+  it("only accepts in-app paths", () => {
+    expect(sanitizeRedirectTo("/app/crm")).toBe("/app/crm");
+    expect(sanitizeRedirectTo("https://evil.test")).toBe("/app");
+    expect(sanitizeRedirectTo("//evil.test")).toBe("/app");
+    expect(sanitizeRedirectTo("/app/login")).toBe("/app");
+  });
+});
+
+describe("org name", () => {
+  it("rejects placeholder names", () => {
+    expect(validateOrgName("tp").ok).toBe(false);
+    expect(validateOrgName("12345").ok).toBe(false);
+    expect(validateOrgName("Northbridge Realty").ok).toBe(true);
+  });
+});
+
+describe("API module guard", () => {
+  it("blocks accountant CRM writes and assistant social publishes", () => {
+    const accountant = { role: "accountant", plan: "team" };
+    const assistant = { role: "assistant", plan: "team" };
+    expect(profileCanAccess(accountant, "crm", "edit")).toBe(false);
+    expect(profileCanAccess(accountant, "crm", "view")).toBe(true);
+    expect(profileCanAccess(assistant, "social", "edit")).toBe(false);
+    expect(profileCanAccess({ role: "owner", plan: "team" }, "social", "edit")).toBe(true);
+  });
+});
+
+describe("contact match", () => {
+  const existing = [
+    {
+      id: "c1",
+      name: "Ada",
+      email: "ada@example.com",
+      phone: "+447700900123",
+      category: "lead" as const,
+      tags: [],
+      market: "uk" as const,
+      createdAt: "",
+      updatedAt: "",
+    },
+  ];
+
+  it("matches by email or phone and prefers an existing lead link", () => {
+    expect(findMatchingContact(existing, { email: "ada@example.com" })?.id).toBe("c1");
+    expect(findMatchingContact(existing, { phone: "+44 7700 900123" })?.id).toBe("c1");
+    expect(findMatchingContact(existing, { email: "other@example.com" })).toBeUndefined();
+  });
+});
+
+describe("soft archive", () => {
+  it("treats missing archivedAt as active", () => {
+    expect(isActiveRecord({})).toBe(true);
+    expect(isActiveRecord({ archivedAt: "2026-09-13T00:00:00.000Z" })).toBe(false);
+  });
+});
+
+describe("admin impersonation role", () => {
+  it("allows support and super admin only", () => {
+    expect(adminCanImpersonate("support_admin")).toBe(true);
+    expect(adminCanImpersonate("super_admin")).toBe(true);
+    expect(adminCanImpersonate("billing_admin")).toBe(false);
+  });
+});
+
+describe("website publish guard", () => {
+  it("refuses publish with zero listings", () => {
+    expect(() => assertCanPublishWebsite(true, 0)).toThrow(/listing/i);
+    expect(() => assertCanPublishWebsite(true, 1)).not.toThrow();
+    expect(() => assertCanPublishWebsite(false, 0)).not.toThrow();
+  });
+});
+
+describe("lead routing pool", () => {
+  it("skips pending invite placeholders", () => {
+    const pool = eligibleAssignees(
+      [
+        { id: "u1", role: "agent" },
+        { id: "invite_abc", role: "agent" },
+        { id: "u2", role: "broker" },
+      ],
+      {
+        mode: "round_robin",
+        includeRoles: ["agent", "broker"],
+        includeOwner: false,
+        territories: {},
+      },
+    );
+    expect(pool.map((m) => m.id)).toEqual(["u1", "u2"]);
+  });
+});
+
+describe("reports snapshot", () => {
+  it("treats all-time as no cutoff", () => {
+    expect(snapshotCutoff("all")).toBeNull();
+    expect(withinSnapshot(undefined, null)).toBe(true);
+  });
+
+  it("keeps records inside the window", () => {
+    const now = Date.parse("2026-09-24T12:00:00.000Z");
+    const cutoff = snapshotCutoff("7d", now);
+    expect(withinSnapshot("2026-09-20T00:00:00.000Z", cutoff)).toBe(true);
+    expect(withinSnapshot("2026-09-01T00:00:00.000Z", cutoff)).toBe(false);
+  });
+
+  it("counts and CSV-escapes snapshot rows", () => {
+    expect(countBy([{ stage: "new" }, { stage: "new" }, { stage: "won" }], "stage")).toEqual([
+      ["new", 2],
+      ["won", 1],
+    ]);
+    expect(rowsToCsv([["Name", "Note"], ["Northbridge", 'Said "hello"']])).toBe(
+      'Name,Note\nNorthbridge,"Said ""hello"""',
+    );
+  });
+});
