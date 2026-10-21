@@ -41,7 +41,12 @@ export function WaitlistForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-8 grid gap-3 sm:grid-cols-2">
+    <form
+      method="post"
+      action="/api/waitlist"
+      onSubmit={onSubmit}
+      className="grid gap-3 sm:grid-cols-2"
+    >
       <Input name="name" placeholder="Your name" required aria-label="Name" />
       <Input
         name="email"
@@ -56,6 +61,8 @@ export function WaitlistForm() {
         aria-label="Brokerage"
         className="sm:col-span-2"
       />
+      <input type="hidden" name="market" value={brand.waitlistMarketFixed} />
+      <input type="hidden" name="brand" value={brand.id} />
       <p className="sm:col-span-2 text-xs text-[var(--muted)]">
         Requesting a {brand.name} demo for {brand.localeLabel}.
       </p>

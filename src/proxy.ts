@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 
 function platformHosts(): string[] {
-  const hosts = ["localhost", "127.0.0.1"];
+  const hosts = ["localhost", "127.0.0.1", "0.0.0.0"];
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (appUrl) {
     try {

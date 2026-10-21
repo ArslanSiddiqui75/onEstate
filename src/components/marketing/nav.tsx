@@ -2,29 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Menu, Moon, Sun, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/brand/brand-mark";
-import { getActiveBrand } from "@/lib/brand/config";
+import { getMarketingCopy } from "@/components/marketing/copy";
 import { useTheme } from "@/lib/theme/provider";
 
-const LINKS = [
-  { href: "#problem", label: "Problem" },
-  { href: "#solution", label: "Solution" },
-  { href: "#modules", label: "Modules" },
-  { href: "#markets", label: "Market fit" },
-  { href: "#plans", label: "Plans" },
-  { href: "#roadmap", label: "Roadmap" },
-];
-
 export function MarketingNav() {
-  const brand = getActiveBrand();
+  const copy = getMarketingCopy();
   const { theme, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -34,21 +25,24 @@ export function MarketingNav() {
     <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5">
       <div
         className={cn(
-          "mx-auto flex h-14 max-w-7xl items-center justify-between rounded-full px-4 transition-all duration-300 sm:px-5",
+          "mx-auto flex h-14 max-w-7xl items-center justify-between rounded-full px-3 transition-all duration-300 sm:px-4",
           scrolled
-            ? "glass-nav shadow-[var(--shadow-float)]"
+            ? "border border-[var(--border)] bg-[var(--surface-solid)]/92 shadow-[var(--shadow-float)] backdrop-blur-xl"
             : "bg-transparent",
         )}
       >
         <Link href="/">
-          <BrandMark className="text-lg text-white" />
+          <BrandMark
+            className="text-lg text-[var(--foreground)]"
+            accentClassName="text-[var(--accent)]"
+          />
         </Link>
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Marketing">
-          {LINKS.map((link) => (
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Product">
+          {copy.nav.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="rounded-full px-3 py-1.5 text-[13px] text-white/70 transition hover:bg-white/8 hover:text-white"
+              className="rounded-full px-3 py-1.5 text-[13px] text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
             >
               {link.label}
             </a>
@@ -59,33 +53,51 @@ export function MarketingNav() {
             type="button"
             onClick={toggleTheme}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/12 text-white/75 transition hover:border-white/25 hover:bg-white/8 hover:text-white"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
           >
-            <Sun
-              className={cn(
-                "absolute h-4 w-4 transition-all duration-300",
-                theme === "dark" ? "-translate-y-6 opacity-0" : "translate-y-0 opacity-100",
-              )}
-              aria-hidden
-            />
-            <Moon
-              className={cn(
-                "absolute h-4 w-4 transition-all duration-300",
-                theme === "dark" ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0",
-              )}
-              aria-hidden
-            />
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" aria-hidden />
+            ) : (
+              <Moon className="h-4 w-4" aria-hidden />
+            )}
           </button>
-          <Button
-            asChild
-            variant="ghost"
-            className="hidden h-9 rounded-full text-white hover:bg-white/10 sm:inline-flex"
-          >
-            <Link href="/app">Open product</Link>
+          <Button asChild variant="ghost" className="hidden h-9 rounded-full sm:inline-flex">
+            <Link href="/app/login">Sign in</Link>
           </Button>
-          <Button asChild className="h-9 rounded-full px-4">
-            <a href="#ask">{brand.demandCta}</a>
+          <Button asChild className="hidden h-9 rounded-full px-4 sm:inline-flex">
+            <a href="#contact">{copy.primaryCta}</a>
           </Button>
+          <details className="group relative lg:hidden">
+            <summary
+              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-[var(--border)] [&::-webkit-details-marker]:hidden"
+              aria-label="Open menu"
+            >
+              <Menu className="h-4 w-4 group-open:hidden" />
+              <X className="hidden h-4 w-4 group-open:block" />
+            </summary>
+            <nav
+              className="absolute right-0 top-12 w-64 rounded-3xl border border-[var(--border)] bg-[var(--surface-solid)] p-3 shadow-[var(--shadow-float)]"
+              aria-label="Product"
+            >
+              {copy.nav.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="block rounded-2xl px-4 py-3 text-sm font-medium hover:bg-[var(--surface-muted)]"
+                >
+                  {link.label}
+                </a>
+              ))}
+              <div className="mt-2 grid gap-2">
+                <Button asChild variant="outline" className="rounded-full">
+                  <Link href="/app/login">Sign in</Link>
+                </Button>
+                <Button asChild className="rounded-full">
+                  <a href="#contact">{copy.primaryCta}</a>
+                </Button>
+              </div>
+            </nav>
+          </details>
         </div>
       </div>
     </header>
