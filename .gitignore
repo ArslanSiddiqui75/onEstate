@@ -7,6 +7,9 @@
 # testing
 /coverage
 
+# Office inbox written by the repair report API
+/data
+
 # Next.js build outputs
 /.next/
 /out/

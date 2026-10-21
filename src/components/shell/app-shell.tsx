@@ -117,6 +117,7 @@ const NAV: {
 ];
 
 const WORKSPACE_NAV = [
+  { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings desk", description: "Repairs, rent, compliance, inspections, and a dispute pack." },
   { href: "/app/teams", short: "Teams", eyebrow: "Roster", title: "Teams", description: "Office groups. CRM stays shared." },
   { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Open and done lead tasks." },
   { href: "/app/reports", short: "Reports", eyebrow: "Snapshot", title: "Reports", description: "Live pipeline and inventory counts." },

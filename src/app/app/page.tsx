@@ -108,6 +108,20 @@ export default function AppDashboardPage() {
         <StatCard label="Open tasks" value={openTasks.length} icon={ListChecks} tone="warning" />
       </motion.div>
 
+      {market === "uk" ? (
+        <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold">Landlord desk</h2>
+            <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
+              Repair reports, the rent book, certificate dates, inspections, and a dispute pack for the lets you manage.
+            </p>
+          </div>
+          <Button asChild>
+            <Link href="/app/lettings">Open lettings</Link>
+          </Button>
+        </Card>
+      ) : null}
+
       <motion.div
         variants={staggerContainer}
         initial="hidden"
