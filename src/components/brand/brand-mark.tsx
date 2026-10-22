@@ -6,17 +6,12 @@ import type { BrandConfig } from "@/lib/brand/config";
 
 export function StreetMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 32 32" className={cn("shrink-0", className)} aria-hidden>
-      <rect width="32" height="32" rx="8" fill="#0c6e63" />
-      <path
-        d="M7 12.5h11a5 5 0 0 1 5 5V25"
-        fill="none"
-        stroke="#f4fbf8"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-      />
-      <circle cx="18" cy="12.5" r="2.15" fill="#f4fbf8" />
-    </svg>
+    <img
+      src="/brand/mark.svg"
+      alt=""
+      aria-hidden
+      className={cn("h-[1.2em] w-[1.2em] shrink-0", className)}
+    />
   );
 }
 

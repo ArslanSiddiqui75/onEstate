@@ -1,5 +1,75 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#0c6e63"/>
-  <path d="M7 12.5h11a5 5 0 0 1 5 5V25" stroke="#f4fbf8" stroke-width="3.2" stroke-linecap="round"/>
-  <circle cx="18" cy="12.5" r="2.15" fill="#f4fbf8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="tile" x1="28" y1="0" x2="230" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#19a396"/>
+      <stop offset="0.5" stop-color="#0c6e63"/>
+      <stop offset="1" stop-color="#084840"/>
+    </linearGradient>
+    <linearGradient id="roof" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf8"/>
+      <stop offset="1" stop-color="#e6eeea"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#tile)"/>
+
+  <!-- left house -->
+  <path d="M22 112h68l-34-40z" fill="url(#roof)"/>
+  <rect x="40" y="64" width="11" height="20" rx="2" fill="#f7f3ea"/>
+  <rect x="42.5" y="60" width="6" height="7" rx="1" fill="#d7e2dc"/>
+  <rect x="30" y="108" width="52" height="70" fill="#f7f3ea"/>
+  <rect x="72" y="108" width="8" height="70" fill="#e1eae5"/>
+  <g fill="#1f5c56">
+    <rect x="40" y="120" width="7.5" height="7.5" rx="1"/>
+    <rect x="51" y="120" width="7.5" height="7.5" rx="1"/>
+    <rect x="40" y="131" width="7.5" height="7.5" rx="1"/>
+    <rect x="51" y="131" width="7.5" height="7.5" rx="1"/>
+  </g>
+  <rect x="64" y="146" width="13" height="32" rx="1.5" fill="#184e48"/>
+  <circle cx="73.5" cy="163" r="1.3" fill="#f7f3ea"/>
+
+  <!-- right house -->
+  <path d="M166 112h68l-34-40z" fill="url(#roof)"/>
+  <rect x="204" y="64" width="11" height="20" rx="2" fill="#f7f3ea"/>
+  <rect x="206.5" y="60" width="6" height="7" rx="1" fill="#d7e2dc"/>
+  <rect x="174" y="108" width="52" height="70" fill="#f7f3ea"/>
+  <rect x="216" y="108" width="8" height="70" fill="#e1eae5"/>
+  <g fill="#1f5c56">
+    <rect x="184" y="120" width="7.5" height="7.5" rx="1"/>
+    <rect x="195" y="120" width="7.5" height="7.5" rx="1"/>
+    <rect x="184" y="131" width="7.5" height="7.5" rx="1"/>
+    <rect x="195" y="131" width="7.5" height="7.5" rx="1"/>
+  </g>
+  <rect x="208" y="146" width="13" height="32" rx="1.5" fill="#184e48"/>
+  <circle cx="217.5" cy="163" r="1.3" fill="#f7f3ea"/>
+
+  <!-- middle house -->
+  <rect x="98" y="74" width="11" height="26" rx="2" fill="#f7f3ea"/>
+  <rect x="100.5" y="69" width="6" height="8" rx="1" fill="#d7e2dc"/>
+  <path d="M86 104h84l-42-48z" fill="url(#roof)"/>
+  <rect x="96" y="100" width="64" height="80" fill="#f7f3ea"/>
+  <rect x="148" y="100" width="10" height="80" fill="#e1eae5"/>
+  <g fill="#1f5c56">
+    <rect x="108" y="112" width="8" height="8" rx="1"/>
+    <rect x="120" y="112" width="8" height="8" rx="1"/>
+    <rect x="108" y="124" width="8" height="8" rx="1"/>
+    <rect x="120" y="124" width="8" height="8" rx="1"/>
+    <rect x="136" y="112" width="8" height="8" rx="1"/>
+    <rect x="148" y="112" width="8" height="8" rx="1"/>
+    <rect x="136" y="124" width="8" height="8" rx="1"/>
+    <rect x="148" y="124" width="8" height="8" rx="1"/>
+  </g>
+  <rect x="118" y="146" width="18" height="34" rx="2" fill="#184e48"/>
+  <circle cx="131.5" cy="164" r="1.5" fill="#f7f3ea"/>
+  <rect x="96" y="174" width="64" height="6" fill="#d5e0da"/>
+  <rect x="30" y="172" width="52" height="6" fill="#d5e0da"/>
+  <rect x="174" y="172" width="52" height="6" fill="#d5e0da"/>
+
+  <!-- pin, clear of the roof -->
+  <path d="M128 6c-10 0-18 7.8-18 17.6C110 36 128 54 128 54s18-18 18-30.4C146 13.8 138 6 128 6z" fill="#f7f3ea"/>
+  <circle cx="128" cy="23.4" r="6.4" fill="#0c6e63"/>
+
+  <!-- street in front of the terrace -->
+  <path d="M0 176c34-16 60-20 90-10 30 10 42 16 72 12 34-4 60 8 94 4v74H0z" fill="#f4efe4"/>
+  <path d="M0 176c34-16 60-20 90-10 30 10 42 16 72 12 34-4 60 8 94 4" fill="none" stroke="#d5ddd4" stroke-width="3"/>
+  <path d="M16 198c36-14 60-16 88-6 32 12 54 14 90 2" fill="none" stroke="#1a6b62" stroke-width="3.4" stroke-linecap="round" stroke-dasharray="1.6 12"/>
 </svg>
