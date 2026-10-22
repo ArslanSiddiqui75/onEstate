@@ -79,7 +79,7 @@ export interface TenantRecord {
   id: string;
   name: string;
   market: Market;
-  brand: "certified-uk" | "certified-us";
+  brand: "onestreet-uk" | "onestreet-us";
   lifecycleStatus: TenantLifecycleStatus;
   ownerName: string;
   ownerEmail: string;

@@ -1,6 +1,6 @@
 # Run locally
 
-App root: repo folder `0nEstate/` (contains `package.json`).
+App root: the folder that contains `package.json`.
 
 ```bash
 npm install

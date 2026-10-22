@@ -77,7 +77,7 @@ export default function PublicSignPage() {
     <main className="min-h-screen bg-[var(--background)] px-4 py-16 text-[var(--foreground)]">
       <div className="mx-auto max-w-lg rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-8 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
-          0nEstate e-sign
+          0neStreet e-sign
         </p>
         <h1 className="mt-2 font-display text-3xl">Review &amp; sign</h1>
         {error ? (

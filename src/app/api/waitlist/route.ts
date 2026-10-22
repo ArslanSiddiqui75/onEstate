@@ -7,7 +7,7 @@ const schema = z.object({
   email: z.string().email(),
   brokerage: z.string().max(200).optional().nullable(),
   market: z.enum(["uk", "us"]),
-  brand: z.enum(["certified-uk", "certified-us"]).optional(),
+  brand: z.enum(["onestreet-uk", "onestreet-us", "certified-uk", "certified-us"]).optional(),
 });
 
 const demoRequests: z.infer<typeof schema>[] = [];

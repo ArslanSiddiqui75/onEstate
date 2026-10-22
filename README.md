@@ -6,7 +6,7 @@ One platform, two setups. **0nestreet.co.uk** is the UK book (pounds, viewings, 
 
 ## What Is This App?
 
-**CertifiedUK** (UK market) and **CertifiedUS** (US market) are go-to-market brands for a single SaaS platform that unifies every operational tool a real estate agency needs into one product, one login, one data model. Instead of stitching together separate CRM, listing, compliance, website, social, and billing tools — this platform provides all six as tightly integrated modules.
+**0neStreet** is the product name in both regions. The UK setup (0nestreet.co.uk) and the US setup (0nestreet.com) are one platform, one login, and one data model. Instead of stitching together separate CRM, listing, compliance, website, social, and billing tools — this platform provides all six as tightly integrated modules.
 
 The app ships as a Next.js 16 App Router application with three main surfaces:
 
@@ -34,7 +34,7 @@ Real estate agencies today face four core pain points:
 3. **Dated UI** — Clunky interfaces slow adoption among agents and ISAs who expect consumer-grade software.
 4. **Flat access control** — One-size-fits-all permissions ignore how owners, brokers, leads, and agents actually delegate work.
 
-CertifiedUK/US addresses all four by providing a modern, role-aware, all-in-one platform with proper RBAC and market-specific configuration.
+0neStreet addresses all four by providing a modern, role-aware, all-in-one platform with proper RBAC and market-specific configuration.
 
 ---
 
@@ -125,7 +125,7 @@ This matrix is enforced both in the frontend (UI gating) and in the database via
 
 The platform supports two markets via a single codebase, toggled by `NEXT_PUBLIC_BRAND`:
 
-| Aspect | CertifiedUK | CertifiedUS |
+| Aspect | 0neStreet UK | 0neStreet US |
 |---|---|---|
 | **Portals** | Rightmove, Zoopla, OnTheMarket | MLS boards |
 | **Currency** | GBP with UK VAT handling | USD with US sales tax |

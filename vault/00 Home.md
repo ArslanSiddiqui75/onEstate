@@ -1,6 +1,6 @@
 # 00 Home
 
-Map of the ON Estate / 0nEstate documentation vault.
+Map of the 0neStreet documentation vault.
 
 ## Agents vs humans
 

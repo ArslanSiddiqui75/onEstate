@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Mail, CreditCard, Users2, Globe2 } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
+import { getBrandByMarket } from "@/lib/brand/config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -137,7 +138,7 @@ export default function AdminOrganizationDetailPage() {
             <Avatar name={tenant.name} size="lg" />
             <div>
               <p className="text-sm text-[var(--muted)]">
-                {tenant.id} · {tenant.brand} · {tenant.market.toUpperCase()} · source{" "}
+                {tenant.id} · {getBrandByMarket(tenant.market).name} · {tenant.market.toUpperCase()} · source{" "}
                 {tenant.source}
               </p>
             </div>

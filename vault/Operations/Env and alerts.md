@@ -6,7 +6,7 @@
 
 | Group | Purpose |
 |---|---|
-| `NEXT_PUBLIC_BRAND` | `certified-uk` \| `certified-us` |
+| `NEXT_PUBLIC_BRAND` | `onestreet-uk` \| `onestreet-us` |
 | Supabase | Auth + Postgres + RLS |
 | Stripe | Checkout, portal, webhooks, invoices |
 | Twilio + `MESSAGING_MODE` | SMS |

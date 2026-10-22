@@ -1,5 +1,5 @@
 import { PLANS, PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
-import { getBrandByMarket } from "@/lib/brand/config";
+import { getBrandByMarket, resolveBrandId } from "@/lib/brand/config";
 import type { Market, PlanId, Role } from "@/types";
 import type {
   PlatformAuditEvent,
@@ -76,7 +76,12 @@ export function loadPlatformRegistry(): PlatformRegistry {
       localStorage.setItem(REGISTRY_KEY, JSON.stringify(empty));
       return empty;
     }
-    return JSON.parse(raw) as PlatformRegistry;
+    const parsed = JSON.parse(raw) as PlatformRegistry;
+    parsed.tenants = parsed.tenants.map((tenant) => ({
+      ...tenant,
+      brand: resolveBrandId(tenant.brand),
+    }));
+    return parsed;
   } catch {
     return { version: 1, tenants: [], audit: [], updatedAt: nowIso() };
   }

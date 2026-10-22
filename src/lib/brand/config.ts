@@ -1,6 +1,6 @@
 import type { Market } from "@/types";
 
-export type BrandId = "certified-uk" | "certified-us";
+export type BrandId = "onestreet-uk" | "onestreet-us";
 
 export interface BrandConfig {
   id: BrandId;
@@ -23,8 +23,8 @@ export interface BrandConfig {
 }
 
 export const BRANDS: Record<BrandId, BrandConfig> = {
-  "certified-uk": {
-    id: "certified-uk",
+  "onestreet-uk": {
+    id: "onestreet-uk",
     name: "0neStreet",
     suffix: "Street",
     regionShort: "UK",
@@ -40,8 +40,8 @@ export const BRANDS: Record<BrandId, BrandConfig> = {
     currency: "GBP",
     waitlistMarketFixed: "uk",
   },
-  "certified-us": {
-    id: "certified-us",
+  "onestreet-us": {
+    id: "onestreet-us",
     name: "0neStreet",
     suffix: "Street",
     regionShort: "US",
@@ -63,17 +63,23 @@ export const BRANDS: Record<BrandId, BrandConfig> = {
  * Active go-to-market brand for this deployment.
  * Market rules live in backend/config — not a user-facing switcher.
  *
- * Set NEXT_PUBLIC_BRAND=certified-uk | certified-us
- * (aliases: uk → certified-uk, us → certified-us)
+ * Set NEXT_PUBLIC_BRAND=onestreet-uk | onestreet-us
+ * (aliases: uk, us, and the older certified-uk / certified-us values)
  */
 export function resolveBrandId(
   raw = process.env.NEXT_PUBLIC_BRAND ?? process.env.NEXT_PUBLIC_MARKET,
 ): BrandId {
-  const value = (raw || "certified-uk").toLowerCase().trim();
-  if (value === "certified-us" || value === "us" || value === "usa") {
-    return "certified-us";
+  const value = (raw || "onestreet-uk").toLowerCase().trim();
+  if (
+    value === "onestreet-us" ||
+    value === "certified-us" ||
+    value === "us" ||
+    value === "usa" ||
+    value.endsWith("-us")
+  ) {
+    return "onestreet-us";
   }
-  return "certified-uk";
+  return "onestreet-uk";
 }
 
 export function getActiveBrand(): BrandConfig {
@@ -81,5 +87,5 @@ export function getActiveBrand(): BrandConfig {
 }
 
 export function getBrandByMarket(market: Market): BrandConfig {
-  return market === "us" ? BRANDS["certified-us"] : BRANDS["certified-uk"];
+  return market === "us" ? BRANDS["onestreet-us"] : BRANDS["onestreet-uk"];
 }

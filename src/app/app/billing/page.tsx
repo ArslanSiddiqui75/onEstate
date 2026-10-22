@@ -49,7 +49,7 @@ function formatDate(value?: string) {
 }
 
 export default function AppBillingPage() {
-  const { user, org, setPlan, market, persistence, getAuthToken, refresh } = useAppSession();
+  const { user, org, brand, setPlan, market, persistence, getAuthToken, refresh } = useAppSession();
   const [message, setMessage] = useState("");
   const [tone, setTone] = useState<"neutral" | "danger">("neutral");
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
@@ -479,12 +479,12 @@ export default function AppBillingPage() {
                             variant="ghost"
                             className="gap-1 text-xs"
                             onClick={() => {
-                              const receiptText = `RECEIPT - 0nEstate\nInvoice Date: ${inv.date}\nOrganization: ${org.name}\nPlan: ${String(inv.plan).toUpperCase()}\nAmount Paid: ${amountLabel}\nStatus: ${inv.status.toUpperCase()}\nThank you for choosing 0nEstate!`;
+                              const receiptText = `RECEIPT - ${brand.name}\nInvoice Date: ${inv.date}\nOrganization: ${org.name}\nPlan: ${String(inv.plan).toUpperCase()}\nAmount Paid: ${amountLabel}\nStatus: ${inv.status.toUpperCase()}\nThank you for choosing ${brand.name}!`;
                               const blob = new Blob([receiptText], { type: "text/plain" });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement("a");
                               a.href = url;
-                              a.download = `invoice_${inv.date}_0nEstate.txt`;
+                              a.download = `invoice_${inv.date}_${brand.name}.txt`;
                               document.body.appendChild(a);
                               a.click();
                               document.body.removeChild(a);

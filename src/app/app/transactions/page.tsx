@@ -69,6 +69,7 @@ export default function AppTransactionsPage() {
     org,
     deals,
     listings,
+    brand,
     market,
     updateDealChecklistItem,
     addDealChecklistItem,
@@ -146,7 +147,7 @@ ${deal.checklist.map((item, idx) => `${idx + 1}. [${item.done ? "X" : " "}] ${it
 NOTES:
 ${deal.notes || "No notes attached."}
 
-Generated on ${new Date().toLocaleString()} by 0nEstate platform.
+Generated on ${new Date().toLocaleString()} by ${brand.name}.
 ========================================
 `.trim();
 

@@ -1,4 +1,4 @@
-# 0nEstate — Agent context
+# 0neStreet — Agent context
 
 > Primary handoff for coding agents. Prefer **code + `supabase/migrations/`** over Markdown when they conflict.
 > Humans: open `vault/` in Obsidian. See `vault/00 Home.md`.
@@ -9,7 +9,7 @@
 
 ## Why it exists
 
-Multi-tenant brokerage OS: CRM, listings, deals, website, social, billing in one login. Two brands share one codebase via `NEXT_PUBLIC_BRAND` (`certified-uk` | `certified-us`). Surfaces: `/` marketing, `/app` workspace, `/admin` platform console, `/site/[slug]` public tenant sites.
+Multi-tenant brokerage OS: CRM, listings, deals, website, social, billing in one login. Both regions use the name **0neStreet**. `NEXT_PUBLIC_BRAND` (`onestreet-uk` | `onestreet-us`) picks the UK or US setup. Surfaces: `/` marketing, `/UK` and `/US` previews, `/app` workspace, `/admin` platform console, `/site/[slug]` public tenant sites.
 
 Live: https://on-estate.vercel.app · Repo: `ArslanSiddiqui75/onEstate` (`main`) · Vercel project `on-estate` · Supabase `pruezuqdsofegzhbodnj`
 
@@ -45,7 +45,7 @@ Live: https://on-estate.vercel.app · Repo: `ArslanSiddiqui75/onEstate` (`main`)
 ## How to run
 
 ```bash
-cd 0nEstate   # app root
+cd <app-root>   # folder that contains package.json
 npm install
 cp .env.example .env.local   # fill required keys — never commit secrets
 npm run dev                  # http://localhost:3000

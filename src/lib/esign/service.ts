@@ -147,7 +147,7 @@ export async function requestEsign(
       await sendResendEmail({
         to: signerEmail,
         subject: `Signature requested: ${name}`,
-        body: `Hi ${signerName},\n\n${summary}\n\nSign here:\n${signUrl}\n\n— 0nEstate`,
+        body: `Hi ${signerName},\n\n${summary}\n\nSign here:\n${signUrl}\n\n— 0neStreet`,
       });
       emailed = true;
     } catch {

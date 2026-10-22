@@ -157,7 +157,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           from,
           to: email,
-          subject: `You're invited to ${org.name} on 0nEstate`,
+          subject: `You're invited to ${org.name} on 0neStreet`,
           text: `Hi ${name},\n\nYou've been invited to join ${org.name} as ${role.replace("_", " ")}.\n\nCreate your account to accept:\n${signupUrl}\n\nUse this email address when signing up.`,
         }),
       });

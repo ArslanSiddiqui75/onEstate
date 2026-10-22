@@ -48,10 +48,10 @@ export function emailConfigError(): string | undefined {
   const from = emailFromAddress();
   const hasFrom = Boolean(from);
   if (hasKey && !hasFrom) {
-    return "EMAIL_FROM is missing. For tests use 0nEstate <onboarding@resend.dev> (your Resend account email only). To email leads, verify a domain at resend.com/domains and use that address.";
+    return "EMAIL_FROM is missing. For tests use 0neStreet <onboarding@resend.dev> (your Resend account email only). To email leads, verify a domain at resend.com/domains and use that address.";
   }
   if (hasFrom && fromLooksUnverified(from)) {
-    return "EMAIL_FROM cannot use example.com. Use 0nEstate <onboarding@resend.dev> for tests, or a sender on a domain you verified at resend.com/domains.";
+    return "EMAIL_FROM cannot use example.com. Use 0neStreet <onboarding@resend.dev> for tests, or a sender on a domain you verified at resend.com/domains.";
   }
   if (setting === "resend" && !hasKey) {
     return "RESEND_API_KEY is not set.";
