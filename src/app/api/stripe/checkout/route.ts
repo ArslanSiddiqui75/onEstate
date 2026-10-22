@@ -4,6 +4,7 @@ import { getStripe, getStripePriceId, isStripeConfigured } from "@/lib/stripe/co
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
+import { sameOriginUrl } from "@/lib/http/same-origin";
 
 const schema = z.object({
   plan: z.enum(["solo", "team", "enterprise"]),
@@ -22,8 +23,16 @@ export async function POST(request: Request) {
   }
 
   const origin = new URL(request.url).origin;
-  const successUrl = parsed.data.successUrl || `${origin}/app/billing?checkout=success`;
-  const cancelUrl = parsed.data.cancelUrl || `${origin}/app/billing?checkout=cancel`;
+  const successUrl = sameOriginUrl(
+    parsed.data.successUrl,
+    `${origin}/app/billing?checkout=success`,
+    origin,
+  );
+  const cancelUrl = sameOriginUrl(
+    parsed.data.cancelUrl,
+    `${origin}/app/billing?checkout=cancel`,
+    origin,
+  );
 
   // Once Supabase is configured this is a real hosted deployment: never trust
   // a client-supplied orgId/email for something that moves money — resolve

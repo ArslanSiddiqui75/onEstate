@@ -567,16 +567,12 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           const { error } = await supabase.auth.signInWithPassword({ email, password });
           if (error) throw error;
           // Hydrate workspace after password login
-          console.log("[signIn] signInWithPassword succeeded, hydrating...");
           const hydrated = await hydrateSupabaseSession();
-          console.log("[signIn] hydrated result:", hydrated);
           if (hydrated) {
             const repo = createSupabaseRepository(hydrated);
             repoRef.current = repo;
             await applySnapshot(repo);
-            console.log("[signIn] applySnapshot done, user should now be set");
           } else {
-            console.error("[signIn] hydrateSupabaseSession returned null — profile row missing?");
             throw new Error("Login succeeded but your workspace profile was not found. Please contact support.");
           }
         } else {

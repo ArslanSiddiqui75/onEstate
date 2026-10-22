@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fileServerApproval, fileServerBooking, fileServerOffer, fileServerPortal, readAgencyInbox } from "@/lib/agency/server-inbox";
+import { demoInboxJson } from "@/lib/server/demo-inbox";
 import type { AppointmentKind } from "@/lib/agency/types";
 
 function redirectTo(request: Request, path: string, query: Record<string, string>) {
@@ -11,7 +12,7 @@ function redirectTo(request: Request, path: string, query: Record<string, string
 }
 
 export async function GET() {
-  return NextResponse.json(readAgencyInbox());
+  return demoInboxJson(readAgencyInbox());
 }
 
 export async function POST(request: Request) {

@@ -4,6 +4,7 @@ import { getStripe, isStripeConfigured } from "@/lib/stripe/config";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
+import { sameOriginUrl } from "@/lib/http/same-origin";
 
 const schema = z.object({
   customerId: z.string().min(1).optional(),
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
   }
 
   const origin = new URL(request.url).origin;
-  const returnUrl = parsed.data.returnUrl || `${origin}/app/billing`;
+  const returnUrl = sameOriginUrl(parsed.data.returnUrl, `${origin}/app/billing`, origin);
 
   // Never trust a client-supplied Stripe customer id — that would let anyone
   // open someone else's billing portal. Resolve the caller's own org instead.

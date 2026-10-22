@@ -67,8 +67,6 @@ export async function POST(request: Request) {
     }
 
     demoRequests.push(parsed.data);
-    console.info("[demo-request]", parsed.data);
-
     if (formPost) return formRedirect(request, "received");
     return NextResponse.json({
       message: "Demo request received. Our team will reach out shortly.",

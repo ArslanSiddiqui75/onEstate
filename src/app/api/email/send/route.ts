@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendOutboundEmail } from "@/lib/email/service";
 import { sendResendEmail } from "@/lib/email/client";
+import { shouldUseResendOutbound } from "@/lib/email/capabilities";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
@@ -31,6 +32,13 @@ export async function POST(request: Request) {
   if (profile) {
     const denied = forbiddenIfNoModule(profile, "crm", "edit");
     if (denied) return denied;
+  }
+
+  if (process.env.NODE_ENV === "production" && !profile) {
+    return NextResponse.json({ error: "Sign in to send email" }, { status: 401 });
+  }
+  if (shouldUseResendOutbound() && !profile) {
+    return NextResponse.json({ error: "Sign in to send email" }, { status: 401 });
   }
 
   const orgId = profile?.orgId;
