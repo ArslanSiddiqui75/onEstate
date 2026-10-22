@@ -55,9 +55,15 @@ export function proxy(request: NextRequest) {
     platformHosts().includes(host) || host.endsWith(".vercel.app");
 
   let response: NextResponse;
-  if (!isPlatform && request.nextUrl.pathname === "/") {
+  const pathname = request.nextUrl.pathname;
+  const previewPath = pathname === "/uk" ? "/UK" : pathname === "/us" ? "/US" : null;
+  if (!isPlatform && pathname === "/") {
     const url = request.nextUrl.clone();
     url.pathname = `/site/${host}`;
+    response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+  } else if (previewPath) {
+    const url = request.nextUrl.clone();
+    url.pathname = previewPath;
     response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
   } else {
     response = NextResponse.next({ request: { headers: requestHeaders } });

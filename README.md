@@ -13,8 +13,8 @@ The app ships as a Next.js 16 App Router application with three main surfaces:
 | Route | What It Does |
 |---|---|
 | `/` | **Marketing site** — UK on 0nestreet.co.uk, US on 0nestreet.com |
-| `/uk` | **UK homepage** — pounds, viewings, lettings, four client links |
-| `/us` | **US homepage** — dollars, showings, MLS-ready stock |
+| `/UK` | **UK homepage** — pounds, viewings, lettings, four client links |
+| `/US` | **US homepage** — dollars, showings, MLS-ready stock |
 | `/app` | **Live product workspace** — multi-tenant operational hub where agents, brokers, and teams work |
 | `/app/lettings` | **Landlord desk** — repairs, rent, compliance, inspections, Right to Rent, keys, and contractors |
 | `/app/enquiries` | **Enquiry centre** — source, property interest, and next step, saved as CRM leads |

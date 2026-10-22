@@ -32,7 +32,7 @@ export function MarketingNav({ market, alternateHref }: { market: Market; altern
             : "bg-transparent",
         )}
       >
-        <Link href={market === "uk" ? "/uk" : "/us"} className="flex items-center gap-2">
+        <Link href={market === "uk" ? "/UK" : "/US"} className="flex items-center gap-2">
           <BrandMark
             className="text-lg text-[var(--foreground)]"
             accentClassName="text-[var(--accent)]"

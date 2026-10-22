@@ -9,13 +9,13 @@ describe("region hosts", () => {
   });
 
   it("maps the local homepages", () => {
-    expect(marketFromPath("/uk")).toBe("uk");
-    expect(marketFromPath("/us/pricing")).toBe("us");
+    expect(marketFromPath("/UK")).toBe("uk");
+    expect(marketFromPath("/US/pricing")).toBe("us");
     expect(marketFromPath("/")).toBeNull();
   });
 
   it("sends a local visitor to the other homepage path", () => {
-    expect(alternateRegionHref("uk", "127.0.0.1:43123")).toBe("/us");
+    expect(alternateRegionHref("uk", "127.0.0.1:43123")).toBe("/US");
     expect(alternateRegionHref("us", "0nestreet.com")).toBe("https://0nestreet.co.uk");
   });
 });

@@ -15,9 +15,14 @@ export function marketFromHost(host: string): Market | null {
 }
 
 export function marketFromPath(pathname: string): Market | null {
-  if (pathname === "/uk" || pathname.startsWith("/uk/")) return "uk";
-  if (pathname === "/us" || pathname.startsWith("/us/")) return "us";
+  const path = pathname.toLowerCase();
+  if (path === "/uk" || path.startsWith("/uk/")) return "uk";
+  if (path === "/us" || path.startsWith("/us/")) return "us";
   return null;
+}
+
+export function regionPath(market: Market) {
+  return market === "uk" ? "/UK" : "/US";
 }
 
 export function defaultMarket(): Market {
@@ -32,5 +37,5 @@ export function alternateRegionHref(market: Market, host: string) {
   if (name === UK_DOMAIN || name === US_DOMAIN) {
     return market === "uk" ? `https://${US_DOMAIN}` : `https://${UK_DOMAIN}`;
   }
-  return market === "uk" ? "/us" : "/uk";
+  return regionPath(market === "uk" ? "us" : "uk");
 }
