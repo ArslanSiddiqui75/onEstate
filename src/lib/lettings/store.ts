@@ -1,4 +1,4 @@
-import { addRepair, applyInbox, createRepair, emptyInbox, seedBook, tryConfirmRepair, trySignInspection } from "@/lib/lettings/book";
+import { addRepair, applyInbox, createRepair, emptyInbox, seedBook, tryConfirmRepair, trySignInspection, withLettingsDefaults } from "@/lib/lettings/book";
 import type { Inspection, LettingsBook, LettingsInbox, Property, Repair, RepairChannel } from "@/lib/lettings/types";
 
 const PREFIX = "certified_lettings_v1:";
@@ -21,7 +21,11 @@ function parseBook(raw: string | null): LettingsBook | null {
     if (value?.version !== 1 || !Array.isArray(value.properties) || !Array.isArray(value.repairs)) {
       return null;
     }
-    return value;
+    return withLettingsDefaults({
+      ...value,
+      contractors: Array.isArray(value.contractors) ? value.contractors : [],
+      keys: Array.isArray(value.keys) ? value.keys : [],
+    });
   } catch {
     return null;
   }

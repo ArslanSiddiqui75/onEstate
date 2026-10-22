@@ -40,15 +40,28 @@ import {
 } from "@/components/ui/select";
 import { formatDate, formatMoney } from "@/lib/utils";
 import { fadeUp, staggerContainer } from "@/lib/motion";
-import type { TransactionDeal, TransactionEsignDocument } from "@/types";
+import type { Market, TransactionDeal, TransactionEsignDocument } from "@/types";
+import { useAgencyBook } from "@/components/agency/use-agency-book";
+import {
+  addFee,
+  addOffer,
+  addReferral,
+  createFee,
+  createOffer,
+  createReferral,
+  draftSaleSummary,
+  setFeeStatus,
+  setOfferStatus,
+} from "@/lib/agency/book";
+import type { AgencyBook } from "@/lib/agency/types";
 
-const STAGES = [
-  "Instruction",
-  "Under offer",
-  "Exchange prep",
-  "Under contract",
-  "Closing",
-];
+function progressionStages(market: Market, current: string) {
+  const base =
+    market === "us"
+      ? ["Listed", "Showing", "Offer", "Progressing", "Closed"]
+      : ["Listed", "Viewing", "Offer", "Progressing", "Exchanged"];
+  return base.includes(current) ? base : [current, ...base];
+}
 
 export default function AppTransactionsPage() {
   const {
@@ -66,6 +79,7 @@ export default function AppTransactionsPage() {
     listEsignDocuments,
     voidEsignDocument,
   } = useAppSession();
+  const { book: agency, commit: commitAgency } = useAgencyBook(org?.id ?? "workspace");
   const [showNewDealModal, setShowNewDealModal] = useState(false);
   const [newItemLabel, setNewItemLabel] = useState<Record<string, string>>({});
   const [esignDocs, setEsignDocs] = useState<Record<string, TransactionEsignDocument[]>>(
@@ -87,9 +101,12 @@ export default function AppTransactionsPage() {
   );
 
   useEffect(() => {
-    for (const deal of deals.filter((d) => d.market === market)) {
-      void refreshDocs(deal.id);
-    }
+    const id = window.setTimeout(() => {
+      for (const deal of deals.filter((d) => d.market === market)) {
+        void refreshDocs(deal.id);
+      }
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [deals, market, refreshDocs]);
 
   if (!user || !org) return null;
@@ -224,6 +241,32 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
         />
       </motion.div>
 
+      {agency.offers.length ? (
+        <Card>
+          <h2 className="font-semibold">Offers</h2>
+          <ul className="mt-3 divide-y divide-[var(--border)] text-sm">
+            {agency.offers.map((offer) => (
+              <li key={offer.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                <span>
+                  {offer.buyerName} · {formatMoney(offer.amount, offer.currency === "USD" ? "us" : "uk")} · {offer.address}
+                  <span className="block text-xs text-[var(--muted)]">{offer.status}{offer.notes ? ` · ${offer.notes}` : ""}</span>
+                </span>
+                {canEdit && offer.status === "submitted" ? (
+                  <span className="flex gap-2">
+                    <Button size="sm" onClick={() => commitAgency(setOfferStatus(agency, offer.id, "accepted"))}>
+                      Accept
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => commitAgency(setOfferStatus(agency, offer.id, "declined"))}>
+                      Decline
+                    </Button>
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       <motion.div variants={staggerContainer} initial="hidden" animate="show" className="space-y-4">
         {marketDeals.map((deal) => {
           const form = esignForm[deal.id] || {
@@ -304,6 +347,32 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
                     </div>
                   </div>
                 </div>
+
+                <ol className="mt-4 flex flex-wrap gap-2">
+                  {progressionStages(market, deal.stage).map((stage) => {
+                    const current = stage === deal.stage;
+                    return (
+                      <li key={stage}>
+                        <button
+                          type="button"
+                          disabled={!canEdit}
+                          onClick={() => {
+                            void updateDealMeta(deal.id, { stage }).then(() =>
+                              toast.info(`Stage updated to "${stage}"`),
+                            );
+                          }}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            current
+                              ? "bg-[var(--accent)] text-[var(--accent-foreground)]"
+                              : "border border-[var(--border)] text-[var(--muted)]"
+                          }`}
+                        >
+                          {stage}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Badge tone="accent">{humanLabel(deal.stage)}</Badge>
@@ -595,7 +664,7 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {STAGES.map((stage) => (
+                            {progressionStages(market, deal.stage).map((stage) => (
                               <SelectItem key={stage} value={stage}>
                                 {stage}
                               </SelectItem>
@@ -640,6 +709,14 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
                         />
                       </div>
                     </div>
+                    <DealMoney
+                      deal={deal}
+                      agency={agency}
+                      canEdit={canEdit}
+                      commitAgency={commitAgency}
+                      onSummary={(notes) => updateDealMeta(deal.id, { notes })}
+                      onStage={(stage) => updateDealMeta(deal.id, { stage })}
+                    />
                   </TabsContent>
                 </Tabs>
               </Card>
@@ -665,6 +742,187 @@ Generated on ${new Date().toLocaleString()} by 0nEstate platform.
           }}
         />
       ) : null}
+    </div>
+  );
+}
+
+function DealMoney({
+  deal,
+  agency,
+  canEdit,
+  commitAgency,
+  onSummary,
+  onStage,
+}: {
+  deal: TransactionDeal;
+  agency: AgencyBook;
+  canEdit: boolean;
+  commitAgency: (next: AgencyBook) => void;
+  onSummary: (notes: string) => Promise<void>;
+  onStage: (stage: string) => Promise<void>;
+}) {
+  const fees = agency.fees.filter((item) => item.dealId === deal.id || item.address === deal.listingTitle);
+  const referrals = agency.referrals.filter((item) => item.dealId === deal.id || item.address === deal.listingTitle);
+  const offers = agency.offers.filter((item) => item.listingId === deal.listingId || item.address === deal.listingTitle);
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            const notes = draftSaleSummary({
+              listingTitle: deal.listingTitle,
+              stage: deal.stage,
+              parties: deal.parties,
+              checklist: deal.checklist,
+              notes: deal.notes,
+              value: deal.value,
+              currency: deal.currency,
+            });
+            void onSummary(notes).then(() => toast.success("Sale summary drafted into notes"));
+          }}
+        >
+          Draft sale summary
+        </Button>
+      </div>
+      <div>
+        <p className="text-sm font-semibold">Offers on this deal</p>
+        <ul className="mt-2 space-y-1 text-sm">
+          {offers.map((offer) => (
+            <li key={offer.id}>
+              {offer.buyerName} · {formatMoney(offer.amount, deal.market)} · {offer.status}
+            </li>
+          ))}
+          {offers.length === 0 ? <li className="text-[var(--muted)]">No offer recorded yet.</li> : null}
+        </ul>
+        {canEdit ? (
+          <form
+            className="mt-2 grid gap-2 sm:grid-cols-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const data = new FormData(event.currentTarget);
+              try {
+                const offer = createOffer({
+                  address: deal.listingTitle,
+                  buyerName: String(data.get("buyerName") || ""),
+                  amount: Number(data.get("amount")),
+                  currency: deal.currency,
+                  notes: String(data.get("notes") || ""),
+                  listingId: deal.listingId,
+                });
+                commitAgency(addOffer(agency, offer));
+                void onStage("Offer");
+                event.currentTarget.reset();
+                toast.success("Offer recorded");
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Could not record that offer.");
+              }
+            }}
+          >
+            <Input name="buyerName" placeholder="Buyer" aria-label="Buyer" required />
+            <Input name="amount" type="number" min={1} placeholder="Amount" aria-label="Offer amount" required />
+            <Input name="notes" placeholder="Conditions" aria-label="Conditions" />
+            <Button type="submit" size="sm" className="sm:col-span-3">
+              Record offer
+            </Button>
+          </form>
+        ) : null}
+      </div>
+      <div>
+        <p className="text-sm font-semibold">Fee request</p>
+        <p className="text-xs text-[var(--muted)]">Stored on this deal. Mark it received when the money arrives.</p>
+        <ul className="mt-2 space-y-1 text-sm">
+          {fees.map((fee) => (
+            <li key={fee.id} className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                {fee.label} · {formatMoney(fee.amount, deal.market)} · {fee.status}
+              </span>
+              {canEdit && fee.status === "requested" ? (
+                <Button size="sm" variant="secondary" onClick={() => commitAgency(setFeeStatus(agency, fee.id, "received"))}>
+                  Mark received
+                </Button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+        {canEdit ? (
+          <form
+            className="mt-2 grid gap-2 sm:grid-cols-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const data = new FormData(event.currentTarget);
+              try {
+                commitAgency(
+                  addFee(
+                    agency,
+                    createFee({
+                      dealId: deal.id,
+                      address: deal.listingTitle,
+                      label: String(data.get("label") || ""),
+                      amount: Number(data.get("amount")),
+                      currency: deal.currency,
+                    }),
+                  ),
+                );
+                event.currentTarget.reset();
+                toast.success("Fee requested");
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Could not request that fee.");
+              }
+            }}
+          >
+            <Input name="label" placeholder="Sales fee" aria-label="Fee label" required />
+            <Input name="amount" type="number" min={1} placeholder="Amount" aria-label="Fee amount" required />
+            <Button type="submit" size="sm">
+              Request fee
+            </Button>
+          </form>
+        ) : null}
+      </div>
+      <div>
+        <p className="text-sm font-semibold">Referral</p>
+        <ul className="mt-2 space-y-1 text-sm">
+          {referrals.map((item) => (
+            <li key={item.id}>
+              {item.introducer} · {formatMoney(item.fee, deal.market)} · {item.status}
+            </li>
+          ))}
+        </ul>
+        {canEdit ? (
+          <form
+            className="mt-2 grid gap-2 sm:grid-cols-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const data = new FormData(event.currentTarget);
+              try {
+                commitAgency(
+                  addReferral(
+                    agency,
+                    createReferral({
+                      dealId: deal.id,
+                      address: deal.listingTitle,
+                      introducer: String(data.get("introducer") || ""),
+                      fee: Number(data.get("fee")),
+                      currency: deal.currency,
+                    }),
+                  ),
+                );
+                event.currentTarget.reset();
+                toast.success("Referral noted");
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Could not save that referral.");
+              }
+            }}
+          >
+            <Input name="introducer" placeholder="Introducer" aria-label="Introducer" required />
+            <Input name="fee" type="number" min={0} placeholder="Fee" aria-label="Referral fee" required />
+            <Button type="submit" size="sm">
+              Add referral
+            </Button>
+          </form>
+        ) : null}
+      </div>
     </div>
   );
 }

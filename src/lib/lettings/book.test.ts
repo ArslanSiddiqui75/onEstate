@@ -3,6 +3,7 @@ import {
   acknowledgeRepair,
   addRepair,
   applyInbox,
+  bookTradesperson,
   buildDisputePack,
   createRepair,
   emptyInbox,
@@ -130,5 +131,24 @@ describe("lettings book", () => {
     expect(wales).toContain("RHW12");
     const scotland = buildDisputePack(book, "p_leith", NOW);
     expect(scotland).toContain("Rent Service Scotland");
+  });
+
+  it("blocks a booking when the contractor’s insurance has expired", () => {
+    const book = seedBook();
+    const jordan = book.properties.find((property) => property.hmo)?.rooms.find((room) => room.tenantName === "Jordan Hale");
+    expect(book.properties[0].rooms[0].rightToRent).toBe("clear");
+    expect(jordan?.rightToRent).toBe("pending");
+    expect(book.properties.find((property) => property.reportToken === "station-road")?.tenancyStage).toBe("marketing");
+    expect(book.keys.some((key) => key.propertyId === "p_oak")).toBe(true);
+    expect(() =>
+      bookTradesperson(book, "rep_gas", { name: "QuickFix Electrics", when: "2026-10-25T10:00" }, NOW.toISOString()),
+    ).toThrow(/insurance/);
+    const booked = bookTradesperson(
+      book,
+      "rep_gas",
+      { name: "M. Patel Plumbing", when: "2026-10-25T10:00" },
+      NOW.toISOString(),
+    );
+    expect(booked.repairs.find((item) => item.id === "rep_gas")?.tradesperson).toBe("M. Patel Plumbing");
   });
 });

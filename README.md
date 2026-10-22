@@ -14,7 +14,11 @@ The app ships as a Next.js 16 App Router application with three main surfaces:
 |---|---|
 | `/` | **Marketing site** — public landing page for the active brand (CertifiedUK or CertifiedUS) |
 | `/app` | **Live product workspace** — multi-tenant operational hub where agents, brokers, and teams work |
-| `/app/lettings` | **Landlord desk** — repair intake, rent book, compliance calendar, inspections, and dispute packs |
+| `/app/lettings` | **Landlord desk** — repairs, rent, compliance, inspections, Right to Rent, keys, and contractors |
+| `/app/enquiries` | **Enquiry centre** — source, property interest, and next step, saved as CRM leads |
+| `/app/diary` | **Diary** — viewings and valuations, confirmed from public booking requests |
+| `/book/[token]` | **Public booking** — a client requests a viewing or valuation without an account |
+| `/portal/[token]` | **Client link** — vendor, buyer, landlord, or tenant, without an account |
 | `/report/[token]` | **Tenant repair report** — no login; link, QR, text, or WhatsApp wording |
 | `/admin` | **SaaS admin console** — platform-level management of tenants, subscriptions, users, and audit logs |
 

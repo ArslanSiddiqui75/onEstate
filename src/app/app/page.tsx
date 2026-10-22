@@ -15,10 +15,14 @@ import { ROLE_LABELS } from "@/lib/rbac/matrix";
 import { PLANS } from "@/lib/plans/catalog";
 import { getIntegrationStack } from "@/lib/integrations/registry";
 import { fadeUp, staggerContainer } from "@/lib/motion";
+import { useAgencyBook } from "@/components/agency/use-agency-book";
+import { PORTAL_ROLE_LABELS } from "@/lib/agency/types";
+import { formatWhen } from "@/lib/lettings/format";
 
 export default function AppDashboardPage() {
   const { user, org, leads, listings, deals, tasks, market, brand } =
     useAppSession();
+  const { book } = useAgencyBook(org?.id ?? "workspace");
   if (!user || !org) return null;
   const marketLeads = leads.filter((l) => l.market === market);
   const marketListings = listings.filter((l) => l.market === market);
@@ -31,6 +35,11 @@ export default function AppDashboardPage() {
     marketDeals.length === 0;
   const canAddLead = hasModuleAccess(user.role, org.plan, "crm", "edit");
   const canAddListing = hasModuleAccess(user.role, org.plan, "listings", "edit");
+  const today = new Date().toISOString().slice(0, 10);
+  const todaysDiary = book.appointments.filter(
+    (item) => item.at.slice(0, 10) === today && item.status !== "cancelled",
+  );
+  const openEnquiries = marketLeads.filter((lead) => lead.stage !== "won" && lead.stage !== "lost");
 
   return (
     <div className="space-y-6">
@@ -121,6 +130,63 @@ export default function AppDashboardPage() {
           </Button>
         </Card>
       ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold">Today’s diary</h2>
+            <Link href="/app/diary" className="text-sm font-semibold text-[var(--accent)]">
+              Diary
+            </Link>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm">
+            {todaysDiary.length === 0 ? <li className="text-[var(--muted)]">Nothing booked today.</li> : null}
+            {todaysDiary.map((item) => (
+              <li key={item.id}>
+                {formatWhen(item.at)} · {item.clientName}
+                <span className="block text-xs text-[var(--muted)]">{item.address}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold">Open enquiries</h2>
+            <Link href="/app/enquiries" className="text-sm font-semibold text-[var(--accent)]">
+              {openEnquiries.length}
+            </Link>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm">
+            {openEnquiries.slice(0, 4).map((lead) => (
+              <li key={lead.id}>
+                {lead.name}
+                <span className="block text-xs text-[var(--muted)]">
+                  {lead.source} · {lead.nextAction || lead.stage}
+                </span>
+              </li>
+            ))}
+            {openEnquiries.length === 0 ? <li className="text-[var(--muted)]">The enquiry list is clear.</li> : null}
+          </ul>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold">Client links</h2>
+            <Link href="/app/diary" className="text-sm font-semibold text-[var(--accent)]">
+              Manage
+            </Link>
+          </div>
+          <ul className="mt-3 space-y-2 text-sm">
+            {book.portals.slice(0, 4).map((portal) => (
+              <li key={portal.token}>
+                <Link href={`/portal/${portal.token}`} className="font-medium hover:underline">
+                  {PORTAL_ROLE_LABELS[portal.role]} · {portal.name}
+                </Link>
+                <span className="block text-xs text-[var(--muted)]">{portal.address}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
 
       <motion.div
         variants={staggerContainer}

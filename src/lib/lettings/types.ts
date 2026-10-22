@@ -48,6 +48,10 @@ export type ComplianceStatus = "ok" | "due" | "overdue" | "proof_held";
 
 export type InspectionKind = "check_in" | "mid_term" | "check_out";
 
+export type RightToRent = "clear" | "pending" | "expired";
+
+export type TenancyStage = "marketing" | "let_agreed" | "move_in" | "active" | "move_out";
+
 export interface TenancyRoom {
   id: string;
   name: string;
@@ -58,6 +62,7 @@ export interface TenancyRoom {
   depositProtected: boolean;
   depositScheme?: string;
   paidAt?: string;
+  rightToRent?: RightToRent;
 }
 
 export interface Property {
@@ -68,7 +73,24 @@ export interface Property {
   jurisdiction: Jurisdiction;
   hmo: boolean;
   reportToken: string;
+  tenancyStage?: TenancyStage;
   rooms: TenancyRoom[];
+}
+
+export interface Contractor {
+  id: string;
+  name: string;
+  trade: string;
+  insuranceExpires: string;
+  phone?: string;
+}
+
+export interface KeyLog {
+  id: string;
+  propertyId: string;
+  label: string;
+  heldBy: string;
+  updatedAt: string;
 }
 
 export interface RepairEvent {
@@ -142,6 +164,8 @@ export interface LettingsBook {
   repairs: Repair[];
   compliance: ComplianceItem[];
   inspections: Inspection[];
+  contractors: Contractor[];
+  keys: KeyLog[];
 }
 
 export interface LettingsInbox {

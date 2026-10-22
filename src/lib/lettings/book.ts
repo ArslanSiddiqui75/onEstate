@@ -13,7 +13,9 @@ import type {
   RepairChannel,
   RepairStatus,
   RentStatus,
+  RightToRent,
   TenancyRoom,
+  TenancyStage,
 } from "@/lib/lettings/types";
 import {
   CHANNEL_LABELS,
@@ -46,6 +48,7 @@ function room(
   rentStatus: RentStatus,
   depositScheme: string,
   paidAt?: string,
+  rightToRent: RightToRent = "clear",
 ): TenancyRoom {
   return {
     id,
@@ -57,6 +60,7 @@ function room(
     depositProtected: true,
     depositScheme,
     paidAt,
+    rightToRent,
   };
 }
 
@@ -71,6 +75,7 @@ export function seedBook(): LettingsBook {
         postcode: "BS1 4DJ",
         jurisdiction: "england",
         hmo: false,
+        tenancyStage: "active",
         reportToken: "oak-road",
         rooms: [
           room("r_oak2", "Flat 2", "Priya Shah", 1250, 1420, "received", "TDS", "2026-10-02"),
@@ -83,6 +88,7 @@ export function seedBook(): LettingsBook {
         postcode: "BS1 5AH",
         jurisdiction: "england",
         hmo: false,
+        tenancyStage: "let_agreed",
         reportToken: "quay-street",
         rooms: [
           room("r_quay1", "Flat 1", "Lena Brooks", 1100, 1100, "received", "DPS", "2026-10-01"),
@@ -95,6 +101,7 @@ export function seedBook(): LettingsBook {
         postcode: "EH6 8SA",
         jurisdiction: "scotland",
         hmo: false,
+        tenancyStage: "move_in",
         reportToken: "leith-walk",
         rooms: [
           room(
@@ -116,6 +123,7 @@ export function seedBook(): LettingsBook {
         postcode: "CF10 1EP",
         jurisdiction: "wales",
         hmo: false,
+        tenancyStage: "marketing",
         reportToken: "station-road",
         rooms: [
           room("r_station3", "Flat 3", "Mei Chen", 1400, 1350, "received", "MyDeposits", "2026-10-02"),
@@ -128,12 +136,13 @@ export function seedBook(): LettingsBook {
         postcode: "BS8 1TH",
         jurisdiction: "england",
         hmo: true,
+        tenancyStage: "active",
         reportToken: "harbour-lane",
         rooms: [
           room("r_h1", "Room 1", "Samira Ali", 725, 740, "received", "TDS", "2026-10-01"),
           room("r_h2", "Room 2", "Owen Price", 680, 700, "received", "TDS", "2026-10-01"),
           room("r_h3", "Room 3", "Hannah Cole", 650, 690, "received", "TDS", "2026-10-04"),
-          room("r_h4", "Room 4", "Jordan Hale", 450, 620, "late", "TDS"),
+          room("r_h4", "Room 4", "Jordan Hale", 450, 620, "late", "TDS", undefined, "pending"),
           room("r_h5", "Room 5", "Chris Ward", 995, 1000, "received", "TDS", "2026-10-01"),
         ],
       },
@@ -448,6 +457,132 @@ export function seedBook(): LettingsBook {
         ],
       },
     ],
+    contractors: [
+      {
+        id: "con_patel",
+        name: "M. Patel Plumbing",
+        trade: "Plumbing",
+        insuranceExpires: "2027-06-01",
+        phone: "0117 496 0120",
+      },
+      {
+        id: "con_quick",
+        name: "QuickFix Electrics",
+        trade: "Electrical",
+        insuranceExpires: "2026-01-01",
+        phone: "0117 496 0188",
+      },
+    ],
+    keys: [
+      {
+        id: "key_oak",
+        propertyId: "p_oak",
+        label: "Front door, two keys",
+        heldBy: "Office",
+        updatedAt: "2026-10-02T09:00:00.000Z",
+      },
+      {
+        id: "key_harbour",
+        propertyId: "p_harbour",
+        label: "HMO entrance and Room 2",
+        heldBy: "M. Patel Plumbing",
+        updatedAt: "2026-10-18T15:40:00.000Z",
+      },
+    ],
+  };
+}
+
+export function insuranceExpired(contractor: { insuranceExpires: string }, at = new Date()) {
+  const expiry = new Date(`${contractor.insuranceExpires}T23:59:59.000Z`);
+  return expiry.getTime() < at.getTime();
+}
+
+export function withLettingsDefaults(book: LettingsBook): LettingsBook {
+  const seed = seedBook();
+  return {
+    ...book,
+    contractors: book.contractors?.length ? book.contractors : seed.contractors,
+    keys: book.keys?.length ? book.keys : seed.keys,
+    properties: book.properties.map((property) => {
+      const seeded = seed.properties.find((item) => item.id === property.id);
+      return {
+        ...property,
+        tenancyStage: property.tenancyStage ?? seeded?.tenancyStage ?? "active",
+        rooms: property.rooms.map((item) => {
+          const seededRoom = seeded?.rooms.find((room) => room.id === item.id);
+          return { ...item, rightToRent: item.rightToRent ?? seededRoom?.rightToRent ?? "pending" };
+        }),
+      };
+    }),
+  };
+}
+
+export function setRightToRent(book: LettingsBook, propertyId: string, roomId: string, rightToRent: RightToRent): LettingsBook {
+  return {
+    ...book,
+    properties: book.properties.map((property) =>
+      property.id !== propertyId
+        ? property
+        : { ...property, rooms: property.rooms.map((room) => (room.id === roomId ? { ...room, rightToRent } : room)) },
+    ),
+  };
+}
+
+export function setTenancyStage(book: LettingsBook, propertyId: string, tenancyStage: TenancyStage): LettingsBook {
+  return {
+    ...book,
+    properties: book.properties.map((property) => (property.id === propertyId ? { ...property, tenancyStage } : property)),
+  };
+}
+
+export function addContractor(
+  book: LettingsBook,
+  input: { name: string; trade: string; insuranceExpires: string; phone?: string },
+): LettingsBook {
+  const name = input.name.trim();
+  if (name.length < 2) throw new Error("Name the contractor.");
+  if (!input.insuranceExpires) throw new Error("Add the insurance expiry.");
+  return {
+    ...book,
+    contractors: [
+      {
+        id: newLettingsId("con"),
+        name,
+        trade: input.trade.trim() || "General",
+        insuranceExpires: input.insuranceExpires,
+        phone: input.phone?.trim() || undefined,
+      },
+      ...(book.contractors ?? []),
+    ],
+  };
+}
+
+export function addKey(book: LettingsBook, input: { propertyId: string; label: string; heldBy: string }): LettingsBook {
+  if (!input.label.trim()) throw new Error("Describe the keys.");
+  if (!input.heldBy.trim()) throw new Error("Say who holds them.");
+  return {
+    ...book,
+    keys: [
+      {
+        id: newLettingsId("key"),
+        propertyId: input.propertyId,
+        label: input.label.trim(),
+        heldBy: input.heldBy.trim(),
+        updatedAt: new Date().toISOString(),
+      },
+      ...(book.keys ?? []),
+    ],
+  };
+}
+
+export function moveKey(book: LettingsBook, id: string, heldBy: string): LettingsBook {
+  const holder = heldBy.trim();
+  if (!holder) throw new Error("Say who holds the keys now.");
+  return {
+    ...book,
+    keys: (book.keys ?? []).map((item) =>
+      item.id === id ? { ...item, heldBy: holder, updatedAt: new Date().toISOString() } : item,
+    ),
   };
 }
 
@@ -621,6 +756,12 @@ export function bookTradesperson(
   const name = input.name.trim();
   if (!name) throw new Error("Name the tradesperson.");
   if (!input.when) throw new Error("Choose a time.");
+  const contractor = (book.contractors ?? []).find((item) => item.name.trim().toLowerCase() === name.toLowerCase());
+  if (contractor && insuranceExpired(contractor, new Date(at))) {
+    throw new Error(
+      `${contractor.name} insurance expired ${formatDay(contractor.insuranceExpires)}. Update the register before booking this repair.`,
+    );
+  }
   return mapRepair(book, id, (repair) => {
     if (repair.status === "tenant_confirmed") {
       throw new Error("The tenant has already signed this off.");

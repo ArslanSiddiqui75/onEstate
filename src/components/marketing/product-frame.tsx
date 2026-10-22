@@ -2,7 +2,7 @@ import { BrandMark } from "@/components/brand/brand-mark";
 import { getActiveBrand } from "@/lib/brand/config";
 import { cn } from "@/lib/utils";
 
-type Variant = "desk" | "website" | "portal";
+type Variant = "desk" | "enquiry" | "progression" | "diary" | "vendor" | "buyer" | "landlord" | "tenant";
 
 export function ProductFrame({
   variant = "desk",
@@ -12,6 +12,16 @@ export function ProductFrame({
   className?: string;
 }) {
   const uk = getActiveBrand().market === "uk";
+  const titles: Record<Variant, string> = {
+    desk: "Today",
+    enquiry: "Enquiry centre",
+    progression: uk ? "Progression" : "Progression",
+    diary: "Diary",
+    vendor: uk ? "Vendor link" : "Seller link",
+    buyer: "Buyer link",
+    landlord: "Landlord link",
+    tenant: uk ? "Tenant link" : "Resident link",
+  };
 
   return (
     <div
@@ -24,99 +34,64 @@ export function ProductFrame({
         <span className="h-2.5 w-2.5 rounded-full bg-[#e7b3a4]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#ead7a1]" />
         <span className="h-2.5 w-2.5 rounded-full bg-[#b7d7c5]" />
-        <p className="ml-2 truncate text-xs text-[var(--muted)]">
-          {variant === "website"
-            ? uk
-              ? "harbourandco.co.uk"
-              : "harbourandco.com"
-            : variant === "portal"
-              ? "Client portal"
-              : "Today"}
-        </p>
+        <p className="ml-2 truncate text-xs text-[var(--muted)]">{titles[variant]}</p>
       </div>
       {variant === "desk" ? <Desk uk={uk} /> : null}
-      {variant === "website" ? <Website uk={uk} /> : null}
-      {variant === "portal" ? <Portal uk={uk} /> : null}
+      {variant === "enquiry" ? <Enquiry uk={uk} /> : null}
+      {variant === "progression" ? <Progression uk={uk} /> : null}
+      {variant === "diary" ? <Diary uk={uk} /> : null}
+      {variant === "vendor" || variant === "buyer" || variant === "landlord" || variant === "tenant" ? (
+        <Client variant={variant} uk={uk} />
+      ) : null}
     </div>
   );
 }
 
+function Shell({ children }: { children: React.ReactNode }) {
+  return <div className="min-h-[22rem] p-4 sm:p-5">{children}</div>;
+}
+
 function Desk({ uk }: { uk: boolean }) {
-  const stats = uk
-    ? [
-        ["12", "Instructions"],
-        ["8", "Viewings"],
-        ["3", "Offers"],
-      ]
-    : [
-        ["12", "Listings"],
-        ["8", "Showings"],
-        ["3", "Offers"],
-      ];
   const rows = uk
     ? [
-        ["14 Elm Grove", "Greenwich", "Viewing · 14:00"],
-        ["8 Harbour Street", "To let", "Offer in"],
-        ["Flat 2, Quay Walk", "For sale", "On the portals"],
+        ["New enquiry", "14 Elm Grove", "Website"],
+        ["Viewing 14:00", "14 Elm Grove", "Confirmed"],
+        ["Offer in", "8 Harbour Street", "£425,000"],
       ]
     : [
-        ["14 Elm Street", "Brooklyn", "Showing · 2:00"],
-        ["8 Harbor Avenue", "For lease", "Offer in"],
-        ["Unit 2, Quay Walk", "For sale", "Ready for MLS"],
+        ["New enquiry", "14 Elm Street", "Website"],
+        ["Showing 2:00", "14 Elm Street", "Confirmed"],
+        ["Offer in", "8 Harbor Avenue", "$640,000"],
       ];
-  const nav = ["Home", "Pipeline", "Listings", "Diary"];
-
   return (
     <div className="grid min-h-[22rem] grid-cols-[7.5rem_1fr] sm:grid-cols-[9.5rem_1fr]">
       <aside className="border-r border-[var(--border)] bg-[var(--surface-muted)] px-3 py-4">
-        <BrandMark
-          className="px-2 text-sm text-[var(--foreground)]"
-          accentClassName="text-[var(--accent)]"
-        />
-        <ul className="mt-5 space-y-1">
-          {nav.map((item, index) => (
-            <li key={item}>
-              <span
-                className={cn(
-                  "block rounded-lg px-2 py-1.5 text-xs font-medium",
-                  index === 0
-                    ? "bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[var(--shadow-soft)]"
-                    : "text-[var(--muted)]",
-                )}
-              >
-                {item}
-              </span>
+        <BrandMark className="px-2 text-sm text-[var(--foreground)]" accentClassName="text-[var(--accent)]" />
+        <ul className="mt-5 space-y-1 text-xs font-medium">
+          {["Today", "Enquiries", "Diary", "Deals"].map((item, index) => (
+            <li
+              key={item}
+              className={cn(
+                "rounded-lg px-2 py-1.5",
+                index === 0 ? "bg-[var(--surface-elevated)] shadow-[var(--shadow-soft)]" : "text-[var(--muted)]",
+              )}
+            >
+              {item}
             </li>
           ))}
         </ul>
       </aside>
       <div className="p-4 sm:p-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-          Today
-        </p>
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {stats.map(([value, label]) => (
-            <div
-              key={label}
-              className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-3"
-            >
-              <p className="font-display text-2xl leading-none">{value}</p>
-              <p className="mt-1 text-[11px] text-[var(--muted)]">{label}</p>
-            </div>
-          ))}
-        </div>
-        <ul className="mt-4 divide-y divide-[var(--border)]">
-          {rows.map(([address, meta, status]) => (
-            <li
-              key={address}
-              className="flex flex-col gap-1.5 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">{address}</p>
-                <p className="text-xs text-[var(--muted)]">{meta}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Harbour & Co</p>
+        <ul className="mt-3 divide-y divide-[var(--border)]">
+          {rows.map(([title, address, meta]) => (
+            <li key={title} className="flex items-center justify-between gap-3 py-3">
+              <div>
+                <p className="text-sm font-semibold">{title}</p>
+                <p className="text-xs text-[var(--muted)]">{address}</p>
               </div>
-              <span className="w-fit shrink-0 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)]">
-                {status}
+              <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)]">
+                {meta}
               </span>
             </li>
           ))}
@@ -126,92 +101,124 @@ function Desk({ uk }: { uk: boolean }) {
   );
 }
 
-function Website({ uk }: { uk: boolean }) {
-  const listings = uk
+function Enquiry({ uk }: { uk: boolean }) {
+  const rows = uk
     ? [
-        ["14 Elm Grove", "For sale", "£725,000"],
-        ["8 Harbour Street", "To let", "£2,400 pcm"],
-        ["Flat 2, Quay Walk", "Under offer", "£540,000"],
+        ["Sam Okonkwo", "Buyer", "Rightmove", "Call today"],
+        ["Helen Croft", "Landlord", "Website", "Book valuation"],
+        ["Alex Harbour", "Vendor", "Office", "Approve listing"],
       ]
     : [
-        ["14 Elm Street", "For sale", "$925,000"],
-        ["8 Harbor Avenue", "For lease", "$3,200 / mo"],
-        ["Unit 2, Quay Walk", "Pending", "$610,000"],
+        ["Sam Okonkwo", "Buyer", "Website", "Call today"],
+        ["Helen Croft", "Landlord", "Referral", "Book valuation"],
+        ["Alex Harbour", "Seller", "Office", "Approve listing"],
       ];
-
   return (
-    <div>
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
-        <p className="font-display text-lg">Harbour & Co</p>
-        <span className="rounded-full bg-[var(--foreground)] px-3 py-1 text-[11px] font-semibold text-[var(--canvas)]">
-          Book a valuation
-        </span>
-      </div>
-      <div className="bg-[var(--ink)] px-5 py-8 text-white">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">
-          {uk ? "Sales and lettings" : "Sales and leases"}
-        </p>
-        <p className="mt-2 max-w-sm font-display text-3xl leading-[1.05]">
-          Homes across the harbour.
-        </p>
-      </div>
-      <ul className="grid gap-px bg-[var(--border)] sm:grid-cols-3">
-        {listings.map(([address, status, price]) => (
-          <li key={address} className="bg-[var(--surface-elevated)] p-4">
-            <div className="h-16 rounded-xl bg-[var(--surface-muted)]" />
-            <p className="mt-3 text-sm font-semibold">{address}</p>
-            <p className="mt-1 text-xs text-[var(--muted)]">{status}</p>
-            <p className="mt-2 text-sm font-medium">{price}</p>
+    <Shell>
+      <p className="text-sm font-semibold">Open enquiries</p>
+      <ul className="mt-3 divide-y divide-[var(--border)]">
+        {rows.map(([name, type, source, next]) => (
+          <li key={name} className="grid grid-cols-2 gap-2 py-3 text-sm sm:grid-cols-4">
+            <span className="font-medium">{name}</span>
+            <span className="text-[var(--muted)]">{type}</span>
+            <span className="text-[var(--muted)]">{source}</span>
+            <span className="font-medium text-[var(--accent)]">{next}</span>
           </li>
         ))}
       </ul>
-    </div>
+    </Shell>
   );
 }
 
-function Portal({ uk }: { uk: boolean }) {
-  const steps = uk
-    ? ["Valuation", "Live", "Viewings", "Offer"]
-    : ["Valuation", "Live", "Showings", "Offer"];
-
+function Progression({ uk }: { uk: boolean }) {
+  const stages = uk
+    ? ["Listed", "Viewing", "Offer", "Progressing", "Exchanged"]
+    : ["Listed", "Showing", "Offer", "Progressing", "Closed"];
   return (
-    <div className="p-5 sm:p-6">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-        Your property
-      </p>
-      <h3 className="mt-2 font-display text-3xl leading-none">
-        {uk ? "14 Elm Grove" : "14 Elm Street"}
-      </h3>
-      <p className="mt-2 text-sm text-[var(--muted)]">
-        {uk ? "Offer accepted · survey booked Thursday" : "Offer accepted · inspection booked Thursday"}
-      </p>
-      <ol className="mt-6 grid grid-cols-4 gap-2">
-        {steps.map((step, index) => (
-          <li key={step}>
-            <span
-              className={cn(
-                "block h-1.5 rounded-full",
-                index < 3 ? "bg-[var(--accent)]" : "bg-[var(--surface-muted)]",
-              )}
-            />
-            <p className="mt-2 text-[11px] font-medium text-[var(--muted)]">{step}</p>
+    <Shell>
+      <p className="text-sm font-semibold">14 Elm Grove</p>
+      <p className="mt-1 text-xs text-[var(--muted)]">{uk ? "£725,000 · Alex Harbour" : "$890,000 · Alex Harbour"}</p>
+      <ol className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {stages.map((stage, index) => (
+          <li
+            key={stage}
+            className={cn(
+              "rounded-xl px-2 py-2 text-center text-[11px] font-semibold",
+              index <= 2 ? "bg-[var(--accent-soft)] text-[var(--foreground)]" : "bg-[var(--surface-muted)] text-[var(--muted)]",
+            )}
+          >
+            {stage}
           </li>
         ))}
       </ol>
-      <ul className="mt-6 space-y-2">
-        {[
-          "3 documents shared",
-          uk ? "Viewing confirmed, Thursday 14:00" : "Showing confirmed, Thursday 2:00",
-          "Message from the office waiting",
-        ].map((item) => (
-          <li
-            key={item}
-            className="rounded-2xl border border-[var(--border)] px-4 py-3 text-sm"
-          >
-            {item}
+      <p className="mt-4 text-sm">Fee requested · £4,500. Referral agreed · Harbour Introductions.</p>
+    </Shell>
+  );
+}
+
+function Diary({ uk }: { uk: boolean }) {
+  const rows = uk
+    ? [
+        ["14:00", "Viewing", "14 Elm Grove", "Confirmed"],
+        ["10:30", "Valuation", "Flat 2, Quay Walk", "Requested"],
+      ]
+    : [
+        ["2:00", "Showing", "14 Elm Street", "Confirmed"],
+        ["10:30", "Valuation", "Unit 2, Quay Walk", "Requested"],
+      ];
+  return (
+    <Shell>
+      <p className="text-sm font-semibold">Thursday</p>
+      <ul className="mt-3 space-y-2">
+        {rows.map(([time, kind, address, status]) => (
+          <li key={time} className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--surface-muted)] px-3 py-3">
+            <div>
+              <p className="text-sm font-semibold">{time} · {kind}</p>
+              <p className="text-xs text-[var(--muted)]">{address}</p>
+            </div>
+            <span className="text-[11px] font-semibold text-[var(--accent)]">{status}</span>
           </li>
         ))}
       </ul>
-    </div>
+    </Shell>
+  );
+}
+
+function Client({ variant, uk }: { variant: "vendor" | "buyer" | "landlord" | "tenant"; uk: boolean }) {
+  const copy = {
+    vendor: {
+      title: uk ? "Approve 14 Elm Grove" : "Approve 14 Elm Street",
+      lines: ["Feedback from two viewings", "Sale at offer"],
+      action: "Approve the listing",
+    },
+    buyer: {
+      title: uk ? "Book 14 Elm Grove" : "Book 14 Elm Street",
+      lines: ["Thursday 14:00 is open", "Offer form on the same page"],
+      action: uk ? "Request a viewing" : "Request a showing",
+    },
+    landlord: {
+      title: "12 Oak Road",
+      lines: ["Rent received £1,250", "Kitchen tap booked"],
+      action: "Approve the repair",
+    },
+    tenant: {
+      title: "12 Oak Road, Flat 2",
+      lines: ["No account needed", "Reply-by and fix-by clocks"],
+      action: "Report a repair",
+    },
+  }[variant];
+  return (
+    <Shell>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">Your link</p>
+      <h3 className="mt-2 font-display text-2xl tracking-tight">{copy.title}</h3>
+      <ul className="mt-4 space-y-2 text-sm text-[var(--muted)]">
+        {copy.lines.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+      <span className="mt-5 inline-flex rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--accent-foreground)]">
+        {copy.action}
+      </span>
+    </Shell>
   );
 }

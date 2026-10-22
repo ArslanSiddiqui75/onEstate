@@ -23,6 +23,7 @@ import {
   buildDisputePack,
   complianceReminders,
   createRepair,
+  insuranceExpired,
   markFixed,
   placeLabel,
   propertyById,
@@ -56,6 +57,7 @@ import {
   URGENCY_LABELS,
 } from "@/lib/lettings/types";
 import { Clock3, Download, PoundSterling, ShieldCheck, Wrench } from "lucide-react";
+import { PeopleTab } from "@/components/lettings/people-tab";
 
 const selectClass =
   "h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm";
@@ -169,6 +171,7 @@ export function LettingsDesk({ orgId, canEdit }: { orgId: string; canEdit: boole
             <TabsTrigger value="compliance">Compliance</TabsTrigger>
             <TabsTrigger value="inspections">Inspections</TabsTrigger>
             <TabsTrigger value="pack">Dispute pack</TabsTrigger>
+            <TabsTrigger value="people">People</TabsTrigger>
           </TabsList>
         </TabsBar>
         <TabsContent value="repairs">
@@ -185,6 +188,9 @@ export function LettingsDesk({ orgId, canEdit }: { orgId: string; canEdit: boole
         </TabsContent>
         <TabsContent value="pack">
           <PackTab book={book} />
+        </TabsContent>
+        <TabsContent value="people">
+          <PeopleTab book={book} commit={commit} canEdit={canEdit} />
         </TabsContent>
       </Tabs>
 
@@ -217,6 +223,7 @@ function RepairsTab({
   commit: (next: LettingsBook) => void;
   canEdit: boolean;
 }) {
+  const expired = (book.contractors ?? []).filter((contractor) => insuranceExpired(contractor));
   const [origin, setOrigin] = useState("");
   const [token, setToken] = useState(book.properties[0]?.reportToken ?? "");
   const [repairId, setRepairId] = useState(book.repairs[0]?.id ?? "");
@@ -245,6 +252,16 @@ function RepairsTab({
 
   return (
     <div className="space-y-5">
+      {expired.length ? (
+        <Card className="border-[var(--danger)] bg-[var(--danger-soft)]">
+          <p className="text-sm font-semibold">Insurance expired</p>
+          <ul className="mt-1 text-sm">
+            {expired.map((contractor) => (
+              <li key={contractor.id}>{contractor.name} cannot be booked until the register is updated.</li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
       {property ? (
         <Card>
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -521,7 +538,12 @@ function RepairDetail({
             }
           }}
         >
-          <Input name="tradesperson" placeholder="Tradesperson" aria-label="Tradesperson" required />
+          <Input name="tradesperson" placeholder="Tradesperson" aria-label="Tradesperson" list={`contractor-names-${repair.id}`} required />
+          <datalist id={`contractor-names-${repair.id}`}>
+            {(book.contractors ?? []).map((contractor) => (
+              <option key={contractor.id} value={contractor.name} />
+            ))}
+          </datalist>
           <Input name="when" type="datetime-local" aria-label="Appointment" required />
           <Input name="note" placeholder="Note" aria-label="Booking note" className="sm:col-span-2" />
           <Button type="submit" variant="secondary" className="sm:col-span-2">

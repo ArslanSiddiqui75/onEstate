@@ -37,6 +37,7 @@ import {
   downloadPortalFeedPayload,
 } from "@/lib/portals/payload";
 import type { Listing, ListingStatus, Market } from "@/types";
+import { draftListing } from "@/lib/agency/book";
 
 function tidyAddress(value: string) {
   return value.replace(/\s+,/g, ",").replace(/,\s*/g, ", ").trim();
@@ -461,8 +462,32 @@ export default function AppListingsPage() {
                   </span>
                 </Alert>
               )}
+              {listing.description ? (
+                <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">{listing.description}</p>
+              ) : null}
               {canEdit ? (
                 <div className="mt-4 flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      const description = draftListing({
+                        title: listing.title,
+                        address: listing.address,
+                        city: listing.city,
+                        beds: listing.beds,
+                        baths: listing.baths,
+                        price: listing.price,
+                        market: listing.market,
+                        tenure: listing.tenure,
+                      });
+                      void updateListing(listing.id, { description })
+                        .then(() => toast.success("Description drafted"))
+                        .catch((err) => toast.error(err instanceof Error ? err.message : "Could not draft that"));
+                    }}
+                  >
+                    Draft description
+                  </Button>
                   <Button
                     variant="secondary"
                     size="sm"

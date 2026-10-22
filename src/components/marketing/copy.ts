@@ -9,85 +9,169 @@ export function getMarketingCopy() {
     uk,
     nav: [
       { href: "#software", label: "Software" },
-      { href: "#websites", label: "Websites" },
-      { href: "#portal", label: "Client portal" },
+      { href: "#clients", label: "Clients" },
+      { href: "#diary", label: "Diary" },
+      { href: "#ai", label: "AI" },
     ],
     heroEyebrow: uk ? "Estate agency software" : "Real estate software",
-    heroTitle: uk
-      ? "The whole agency, in one place."
-      : "The whole brokerage, in one place.",
+    heroTitle: uk ? "Every enquiry finds its next step." : "Every enquiry finds its next step.",
     heroBody: uk
-      ? "Sales, lettings, your website, and a client portal. One login for the office, and a place for vendors and landlords to follow progress any time."
-      : "Sales, leases, your website, and a client portal. One login for the office, and a place for sellers and landlords to follow progress any time.",
+      ? "Capture the lead, book the viewing, move the sale, and give vendors, buyers, landlords, and tenants a link of their own."
+      : "Capture the lead, book the showing, move the sale, and give sellers, buyers, and landlords a link of their own.",
     primaryCta: "Book a demo",
-    softwareEyebrow: "Software",
-    softwareTitle: uk
-      ? "Sales, lettings, and the office diary."
-      : "Sales, leases, and the office diary.",
-    softwareBody: uk
-      ? "Keep valuations, viewings, offers, and stock on the same record. Listings go out to Rightmove, Zoopla, and OnTheMarket without a second system."
-      : "Keep valuations, showings, offers, and stock on the same record. Listings go out to the MLS without a second system.",
-    softwarePoints: uk
+    proof: uk
+      ? [
+          "One login for the office",
+          "England, Wales, and Scotland",
+          "Stock prepared for Rightmove, Zoopla, and OnTheMarket",
+          "Vendor, buyer, landlord, and tenant links",
+        ]
+      : [
+          "One login for the office",
+          "Sales and leases on one record",
+          "Stock prepared for the MLS",
+          "Seller, buyer, and landlord links",
+        ],
+    pillars: [
+      {
+        title: "Workflows",
+        body: uk
+          ? "Reply-by clocks, follow-ups, and repair routes run from the record, so the team stays on the deal."
+          : "Follow-ups and next steps run from the record, so the team stays on the deal.",
+      },
+      {
+        title: "One pipeline",
+        body: uk
+          ? "Enquiry, viewing, offer, and progression sit on the same property. Nothing has to be copied into a second system."
+          : "Enquiry, showing, offer, and progression sit on the same property. Nothing has to be copied into a second system.",
+      },
+      {
+        title: "Client access",
+        body: "The people you act for open a link. They approve, book, report, and read progress without calling the office.",
+      },
+    ],
+    stories: uk
       ? [
           {
-            title: "Diary and valuations",
-            body: "See who is out, what is booked, and which instruction needs a call.",
+            id: "enquiry",
+            eyebrow: "Enquiry centre",
+            title: "Every lead in one place.",
+            body: "Website, portal, and office enquiries land on one list, with the property, the source, and the next step.",
           },
           {
-            title: "Sales and lettings",
-            body: "Follow a sale to completion. For lets, tenants report repairs by link, QR, or text, and the rent book, certificates, and inspections sit on the same desk.",
+            id: "progression",
+            eyebrow: "Sales progression",
+            title: "From listed to exchanged.",
+            body: "The deal moves through viewing, offer, and progression. The checklist, the fee request, and the referral stay on that file.",
           },
           {
-            title: "Portals",
-            body: "Send stock to Rightmove, Zoopla, and OnTheMarket from the listing itself.",
+            id: "diary",
+            eyebrow: "Online bookings",
+            title: "Clients book without a phone call.",
+            body: "A viewing or a valuation request comes in on a link. The office confirms it on the diary.",
           },
         ]
       : [
           {
-            title: "Diary and valuations",
-            body: "See who is out, what is booked, and which listing needs a call.",
+            id: "enquiry",
+            eyebrow: "Enquiry centre",
+            title: "Every lead in one place.",
+            body: "Website and office enquiries land on one list, with the property, the source, and the next step.",
           },
           {
-            title: "Sales and leases",
-            body: "Follow a property from the first enquiry through to closing or move-in.",
+            id: "progression",
+            eyebrow: "Sales progression",
+            title: "From listed to closed.",
+            body: "The deal moves through showing, offer, and progression. The checklist, the fee request, and the referral stay on that file.",
           },
           {
-            title: "MLS",
-            body: "Prepare stock for the MLS from the listing itself.",
+            id: "diary",
+            eyebrow: "Online bookings",
+            title: "Clients book without a phone call.",
+            body: "A showing or a valuation request comes in on a link. The office confirms it on the diary.",
           },
         ],
-    websitesEyebrow: "Websites",
-    websitesTitle: "A site that stays in step with your stock.",
-    websitesBody:
-      "A branded site for the agency, with listings that update when the stock does. Built for phone and desktop, with enquiries coming back into the same office.",
-    portalEyebrow: "Client portal",
-    portalTitle: "A login for the people you act for.",
-    portalBody: uk
-      ? "Win instructions by giving vendors and landlords somewhere to look, day or night, instead of waiting on a call back."
-      : "Win listings by giving sellers and landlords somewhere to look, day or night, instead of waiting on a call back.",
-    portalPoints: uk
+    clients: uk
       ? [
-          "See live progress on a sale or let",
-          "Share and download documents",
-          "Follow viewings and offers",
-          "Read statements when they are ready",
-          "Message the negotiator",
-          "Add another property",
+          {
+            id: "vendor",
+            title: "Vendor",
+            body: "Approve the listing, read the viewing feedback, and see the sale move, without chasing the negotiator.",
+          },
+          {
+            id: "buyer",
+            title: "Buyer",
+            body: "Book a viewing and submit an offer from the same link the office uses to track the property.",
+          },
+          {
+            id: "landlord",
+            title: "Landlord",
+            body: "See the rent line and approve a repair from the phone. The property manager supervises, rather than chasing.",
+          },
+          {
+            id: "tenant",
+            title: "Tenant",
+            body: "Report a repair by link, QR, or the words you’d text. Gas, fire, flood, and dangerous electrics take an emergency route.",
+          },
         ]
       : [
-          "See live progress on a sale or lease",
-          "Share and download documents",
-          "Follow showings and offers",
-          "Read statements when they are ready",
-          "Message the agent",
-          "Add another property",
+          {
+            id: "vendor",
+            title: "Seller",
+            body: "Approve the listing, read the showing feedback, and see the sale move, without chasing the agent.",
+          },
+          {
+            id: "buyer",
+            title: "Buyer",
+            body: "Book a showing and submit an offer from the same link the office uses to track the property.",
+          },
+          {
+            id: "landlord",
+            title: "Landlord",
+            body: "See the rent line and approve a repair. The office supervises, rather than chasing.",
+          },
+          {
+            id: "tenant",
+            title: "Resident",
+            body: "Report a maintenance issue by link. The office files a trade, a clock, and a reference.",
+          },
         ],
+    sampleTitle: "Harbour & Co, a sample office.",
+    sampleBody: uk
+      ? "14 Elm Grove has a viewing at 14:00, an offer on 8 Harbour Street, and the vendor can approve the listing from their link. It is sample stock, so you can see the desk before your own properties are on it."
+      : "14 Elm Street has a showing at 2:00, an offer on file, and the seller can approve the listing from their link. It is sample stock, so you can see the desk before your own properties are on it.",
+    blocks: [
+      {
+        title: "Drafts",
+        body: "A listing description and a sale summary are written from the fields already on the record. You edit them before anyone else sees them.",
+      },
+      {
+        title: "Referrals",
+        body: "Note who introduced the deal, whether the fee is agreed, and what it is. It stays on the progression, not in a side spreadsheet.",
+      },
+      {
+        title: "Client payments",
+        body: "Request a fee on the deal and mark it received. When Stripe is connected, the request can go out that way. Otherwise the office records it here.",
+      },
+    ],
+    facts: uk
+      ? [
+          ["4", "Client links on every instruction"],
+          ["1", "Diary for viewings and valuations"],
+          ["3", "Nations on the lettings desk"],
+        ]
+      : [
+          ["3", "Client links on a listing"],
+          ["1", "Diary for showings and valuations"],
+          ["1", "Record from enquiry to close"],
+        ],
+    supportTitle: "The office and the client see the same record.",
+    supportBody:
+      "A booking, an offer, a repair, and an approval land on the desk the team already uses. Sign in and open Enquiries, Diary, or Lettings.",
     contactTitle: "See it on your own stock.",
     contactBody: uk
-      ? "Tell us about the office. We’ll walk through the software, the website, and the client portal."
-      : "Tell us about the office. We’ll walk through the software, the website, and the client portal.",
-    footerLine: uk
-      ? "Estate agency software for the UK."
-      : "Real estate software for the United States.",
+      ? "Tell us about the office. We’ll walk through enquiries, the diary, progression, and the client links."
+      : "Tell us about the office. We’ll walk through enquiries, the diary, progression, and the client links.",
+    footerLine: uk ? "Estate agency software for the UK." : "Real estate software for the United States.",
   };
 }
