@@ -36,7 +36,10 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: brand.supporting,
     icons: {
-      icon: [{ url: "/brand/mark.svg", type: "image/svg+xml" }],
+      icon: [
+        { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+        { url: "/brand/mark.png", sizes: "1024x1024", type: "image/png" },
+      ],
       apple: "/brand/apple-touch.png",
     },
   };
