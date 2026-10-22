@@ -35,7 +35,7 @@ export function getMarketingCopy() {
           },
           {
             title: "Sales and lettings",
-            body: "Follow a property from the first enquiry through to completion or move-in.",
+            body: "Follow a sale to completion. For lets, tenants report repairs by link, QR, or text, and the rent book, certificates, and inspections sit on the same desk.",
           },
           {
             title: "Portals",

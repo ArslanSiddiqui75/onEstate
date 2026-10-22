@@ -14,6 +14,8 @@ The app ships as a Next.js 16 App Router application with three main surfaces:
 |---|---|
 | `/` | **Marketing site** — public landing page for the active brand (CertifiedUK or CertifiedUS) |
 | `/app` | **Live product workspace** — multi-tenant operational hub where agents, brokers, and teams work |
+| `/app/lettings` | **Landlord desk** — repair intake, rent book, compliance calendar, inspections, and dispute packs |
+| `/report/[token]` | **Tenant repair report** — no login; link, QR, text, or WhatsApp wording |
 | `/admin` | **SaaS admin console** — platform-level management of tenants, subscriptions, users, and audit logs |
 
 ---
@@ -77,6 +79,22 @@ The `/app` workspace is a working multi-tenant product (not a static demo). It c
 - Usage limits tracked and enforced per plan
 - Self-serve upgrade and downgrade flows via Stripe Checkout
 - Feature-gating tied directly to the RBAC matrix
+
+---
+
+## Landlord desk
+
+`/app/lettings` is the self-managing landlord desk (England, Wales, and Scotland). It follows CRM access, so it does not add a seventh module to the RBAC matrix.
+
+- Tenants report a repair at `/report/[token]` with no login, by link, QR code, or the same words you’d send by text or WhatsApp.
+- Reports are triaged on the device into a title, trade, urgency, reference, and reply-by / fix-by clocks. Gas, carbon monoxide, fire, flood, and dangerous electrics take an emergency route.
+- The desk tracks the repair from report to tradesperson, photos, and tenant sign-off.
+- Rent shows received, late, due, and collection. A market check compares the rent you hold for similar local lets, and names the increase form for that nation.
+- The compliance calendar covers gas safety, EICR, EPC, deposits, HMO licences, alarms, and inspections, with a place to store proof of service.
+- Check-in, mid-term, and check-out reports can be signed by the tenant. HMO lets are room by room.
+- Dispute pack downloads one HTML file for a property.
+
+The sample book lives in this browser. Reports sent from a tenant link are also kept in the office inbox for this server, and the desk picks them up. Accounts and Making Tax Digital are intentionally not in this desk. Sign in with `owner@certified.local` / `CertifiedDev1!` when no Supabase project is configured.
 
 ---
 
