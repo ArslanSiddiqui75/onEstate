@@ -1,8 +1,9 @@
-import { getActiveBrand } from "@/lib/brand/config";
+import { getActiveBrand, getBrandByMarket } from "@/lib/brand/config";
+import type { Market } from "@/types";
 
-export function getMarketingCopy() {
-  const brand = getActiveBrand();
-  const uk = brand.market === "uk";
+export function getMarketingCopy(market: Market = getActiveBrand().market) {
+  const brand = getBrandByMarket(market);
+  const uk = market === "uk";
 
   return {
     brand,
@@ -11,6 +12,7 @@ export function getMarketingCopy() {
       { href: "#software", label: "Software" },
       { href: "#clients", label: "Clients" },
       { href: "#diary", label: "Diary" },
+      { href: "#pricing", label: "Pricing" },
       { href: "#ai", label: "AI" },
     ],
     heroEyebrow: uk ? "Estate agency software" : "Real estate software",
@@ -172,6 +174,12 @@ export function getMarketingCopy() {
     contactBody: uk
       ? "Tell us about the office. We’ll walk through enquiries, the diary, progression, and the client links."
       : "Tell us about the office. We’ll walk through enquiries, the diary, progression, and the client links.",
-    footerLine: uk ? "Estate agency software for the UK." : "Real estate software for the United States.",
+    footerLine: uk
+      ? "Estate agency software for the UK. Payments in pounds."
+      : "Real estate software for the United States. Payments in dollars.",
+    pricingTitle: uk ? "UK pricing, in pounds." : "US pricing, in dollars.",
+    pricingBody: uk
+      ? "The UK book includes lettings, viewings, and client links for vendors, buyers, landlords, and tenants. It is a separate setup from 0nestreet.com."
+      : "The US book includes showings, MLS-ready stock, and client links for sellers, buyers, and landlords. It is a separate setup from 0nestreet.co.uk.",
   };
 }

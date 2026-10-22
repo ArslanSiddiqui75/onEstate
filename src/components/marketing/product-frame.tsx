@@ -7,11 +7,12 @@ type Variant = "desk" | "enquiry" | "progression" | "diary" | "vendor" | "buyer"
 export function ProductFrame({
   variant = "desk",
   className,
+  uk = getActiveBrand().market === "uk",
 }: {
   variant?: Variant;
   className?: string;
+  uk?: boolean;
 }) {
-  const uk = getActiveBrand().market === "uk";
   const titles: Record<Variant, string> = {
     desk: "Today",
     enquiry: "Enquiry centre",

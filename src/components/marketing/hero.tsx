@@ -2,9 +2,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getMarketingCopy } from "@/components/marketing/copy";
 import { ProductFrame } from "@/components/marketing/product-frame";
+import type { Market } from "@/types";
 
-export function Hero() {
-  const copy = getMarketingCopy();
+export function Hero({ market }: { market: Market }) {
+  const copy = getMarketingCopy(market);
 
   return (
     <section className="mx-auto grid max-w-7xl items-center gap-12 px-5 pb-16 pt-28 sm:px-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:pb-24 lg:pt-32">
@@ -25,7 +26,7 @@ export function Hero() {
           </Button>
         </div>
       </div>
-      <ProductFrame />
+      <ProductFrame uk={copy.uk} />
     </section>
   );
 }

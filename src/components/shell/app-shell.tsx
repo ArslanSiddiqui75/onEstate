@@ -29,7 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { BrandMark } from "@/components/brand/brand-mark";
-import { getActiveBrand } from "@/lib/brand/config";
+import { useBrand } from "@/components/brand/brand-provider";
 import { useTheme } from "@/lib/theme/provider";
 
 const NAV: {
@@ -117,9 +117,9 @@ const NAV: {
 ];
 
 const WORKSPACE_NAV = [
-  { href: "/app/enquiries", short: "Enquiries", eyebrow: "Pipeline", title: "Enquiry centre", description: "Every lead, with source, property interest, and the next step." },
-  { href: "/app/diary", short: "Diary", eyebrow: "Diary", title: "Diary", description: "Viewings and valuations, including requests from the public booking link." },
-  { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings desk", description: "Repairs, rent, compliance, inspections, and a dispute pack." },
+  { href: "/app/enquiries", short: "Enquiries", eyebrow: "Pipeline", title: "Enquiry centre", description: "Every lead, with source, property interest, and the next step.", markets: ["uk", "us"] },
+  { href: "/app/diary", short: "Diary", eyebrow: "Diary", title: "Diary", description: "Viewings and valuations, including requests from the public booking link.", markets: ["uk", "us"] },
+  { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings desk", description: "Repairs, rent, compliance, inspections, and a dispute pack.", markets: ["uk"] },
   { href: "/app/teams", short: "Teams", eyebrow: "Roster", title: "Teams", description: "Office groups. CRM stays shared." },
   { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Open and done lead tasks." },
   { href: "/app/reports", short: "Reports", eyebrow: "Snapshot", title: "Reports", description: "Live pipeline and inventory counts." },
@@ -154,7 +154,7 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const brand = getActiveBrand();
+  const brand = useBrand();
   const { theme } = useTheme();
   const [ink, setInk] = useState(true);
   useEffect(() => {
@@ -175,7 +175,11 @@ export function AppShell({
     return { ...item, href, locked };
   });
 
-  const workspaceActive = WORKSPACE_NAV.find(
+  const workspaceNav = WORKSPACE_NAV.filter((item) => {
+    if (!("markets" in item)) return true;
+    return (item.markets as readonly string[]).includes(brand.market);
+  });
+  const workspaceActive = workspaceNav.find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
   const activePage =
@@ -189,7 +193,7 @@ export function AppShell({
     items.find((item) => item.id === "dashboard") ||
     items[0];
 
-  const statusLine = headerMeta || `${brand.name} · ${PLANS[plan].name}`;
+  const statusLine = headerMeta || `${brand.name} ${brand.regionShort} · ${PLANS[plan].name}`;
 
   useEffect(() => {
     document.title = `${activePage.title} — ${brand.name}`;
@@ -306,7 +310,7 @@ export function AppShell({
             >
               Workspace
             </p>
-            {WORKSPACE_NAV.map((item) => {
+            {workspaceNav.map((item) => {
               const active =
                 pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (

@@ -123,6 +123,9 @@ export default function AppLoginPage() {
         <h1 className="mt-5 text-xl font-semibold tracking-tight">
           Sign in to {brand.name}
         </h1>
+        <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+          {brand.regionShort} · {brand.domain}
+        </p>
         <p className="mt-2 text-sm text-[var(--muted)]">
           {authMode === "supabase"
             ? "Sign in with the email for this workspace. Creating a new account starts a separate brokerage."

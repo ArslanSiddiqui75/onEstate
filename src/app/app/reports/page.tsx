@@ -45,18 +45,19 @@ function BarList({ rows }: { rows: [string, number][] }) {
 }
 
 export default function AppReportsPage() {
-  const { user, org, leads, listings, deals, tasks, callLogs, messages } =
+  const { user, org, leads, listings, deals, tasks, callLogs, messages, market } =
     useAppSession();
   const [range, setRange] = useState<SnapshotRange>("all");
 
   const snapshot = useMemo(() => {
     const cutoff = snapshotCutoff(range);
-    const rangedLeads = leads.filter((l) => withinSnapshot(l.createdAt, cutoff));
+    const rangedLeads = leads.filter((l) => l.market === market && withinSnapshot(l.createdAt, cutoff));
     const rangedListings = listings.filter((l) =>
-      withinSnapshot(l.createdAt, cutoff),
+      l.market === market && withinSnapshot(l.createdAt, cutoff),
     );
-    const rangedDeals = deals.filter((d) => withinSnapshot(d.updatedAt, cutoff));
-    const openTasks = tasks.filter((t) => t.status === "open").length;
+    const rangedDeals = deals.filter((d) => d.market === market && withinSnapshot(d.updatedAt, cutoff));
+    const marketLeadIds = new Set(leads.filter((lead) => lead.market === market).map((lead) => lead.id));
+    const openTasks = tasks.filter((task) => task.status === "open" && marketLeadIds.has(task.leadId)).length;
     const rangedCalls = callLogs.filter((c) =>
       withinSnapshot(c.createdAt, cutoff),
     );
@@ -84,7 +85,7 @@ export default function AppReportsPage() {
         "stage",
       ),
     };
-  }, [range, leads, listings, deals, tasks, callLogs, messages]);
+  }, [range, leads, listings, deals, tasks, callLogs, messages, market]);
 
   if (!user || !org) return null;
   if (!hasModuleAccess(user.role, org.plan, "crm", "view")) {
@@ -134,9 +135,8 @@ export default function AppReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-2xl text-sm text-[var(--muted)]">
-          Live workspace snapshot — not a historical warehouse. Date range
-          applies to leads, listings, deals, calls, and messages. Open tasks
-          are current.
+          {market === "uk" ? "UK book" : "US book"}. Counts include this region’s
+          leads, listings, and deals. The other region keeps its own stats.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-full border border-[var(--border)] p-0.5">

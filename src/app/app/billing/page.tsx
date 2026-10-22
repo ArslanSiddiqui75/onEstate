@@ -7,6 +7,7 @@ import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
 import { PLANS, PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
+import { formatPlanPrice, planLines } from "@/lib/brand/offer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -14,7 +15,6 @@ import { Alert } from "@/components/ui/alert";
 import { Table, TBody, TD, TH, THead, TR, TableShell } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { PlanId } from "@/types";
-import { MODULE_LABELS } from "@/lib/rbac/matrix";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { toast } from "@/components/ui/toast";
 
@@ -102,13 +102,16 @@ export default function AppBillingPage() {
     );
   }
 
-  const currency = market === "uk" ? "£" : "$";
   const currentOrg = org;
   const status = currentOrg.subscriptionStatus;
   const renewsOn = formatDate(currentOrg.currentPeriodEnd);
   const trialEndsOn = formatDate(currentOrg.trialEndsAt);
   const isTrialing = status === "trialing" && Boolean(trialEndsOn);
   const paymentFailed = currentOrg.lastPaymentStatus === "failed";
+  const wantedCurrency = market === "uk" ? "GBP" : "USD";
+  const regionInvoices = invoices.filter(
+    (inv) => !inv.currency || inv.currency.toUpperCase() === wantedCurrency,
+  );
 
   async function checkout(plan: PlanId) {
     setLoadingPlan(plan);
@@ -123,6 +126,7 @@ export default function AppBillingPage() {
         },
         body: JSON.stringify({
           plan,
+          market,
           email: user!.email,
           orgId: currentOrg.id,
         }),
@@ -237,6 +241,15 @@ export default function AppBillingPage() {
         <Alert tone="neutral">Renews {renewsOn}.</Alert>
       ) : null}
 
+      <Card>
+        <h2 className="font-semibold">{market === "uk" ? "UK payments" : "US payments"}</h2>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
+          {market === "uk"
+            ? "This book is billed in pounds on 0nestreet.co.uk. Lettings, viewings, and the UK client links sit on this setup. The dollar book is on 0nestreet.com."
+            : "This book is billed in dollars on 0nestreet.com. Showings and the US client links sit on this setup. The pound book, including lettings, is on 0nestreet.co.uk."}
+        </p>
+      </Card>
+
       {message ? <Alert tone={tone === "danger" ? "danger" : "neutral"}>{message}</Alert> : null}
 
       <Card>
@@ -268,10 +281,7 @@ export default function AppBillingPage() {
       >
         {(Object.keys(PLANS) as PlanId[]).map((id) => {
           const item = PLANS[id];
-          const price =
-            id === "enterprise"
-              ? "Custom"
-              : `${currency}${market === "uk" ? item.monthlyPriceGbp : item.monthlyPriceUsd}/mo`;
+          const price = id === "enterprise" ? "Custom" : `${formatPlanPrice(market, id)}/mo`;
           const active = org.plan === id;
           return (
             <motion.article
@@ -295,13 +305,8 @@ export default function AppBillingPage() {
               <p className="mt-2 text-sm text-[var(--muted)]">{item.tagline}</p>
               <p className="mt-4 font-display text-3xl tracking-tight">{price}</p>
               <ul className="mt-4 space-y-1.5 text-xs text-[var(--muted)]">
-                {Object.entries(item.modules).map(([key, value]) => (
-                  <li key={key}>
-                    <span className="font-medium text-[var(--foreground)]">
-                      {MODULE_LABELS[key as keyof typeof MODULE_LABELS]}
-                    </span>
-                    : {value}
-                  </li>
+                {planLines(market, id).map((line) => (
+                  <li key={line}>{line}</li>
                 ))}
               </ul>
               <Button
@@ -429,14 +434,14 @@ export default function AppBillingPage() {
                     Loading invoices…
                   </TD>
                 </TR>
-              ) : invoices.length === 0 ? (
+              ) : regionInvoices.length === 0 ? (
                 <TR>
                   <TD colSpan={6} className="text-center text-sm text-[var(--muted)] py-8">
                     No invoices yet. Your first payment will appear here.
                   </TD>
                 </TR>
               ) : (
-                invoices.map((inv) => {
+                regionInvoices.map((inv) => {
                   const amountLabel =
                     inv.currency === "GBP"
                       ? `£${inv.amount.toFixed(2)}`

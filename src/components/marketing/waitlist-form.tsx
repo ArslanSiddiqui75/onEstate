@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getActiveBrand } from "@/lib/brand/config";
+import { getBrandByMarket } from "@/lib/brand/config";
+import type { Market } from "@/types";
 
-export function WaitlistForm() {
-  const brand = getActiveBrand();
+export function WaitlistForm({ market }: { market: Market }) {
+  const brand = getBrandByMarket(market);
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">(
     "idle",
   );

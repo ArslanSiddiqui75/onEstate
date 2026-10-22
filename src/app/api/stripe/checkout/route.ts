@@ -7,6 +7,7 @@ import { forbiddenIfNoModule } from "@/lib/server/require-module";
 
 const schema = z.object({
   plan: z.enum(["solo", "team", "enterprise"]),
+  market: z.enum(["uk", "us"]).optional(),
   email: z.string().email().optional(),
   orgId: z.string().min(1).optional(),
   successUrl: z.string().url().optional(),
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
   }
 
   const stripe = getStripe();
-  const priceId = getStripePriceId(parsed.data.plan);
+  const priceId = getStripePriceId(parsed.data.plan, parsed.data.market || "uk");
   if (!stripe || !priceId) {
     return NextResponse.json(
       { error: "Missing Stripe price ID for selected plan" },

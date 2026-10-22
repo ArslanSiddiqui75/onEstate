@@ -9,7 +9,7 @@ type Frame = "enquiry" | "progression" | "diary";
 
 const frames: Frame[] = ["enquiry", "progression", "diary"];
 
-export function StorySwitch({ stories }: { stories: Story[] }) {
+export function StorySwitch({ stories, uk = true }: { stories: Story[]; uk?: boolean }) {
   const [active, setActive] = useState(0);
   const story = stories[active] ?? stories[0];
   const frame = frames[active] ?? "enquiry";
@@ -41,15 +41,17 @@ export function StorySwitch({ stories }: { stories: Story[] }) {
         <h2 className="mt-3 font-display text-[clamp(2rem,4.5vw,3.4rem)] leading-[1.05]">{story.title}</h2>
         <p className="mt-4 max-w-md text-base leading-relaxed text-[var(--muted)]">{story.body}</p>
       </div>
-      <ProductFrame variant={frame} />
+      <ProductFrame variant={frame} uk={uk} />
     </div>
   );
 }
 
 export function ClientSwitch({
   clients,
+  uk = true,
 }: {
   clients: { id: string; title: string; body: string }[];
+  uk?: boolean;
 }) {
   const [active, setActive] = useState(0);
   const client = clients[active] ?? clients[0];
@@ -57,7 +59,7 @@ export function ClientSwitch({
   if (!client) return null;
   return (
     <div className="grid items-center gap-10 lg:grid-cols-2">
-      <ProductFrame variant={frames[active] ?? "vendor"} />
+      <ProductFrame variant={frames[active] ?? "vendor"} uk={uk} />
       <div>
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Clients">
           {clients.map((item, index) => (

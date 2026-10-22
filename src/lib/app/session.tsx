@@ -39,7 +39,7 @@ import type {
 import { isSupabaseConfigured, createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { toast } from "@/components/ui/toast";
 import { findMatchingContact } from "@/lib/crm/contact-match";
-import { getActiveBrand } from "@/lib/brand/config";
+import { useBrand } from "@/components/brand/brand-provider";
 import { buildPhoneContactMethod } from "@/lib/utils";
 import { isE164 } from "@/lib/phone/e164";
 import {
@@ -420,7 +420,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   const authMode: AppState["authMode"] = isSupabaseConfigured()
     ? "supabase"
     : "local";
-  const brand = getActiveBrand();
+  const brand = useBrand();
 
   const applySnapshot = useCallback(async (repo: WorkspaceRepository) => {
     const snap = await repo.getSnapshot();
@@ -2418,6 +2418,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
 
 export function useAppSession() {
   const ctx = useContext(AppContext);
+  const brand = useBrand();
   if (!ctx) throw new Error("useAppSession must be used within AppSessionProvider");
-  return { ...ctx, brand: getActiveBrand(), market: getActiveBrand().market };
+  return { ...ctx, brand, market: brand.market };
 }

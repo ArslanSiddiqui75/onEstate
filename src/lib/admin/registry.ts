@@ -1,5 +1,5 @@
 import { PLANS, PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
-import { getActiveBrand } from "@/lib/brand/config";
+import { getBrandByMarket } from "@/lib/brand/config";
 import type { Market, PlanId, Role } from "@/types";
 import type {
   PlatformAuditEvent,
@@ -154,7 +154,7 @@ export function upsertTenantRecord(
   },
 ) {
   const registry = loadPlatformRegistry();
-  const brand = getActiveBrand();
+  const brand = getBrandByMarket(input.market);
   const existing = registry.tenants.find((t) => t.id === input.id);
   const amount = planAmount(input.plan, input.market);
   const currency = input.market === "uk" ? "GBP" : "USD";

@@ -19,13 +19,19 @@ export default function LettingsPage() {
     );
   }
 
+  if (market !== "uk") {
+    return (
+      <div className="max-w-xl space-y-3">
+        <h2 className="font-semibold">Lettings is a UK module</h2>
+        <p className="text-sm text-[var(--muted)]">
+          Repairs, rent, Right to Rent, keys, and contractor cover live on the UK setup at 0nestreet.co.uk. This US workspace keeps enquiries, showings, progression, and dollar payments.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {market !== "uk" ? (
-        <p className="text-sm text-[var(--muted)]">
-          This desk follows the rules for England, Wales, and Scotland.
-        </p>
-      ) : null}
       <LettingsDesk orgId={org.id} canEdit={hasModuleAccess(user.role, org.plan, "crm", "edit")} />
     </div>
   );

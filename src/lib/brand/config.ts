@@ -4,10 +4,12 @@ export type BrandId = "certified-uk" | "certified-us";
 
 export interface BrandConfig {
   id: BrandId;
-  /** Customer-facing product name */
+  /** Customer-facing product name. The mark is shared; the region is not. */
   name: string;
-  /** Accent suffix rendered after "Certified" */
-  suffix: "UK" | "US";
+  /** Accent suffix rendered after "0ne" */
+  suffix: "Street";
+  regionShort: "UK" | "US";
+  domain: string;
   market: Market;
   /** Primary pitch line for this market */
   headline: string;
@@ -16,36 +18,43 @@ export interface BrandConfig {
   demandCta: string;
   portalsLabel: string;
   localeLabel: string;
+  currency: "GBP" | "USD";
   waitlistMarketFixed: Market;
 }
 
 export const BRANDS: Record<BrandId, BrandConfig> = {
   "certified-uk": {
     id: "certified-uk",
-    name: "CertifiedUK",
-    suffix: "UK",
+    name: "0neStreet",
+    suffix: "Street",
+    regionShort: "UK",
+    domain: "0nestreet.co.uk",
     market: "uk",
-    headline: "The unified estate agency operations platform.",
+    headline: "The estate agency platform for the UK.",
     supporting:
-      "One software. One login. Every deal — CRM, listings, contracts, website, social, and billing.",
-    contactCta: "Book a CertifiedUK demo",
+      "Enquiries, viewings, progression, lettings, and payments in pounds. One login on 0nestreet.co.uk.",
+    contactCta: "Book a UK demo",
     demandCta: "Talk to sales",
     portalsLabel: "Rightmove, Zoopla, OnTheMarket",
     localeLabel: "United Kingdom",
+    currency: "GBP",
     waitlistMarketFixed: "uk",
   },
   "certified-us": {
     id: "certified-us",
-    name: "CertifiedUS",
-    suffix: "US",
+    name: "0neStreet",
+    suffix: "Street",
+    regionShort: "US",
+    domain: "0nestreet.com",
     market: "us",
-    headline: "The unified real estate operations platform.",
+    headline: "The real estate platform for the US.",
     supporting:
-      "One software. One login. Every deal — CRM, listings, contracts, website, social, and billing.",
-    contactCta: "Book a CertifiedUS demo",
+      "Enquiries, showings, progression, and payments in dollars. One login on 0nestreet.com.",
+    contactCta: "Book a US demo",
     demandCta: "Talk to sales",
     portalsLabel: "MLS boards via brokerage credentials",
     localeLabel: "United States",
+    currency: "USD",
     waitlistMarketFixed: "us",
   },
 };

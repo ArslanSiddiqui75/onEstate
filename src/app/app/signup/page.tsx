@@ -25,8 +25,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAppSession } from "@/lib/app/session";
+import { formatPlanPrice } from "@/lib/brand/offer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BrandMark } from "@/components/brand/brand-mark";
@@ -39,8 +40,10 @@ import { PasswordStrengthBar } from "@/components/ui/password-strength";
 import type { PlanId } from "@/types";
 
 export default function AppSignupPage() {
-  const { signUp, authMode, brand } = useAppSession();
+  const { signUp, authMode, brand, market } = useAppSession();
   const router = useRouter();
+  const requestedPlan = useSearchParams().get("plan");
+  const initialPlan = requestedPlan === "solo" || requestedPlan === "enterprise" ? requestedPlan : "team";
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
@@ -111,8 +114,8 @@ export default function AppSignupPage() {
           Create your workspace
         </h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          You&apos;re joining {brand.name} for {brand.localeLabel}. Market rules
-          are applied automatically. Already connected social accounts live on
+          You&apos;re joining the {brand.regionShort} setup at {brand.domain}. Payments are in{" "}
+          {brand.currency === "GBP" ? "pounds" : "dollars"}. Already connected social accounts live on
           an existing workspace —{" "}
           <Link href="/app/login" className="font-semibold text-[var(--accent)]">
             sign in
@@ -163,13 +166,13 @@ export default function AppSignupPage() {
           >
             <select
               name="plan"
-              defaultValue="team"
+              defaultValue={initialPlan}
               className="h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm"
               aria-label="Plan"
             >
-              <option value="solo">Solo Agent — 1 user</option>
-              <option value="team">Team / Brokerage — up to 25 users</option>
-              <option value="enterprise">Enterprise — unlimited</option>
+              <option value="solo">Solo — {formatPlanPrice(market, "solo")}/month</option>
+              <option value="team">Team — {formatPlanPrice(market, "team")}/month</option>
+              <option value="enterprise">Enterprise — custom</option>
             </select>
           </FormField>
 

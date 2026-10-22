@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { defaultMarket, marketFromHost, marketFromPath, UK_DOMAIN, US_DOMAIN } from "@/lib/brand/host";
+import type { Market } from "@/types";
 
 /**
  * Custom-domain routing for tenant websites.
@@ -10,7 +12,7 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 
 function platformHosts(): string[] {
-  const hosts = ["localhost", "127.0.0.1", "0.0.0.0"];
+  const hosts = ["localhost", "127.0.0.1", "0.0.0.0", UK_DOMAIN, US_DOMAIN];
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (appUrl) {
     try {
@@ -22,28 +24,54 @@ function platformHosts(): string[] {
   return hosts;
 }
 
+function resolveRequestMarket(request: NextRequest, host: string): Market {
+  const fromHost = marketFromHost(host);
+  if (fromHost) return fromHost;
+  const fromPath = marketFromPath(request.nextUrl.pathname);
+  if (fromPath) return fromPath;
+  if (request.nextUrl.pathname.startsWith("/app")) {
+    const cookie = request.cookies.get("onestreet_market")?.value;
+    if (cookie === "uk" || cookie === "us") return cookie;
+  }
+  return defaultMarket();
+}
+
 export function proxy(request: NextRequest) {
   const host = (request.headers.get("host") || "")
     .toLowerCase()
     .replace(/:\d+$/, "")
     .replace(/^www\./, "");
 
-  if (!host) return NextResponse.next();
+  const market = resolveRequestMarket(request, host);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-onestreet-market", market);
+
+  if (!host) {
+    return NextResponse.next({ request: { headers: requestHeaders } });
+  }
 
   // Vercel preview/production deployment hosts are the platform, not tenants.
   const isPlatform =
     platformHosts().includes(host) || host.endsWith(".vercel.app");
-  if (isPlatform) return NextResponse.next();
 
-  const url = request.nextUrl.clone();
-  // Only the site root maps to a tenant page; deeper paths stay as-is so a
-  // custom domain can still reach shared assets and the capture endpoint.
-  if (url.pathname === "/") {
+  let response: NextResponse;
+  if (!isPlatform && request.nextUrl.pathname === "/") {
+    const url = request.nextUrl.clone();
     url.pathname = `/site/${host}`;
-    return NextResponse.rewrite(url);
+    response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+  } else {
+    response = NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  return NextResponse.next();
+  const explicit = marketFromHost(host) || marketFromPath(request.nextUrl.pathname);
+  if (explicit) {
+    response.cookies.set("onestreet_market", explicit, {
+      path: "/",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  }
+  return response;
 }
 
 export const config = {

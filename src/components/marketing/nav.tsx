@@ -8,9 +8,10 @@ import { cn } from "@/lib/utils";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { getMarketingCopy } from "@/components/marketing/copy";
 import { useTheme } from "@/lib/theme/provider";
+import type { Market } from "@/types";
 
-export function MarketingNav() {
-  const copy = getMarketingCopy();
+export function MarketingNav({ market, alternateHref }: { market: Market; alternateHref: string }) {
+  const copy = getMarketingCopy(market);
   const { theme, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
 
@@ -31,11 +32,14 @@ export function MarketingNav() {
             : "bg-transparent",
         )}
       >
-        <Link href="/">
+        <Link href={market === "uk" ? "/uk" : "/us"} className="flex items-center gap-2">
           <BrandMark
             className="text-lg text-[var(--foreground)]"
             accentClassName="text-[var(--accent)]"
           />
+          <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-[var(--muted)]">
+            {copy.brand.regionShort}
+          </span>
         </Link>
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Product">
           {copy.nav.map((link) => (
@@ -49,6 +53,12 @@ export function MarketingNav() {
           ))}
         </nav>
         <div className="flex items-center gap-2">
+          <a
+            href={alternateHref}
+            className="hidden rounded-full px-3 py-1.5 text-[13px] font-medium text-[var(--muted)] hover:text-[var(--foreground)] sm:inline"
+          >
+            {market === "uk" ? "US site" : "UK site"}
+          </a>
           <button
             type="button"
             onClick={toggleTheme}
@@ -89,6 +99,9 @@ export function MarketingNav() {
                 </a>
               ))}
               <div className="mt-2 grid gap-2">
+                <a href={alternateHref} className="rounded-2xl px-4 py-3 text-sm font-medium hover:bg-[var(--surface-muted)]">
+                  {market === "uk" ? "Open the US site" : "Open the UK site"}
+                </a>
                 <Button asChild variant="outline" className="rounded-full">
                   <Link href="/app/login">Sign in</Link>
                 </Button>
