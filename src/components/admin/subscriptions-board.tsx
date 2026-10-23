@@ -18,6 +18,7 @@ import { cn, formatMoney } from "@/lib/utils";
 import { PLANS } from "@/lib/plans/catalog";
 import { staggerContainer, fadeUp } from "@/lib/motion";
 import { MetricCard, RegionPair } from "@/components/admin/region-metric";
+import { SubscriptionManageMenu } from "@/components/admin/subscription-manage";
 import type { SubscriptionStatus, TenantRecord } from "@/lib/admin/types";
 import type { StripeRegionConnection } from "@/lib/stripe/config";
 import type { Market, PlanId } from "@/types";
@@ -79,6 +80,11 @@ function FilterCard({
       {children}
     </button>
   );
+}
+
+function sentenceStatus(status: string) {
+  const words = status.replaceAll("_", " ");
+  return words.replace(/^\w/, (letter) => letter.toUpperCase());
 }
 
 function stripeLabel(connection: StripeRegionConnection) {
@@ -319,6 +325,7 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
               <TH>Period end</TH>
               <TH>Last payment</TH>
               <TH>Stripe</TH>
+              <TH className="text-right">Manage</TH>
             </TR>
           </THead>
           <TBody>
@@ -347,12 +354,16 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
                             ? "danger"
                             : tenant.subscription.status === "trialing"
                               ? "accent"
-                              : "neutral"
+                              : tenant.subscription.status === "paused"
+                                ? "warning"
+                                : "neutral"
                       }
-                      className="capitalize"
                     >
-                      {tenant.subscription.status.replace("_", " ")}
+                      {sentenceStatus(tenant.subscription.status)}
                     </Badge>
+                    {tenant.subscription.cancelAtPeriodEnd ? (
+                      <p className="mt-1 text-[11px] font-medium text-[var(--warning)]">Cancels at period end</p>
+                    ) : null}
                   </TD>
                   <TD className="font-medium">{formatMoney(tenant.subscription.mrr, tenant.market)}</TD>
                   <TD className="text-xs">
@@ -367,11 +378,14 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
                       {tenant.subscription.stripeCustomerId ? "linked" : "not linked"}
                     </span>
                   </TD>
+                  <TD className="text-right">
+                    <SubscriptionManageMenu tenant={tenant} />
+                  </TD>
                 </TR>
               );
             })}
             {rows.length === 0 ? (
-              <EmptyRow colSpan={8}>
+              <EmptyRow colSpan={9}>
                 {marketFilter === "us"
                   ? "No USD subscriptions in this view."
                   : "No subscriptions match this filter."}

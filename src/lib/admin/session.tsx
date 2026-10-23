@@ -25,6 +25,7 @@ import type {
 } from "@/lib/admin/types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import {
+  applyTenantSubscriptionAction,
   clearPlatformAdminAuth,
   getPlatformMetrics,
   loadPlatformRegistry,
@@ -34,6 +35,7 @@ import {
   updateTenantNotes,
   updateTenantName,
 } from "@/lib/admin/registry";
+import type { SubscriptionAction } from "@/lib/admin/subscription-actions";
 import type { PlanId } from "@/types";
 
 interface AdminState {
@@ -54,6 +56,11 @@ interface AdminState {
     status: SubscriptionStatus,
     reason?: string,
   ) => void;
+  manageSubscription: (
+    orgId: string,
+    action: SubscriptionAction,
+    plan?: PlanId,
+  ) => Promise<string>;
   updateLifecycle: (
     orgId: string,
     status: TenantLifecycleStatus,
@@ -216,6 +223,36 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     [admin, persistTenant],
   );
 
+  const manageSubscription = useCallback(
+    async (orgId: string, action: SubscriptionAction, plan?: PlanId) => {
+      if (!admin) throw new Error("Not authenticated");
+      if (!adminCanManageBilling(admin.role)) {
+        throw new Error("Billing permission required");
+      }
+      const res = await fetch(`/api/admin/subscriptions/${orgId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, plan }),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        source?: string;
+        message?: string;
+        error?: string;
+      } | null;
+      if (!res.ok) {
+        throw new Error(json?.error || "Could not update the subscription");
+      }
+      if (json?.source === "local") {
+        const applied = applyTenantSubscriptionAction(orgId, action, admin.email, plan);
+        refresh();
+        return applied.message;
+      }
+      refresh();
+      return json?.message || "Subscription updated.";
+    },
+    [admin, refresh],
+  );
+
   const updateLifecycle = useCallback(
     (orgId: string, status: TenantLifecycleStatus, notes?: string) => {
       if (!admin) throw new Error("Not authenticated");
@@ -273,6 +310,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       canImpersonate: admin ? adminCanImpersonate(admin.role) : false,
       updatePlan,
       updateSubscriptionStatus,
+      manageSubscription,
       updateLifecycle,
       saveNotes,
       renameTenant,
@@ -289,6 +327,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       refresh,
       updatePlan,
       updateSubscriptionStatus,
+      manageSubscription,
       updateLifecycle,
       saveNotes,
       renameTenant,

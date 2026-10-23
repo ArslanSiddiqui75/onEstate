@@ -15,6 +15,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ImpersonateButton } from "@/components/admin/impersonate-button";
+import { SubscriptionManageMenu } from "@/components/admin/subscription-manage";
 import { ProgressRing, Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -51,6 +52,16 @@ const LIFECYCLE_STATUSES: TenantLifecycleStatus[] = [
   "canceled",
   "churned",
 ];
+
+function sentenceStatus(status: string) {
+  return status.replaceAll("_", " ").replace(/^\w/, (letter) => letter.toUpperCase());
+}
+
+function collectionLabel(method: string) {
+  if (method === "send_invoice") return "Send invoice";
+  if (method === "manual") return "Manual";
+  return "Charge automatically";
+}
 
 export default function AdminOrganizationDetailPage() {
   const params = useParams<{ id: string }>();
@@ -193,8 +204,8 @@ export default function AdminOrganizationDetailPage() {
             <div className="stat-icon-chip"><CreditCard className="h-4 w-4" /></div>
             <p className="mt-3 text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Billing email</p>
             <p className="mt-1 font-medium">{tenant.billingEmail}</p>
-            <p className="text-xs capitalize text-[var(--muted)]">
-              {tenant.subscription.collectionMethod.replace("_", " ")}
+            <p className="text-xs text-[var(--muted)]">
+              {collectionLabel(tenant.subscription.collectionMethod)}
             </p>
           </Card>
         </motion.div>
@@ -235,7 +246,11 @@ export default function AdminOrganizationDetailPage() {
         <TabsContent value="overview" className="mt-4 space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader title="Subscription controls" description="Changes are audited and applied immediately" />
+          <CardHeader
+            title="Subscription controls"
+            description="Pause, continue, cancel, change plan, or retry payment. Changes are audited."
+            action={<SubscriptionManageMenu tenant={tenant} />}
+          />
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="text-sm">
               <span className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Plan</span>
@@ -277,8 +292,8 @@ export default function AdminOrganizationDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {SUBSCRIPTION_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s} className="capitalize">
-                      {s.replace("_", " ")}
+                    <SelectItem key={s} value={s}>
+                      {sentenceStatus(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -301,8 +316,8 @@ export default function AdminOrganizationDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {LIFECYCLE_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s} className="capitalize">
-                      {s.replace("_", " ")}
+                    <SelectItem key={s} value={s}>
+                      {sentenceStatus(s)}
                     </SelectItem>
                   ))}
                 </SelectContent>

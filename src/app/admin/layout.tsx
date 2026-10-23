@@ -110,7 +110,7 @@ const PAGES: Array<{
     match: (p) => p.startsWith("/admin/subscriptions"),
     eyebrow: "Revenue",
     title: "Subscriptions",
-    description: "UK subscriptions in GBP and US subscriptions in USD, each on its own Stripe account.",
+    description: "Pause, continue, or cancel each account. UK subscriptions bill in GBP and US subscriptions in USD, on separate Stripe accounts.",
     icon: CreditCard,
   },
   {

@@ -7,7 +7,7 @@ import {
   stripeWebhookSecret,
 } from "@/lib/stripe/config";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
-import { upsertPlatformSubscriptionFromOrg } from "@/lib/admin/platform-db";
+import { syncLifecycleFromSubscription, upsertPlatformSubscriptionFromOrg } from "@/lib/admin/platform-db";
 import type { Market } from "@/types";
 
 type SupabaseClient = NonNullable<ReturnType<typeof createServiceSupabaseClient>>;
@@ -41,6 +41,10 @@ async function applyBillingPatch(
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", orgId);
 
+  if (patch.subscription_status) {
+    await syncLifecycleFromSubscription(supabase, orgId, patch.subscription_status);
+  }
+
   await supabase.from("audit_logs").insert({
     org_id: orgId,
     action: audit.action,
@@ -61,6 +65,12 @@ async function orgIdForCustomer(supabase: SupabaseClient, customerId: string | n
   return data ? String(data.id) : null;
 }
 
+function mirroredStatus(subscription: Stripe.Subscription) {
+  if (subscription.pause_collection) return "paused";
+  if (subscription.status === "incomplete_expired") return "canceled";
+  return subscription.status;
+}
+
 function subscriptionPatch(subscription: Stripe.Subscription): BillingPatch {
   const item = subscription.items.data[0];
   const priceId = item?.price?.id;
@@ -69,7 +79,7 @@ function subscriptionPatch(subscription: Stripe.Subscription): BillingPatch {
     ...(plan ? { plan } : {}),
     stripe_subscription_id: subscription.id,
     stripe_price_id: priceId || null,
-    subscription_status: subscription.status,
+    subscription_status: mirroredStatus(subscription),
     // Billing periods live on the subscription item, not the subscription
     // itself, as of the Stripe API versions this SDK targets.
     current_period_end: iso(item?.current_period_end),

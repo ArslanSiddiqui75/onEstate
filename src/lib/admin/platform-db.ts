@@ -14,6 +14,7 @@ import type {
   TenantRecord,
   TenantUsageSnapshot,
 } from "@/lib/admin/types";
+import type { SubscriptionProjection } from "@/lib/admin/subscription-actions";
 import type { Market, PlanId, Role } from "@/types";
 
 type ServiceClient = SupabaseClient;
@@ -315,7 +316,10 @@ export async function loadPlatformRegistryFromDb(
         cancelAtPeriodEnd: Boolean(
           org.cancel_at_period_end ?? subRow?.cancel_at_period_end,
         ),
-        collectionMethod: "charge_automatically",
+        collectionMethod:
+          subRow?.collection_method === "send_invoice" || subRow?.collection_method === "manual"
+            ? subRow.collection_method
+            : "charge_automatically",
         lastPaymentStatus: (org.last_payment_status ||
           subRow?.last_payment_status ||
           "none") as TenantRecord["subscription"]["lastPaymentStatus"],
@@ -345,6 +349,66 @@ export async function loadPlatformRegistryFromDb(
     audit,
     updatedAt: new Date().toISOString(),
   };
+}
+
+export async function syncLifecycleFromSubscription(
+  supabase: ServiceClient,
+  orgId: string,
+  status: string,
+) {
+  const lifecycle = LIFECYCLE_FROM_SUB[status];
+  if (!lifecycle) return;
+  await supabase
+    .from("platform_tenants")
+    .update({ lifecycle_status: lifecycle, updated_at: new Date().toISOString() })
+    .eq("id", orgId);
+}
+
+export async function saveSubscriptionProjection(
+  supabase: ServiceClient,
+  orgId: string,
+  actorEmail: string,
+  next: SubscriptionProjection,
+) {
+  const sub = next.subscription;
+  const now = new Date().toISOString();
+  await supabase
+    .from("organizations")
+    .update({
+      plan: sub.plan,
+      subscription_status: sub.status,
+      cancel_at_period_end: sub.cancelAtPeriodEnd,
+      trial_ends_at: sub.trialEndsAt,
+      current_period_end: sub.currentPeriodEnd,
+      last_payment_status: sub.lastPaymentStatus,
+      last_payment_at: sub.lastPaymentAt,
+      ...(sub.stripePriceId ? { stripe_price_id: sub.stripePriceId } : {}),
+      updated_at: now,
+    })
+    .eq("id", orgId);
+
+  await syncLifecycleFromSubscription(supabase, orgId, sub.status);
+  await upsertPlatformSubscriptionFromOrg(supabase, orgId);
+  await supabase
+    .from("platform_subscriptions")
+    .update({
+      collection_method: sub.collectionMethod,
+      canceled_at: sub.canceledAt,
+      mrr: sub.mrr,
+      unit_amount: sub.unitAmount,
+      seats_included: sub.seatsIncluded,
+      updated_at: now,
+    })
+    .eq("org_id", orgId);
+
+  await writeAudit(supabase, {
+    actorEmail,
+    action: "subscription.managed",
+    entityType: "subscription",
+    entityId: orgId,
+    summary: next.summary,
+    metadata: { status: sub.status, plan: sub.plan },
+  });
 }
 
 export async function patchPlatformTenant(

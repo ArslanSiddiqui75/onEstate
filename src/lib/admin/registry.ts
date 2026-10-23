@@ -1,6 +1,10 @@
 import { PLANS, PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 import { getBrandByMarket, resolveBrandId } from "@/lib/brand/config";
 import type { Market, PlanId, Role } from "@/types";
+import {
+  projectSubscriptionAction,
+  type SubscriptionAction,
+} from "@/lib/admin/subscription-actions";
 import type {
   PlatformAuditEvent,
   PlatformRegistry,
@@ -386,6 +390,65 @@ export function setTenantSubscriptionStatus(
   });
   savePlatformRegistry(registry);
   return tenant;
+}
+
+export function applyTenantSubscriptionAction(
+  orgId: string,
+  action: SubscriptionAction,
+  actorEmail: string,
+  plan?: TenantRecord["subscription"]["plan"],
+) {
+  const registry = loadPlatformRegistry();
+  const tenant = registry.tenants.find((row) => row.id === orgId);
+  if (!tenant) throw new Error("Tenant not found");
+
+  const next = projectSubscriptionAction(tenant, action, { plan });
+  const previous = tenant.subscription.status;
+  tenant.subscription.status = next.subscription.status;
+  tenant.subscription.plan = next.subscription.plan;
+  tenant.subscription.unitAmount = next.subscription.unitAmount;
+  tenant.subscription.mrr = next.subscription.mrr;
+  tenant.subscription.seatsIncluded = next.subscription.seatsIncluded;
+  tenant.subscription.cancelAtPeriodEnd = next.subscription.cancelAtPeriodEnd;
+  tenant.subscription.collectionMethod = next.subscription.collectionMethod;
+  tenant.subscription.lastPaymentStatus = next.subscription.lastPaymentStatus;
+  tenant.subscription.canceledAt = next.subscription.canceledAt || undefined;
+  tenant.subscription.trialEndsAt = next.subscription.trialEndsAt || undefined;
+  tenant.subscription.currentPeriodEnd = next.subscription.currentPeriodEnd || undefined;
+  tenant.subscription.lastPaymentAt = next.subscription.lastPaymentAt || undefined;
+  if (next.subscription.stripePriceId) {
+    tenant.subscription.stripePriceId = next.subscription.stripePriceId;
+  }
+  tenant.lifecycleStatus = next.lifecycleStatus;
+  tenant.updatedAt = nowIso();
+  tenant.healthScore = healthFrom(tenant);
+
+  if (action === "change_plan" && typeof window !== "undefined") {
+    try {
+      const key = `certified_workspace_v1:${orgId}`;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const snap = JSON.parse(raw) as { org?: { plan?: TenantRecord["subscription"]["plan"] } };
+        if (snap.org) {
+          snap.org.plan = next.subscription.plan;
+          localStorage.setItem(key, JSON.stringify(snap));
+        }
+      }
+    } catch {
+      // Workspace alignment is best-effort.
+    }
+  }
+
+  pushAudit(registry, {
+    actorEmail,
+    action: `subscription.${action}`,
+    entityType: "subscription",
+    entityId: tenant.subscription.id,
+    summary: next.summary,
+    metadata: { previous, status: next.subscription.status, plan: next.subscription.plan },
+  });
+  savePlatformRegistry(registry);
+  return { tenant, message: next.summary };
 }
 
 export function setTenantLifecycle(
