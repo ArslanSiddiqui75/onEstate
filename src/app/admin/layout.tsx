@@ -290,12 +290,8 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
                     />
                   ) : null}
                   <span
-                    className={cn(
-                      "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors",
-                      active
-                        ? "bg-[var(--accent-gradient)] text-white shadow-[0_4px_14px_-2px_rgba(12,110,99,0.65)]"
-                        : "bg-[var(--surface-elevated)] text-[var(--muted)] ring-1 ring-[var(--border)] group-hover:text-[var(--foreground)] dark:bg-white/6 dark:text-white/70 dark:ring-0 dark:group-hover:bg-white/10 dark:group-hover:text-white",
-                    )}
+                    data-active={active ? "true" : undefined}
+                    className="nav-icon-chip relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-[background,color,box-shadow] duration-150"
                   >
                     <NavIcon className="h-3.5 w-3.5 overflow-visible" aria-hidden />
                   </span>

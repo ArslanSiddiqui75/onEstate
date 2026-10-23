@@ -248,7 +248,7 @@ export function AppShell({
                         : "text-white/60 hover:bg-white/6 hover:text-white"
                       : active
                         ? "text-[var(--foreground)]"
-                        : "text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]",
+                        : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]",
                     item.locked && "opacity-45",
                   )}
                 >
@@ -265,14 +265,8 @@ export function AppShell({
                     />
                   ) : null}
                   <span
-                    className={cn(
-                      "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors",
-                      active
-                        ? "bg-[var(--accent-gradient)] text-white shadow-[0_4px_14px_-2px_rgba(12,110,99,0.65)]"
-                        : ink
-                          ? "bg-white/6 text-white/70 group-hover:bg-white/10"
-                          : "bg-[var(--surface-elevated)] text-[var(--muted)] ring-1 ring-[var(--border)] group-hover:text-[var(--foreground)]",
-                    )}
+                    data-active={active ? "true" : undefined}
+                    className="nav-icon-chip relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-[background,color,box-shadow] duration-150"
                   >
                     {item.locked ? (
                       <Lock className="h-3.5 w-3.5 overflow-visible" aria-hidden />
