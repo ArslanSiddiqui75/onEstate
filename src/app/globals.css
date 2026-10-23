@@ -503,8 +503,9 @@ select:not([multiple]) optgroup {
 /* Theme lockup. The image height follows the surrounding font size. */
 .brand-mark img {
   display: block;
-  height: 2.45em;
-  width: auto;
+  width: 11.5em;
+  height: auto;
+  max-width: 100%;
 }
 
 .brand-mark[data-tone="auto"] .brand-mark-dark {

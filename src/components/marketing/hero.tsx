@@ -24,7 +24,17 @@ export function Hero({ market }: { market: Market }) {
           <Button asChild size="lg" variant="outline" className="px-6">
             <Link href="/app/login">Sign in</Link>
           </Button>
+          <Button asChild size="lg" variant="ghost" className="px-3">
+            <a href="#product">See the whole product</a>
+          </Button>
         </div>
+        <ul className="mt-8 grid gap-2 sm:grid-cols-3">
+          {copy.heroNotes.map((note) => (
+            <li key={note} className="text-sm leading-snug text-[var(--muted)]">
+              {note}
+            </li>
+          ))}
+        </ul>
       </div>
       <ProductFrame uk={copy.uk} />
     </section>
