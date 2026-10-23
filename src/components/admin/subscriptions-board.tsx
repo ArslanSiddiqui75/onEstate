@@ -380,7 +380,7 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
             <SelectContent>
               {STATUSES.map((item) => (
                 <SelectItem key={item} value={item}>
-                  {item === "all" ? "All subscription statuses" : item.replace("_", " ")}
+                  {item === "all" ? "All subscription statuses" : item.replace("_", " ").replace(/^\w/, (letter) => letter.toUpperCase())}
                 </SelectItem>
               ))}
             </SelectContent>
