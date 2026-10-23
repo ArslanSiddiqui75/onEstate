@@ -11,17 +11,19 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
     brand,
     uk,
     nav: [
-      { href: "#product", label: "Product" },
-      { href: "#desk", label: "The desk" },
+      { href: "#jobs", label: "The desk" },
+      { href: "#product", label: uk ? "Sales & lettings" : "Sales & listings" },
       { href: "#clients", label: "Clients" },
-      ...(uk ? [{ href: "#lettings", label: "Lettings" }] : []),
       { href: "#pricing", label: "Pricing" },
-      { href: "#contact", label: "Demo" },
     ],
-    heroEyebrow: uk ? "Estate agency software · priced in pounds" : "Real estate software · priced in dollars",
+    banner: "Listing drafts are written from the record. You edit them before they go anywhere.",
+    heroLead: "The desk that",
+    heroPhrases: uk
+      ? ["fills the diary", "takes the offer", "writes the listing", "updates the vendor", "files the repair"]
+      : ["fills the diary", "takes the offer", "writes the listing", "updates the seller", "prepares the stock"],
     heroTitle: uk
-      ? "The whole agency, from the first enquiry to exchange."
-      : "The whole brokerage, from the first enquiry to close.",
+      ? "The desk that fills the diary."
+      : "The desk that fills the diary.",
     heroBody: uk
       ? "0neStreet is the desk the office actually works from. Leads, the diary, listings prepared for the portals, offers, progression, lettings, documents, and a private link for the vendor, buyer, landlord, and tenant."
       : "0neStreet is the desk the office actually works from. Leads, the diary, listings prepared for the MLS, offers, progression, documents, and a private link for the seller, buyer, and landlord.",
@@ -29,6 +31,190 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
       ? ["One login for the office", "England, Wales, and Scotland", "Client links, not another phone chase"]
       : ["One login for the office", "Sales on one record", "Client links, not another phone chase"],
     primaryCta: "Book a demo",
+    jobs: uk
+      ? [
+          {
+            id: "diary",
+            title: "Fill the diary",
+            body: "A viewing or a valuation comes in on a link. The office confirms it. The appointment stays on the property, not in someone’s inbox.",
+            frame: "diary" as const,
+          },
+          {
+            id: "offer",
+            title: "Take the offer",
+            body: "The buyer submits from their link, or the negotiator records it. Progression shows listed, viewing, offer, progressing, exchanged.",
+            frame: "progression" as const,
+          },
+          {
+            id: "listing",
+            title: "Write the listing",
+            body: "The description is drafted from the fields already on the record, in time for the vendor to approve it from their link.",
+            frame: "vendor" as const,
+          },
+          {
+            id: "enquiry",
+            title: "Catch the enquiry",
+            body: "Website, portal, and office leads land on one list, with the property, the source, and the next step.",
+            frame: "enquiry" as const,
+          },
+          {
+            id: "repair",
+            title: "File the repair",
+            body: "The tenant reports by link. Gas, fire, flood, and dangerous electrics take an emergency route. Everything else gets a clock on the lettings desk.",
+            frame: "landlord" as const,
+          },
+        ]
+      : [
+          {
+            id: "diary",
+            title: "Fill the diary",
+            body: "A showing or a valuation comes in on a link. The office confirms it. The appointment stays on the property.",
+            frame: "diary" as const,
+          },
+          {
+            id: "offer",
+            title: "Take the offer",
+            body: "The buyer submits from their link, or the agent records it. Progression shows listed, showing, offer, progressing, closed.",
+            frame: "progression" as const,
+          },
+          {
+            id: "listing",
+            title: "Write the listing",
+            body: "The description is drafted from the fields already on the record, ready for the seller to approve from their link.",
+            frame: "vendor" as const,
+          },
+          {
+            id: "enquiry",
+            title: "Catch the enquiry",
+            body: "Website and office leads land on one list, with the property, the source, and the next step.",
+            frame: "enquiry" as const,
+          },
+          {
+            id: "stock",
+            title: "Prepare the stock",
+            body: "The listing pack shows what is ready for the MLS and what is not connected yet. You are not told a board has already taken the feed.",
+            frame: "desk" as const,
+          },
+        ],
+    pillars: uk
+      ? [
+          {
+            eyebrow: "Sales",
+            title: "More of the deal stays on one thread.",
+            points: [
+              "Turn up to the valuation with a draft already written",
+              "See the offer, the viewing, and the feedback together",
+              "Progress the file through to exchange without retyping it",
+            ],
+            href: "#jobs",
+            cta: "See the sales desk",
+          },
+          {
+            eyebrow: "Lettings",
+            title: "The tenancy has its own desk.",
+            points: [
+              "Repairs, with an emergency route and a reply clock",
+              "Right to Rent, keys, and contractor warnings on the property",
+              "Certificates, inspections, and a dispute pack when you need one",
+            ],
+            href: "#lettings",
+            cta: "See lettings",
+          },
+          {
+            eyebrow: "The office",
+            title: "The rest of the week, in the same login.",
+            points: [
+              "CRM with calls, SMS, and sequences",
+              "A branded site, scheduled social posts, and e-sign",
+              "Tasks, reports, teams, and a fee request on the deal",
+            ],
+            href: "#pricing",
+            cta: "See pricing",
+          },
+        ]
+      : [
+          {
+            eyebrow: "Sales",
+            title: "More of the deal stays on one thread.",
+            points: [
+              "Turn up to the valuation with a draft already written",
+              "See the offer, the showing, and the feedback together",
+              "Progress the file through to close without retyping it",
+            ],
+            href: "#jobs",
+            cta: "See the sales desk",
+          },
+          {
+            eyebrow: "Listings",
+            title: "Stock prepared before anyone is asked to publish.",
+            points: [
+              "A listing pack with MLS readiness and connection status",
+              "Drafts you edit before the seller or the site sees them",
+              "Documents and media on the same file as the offer",
+            ],
+            href: "#jobs",
+            cta: "See the listing desk",
+          },
+          {
+            eyebrow: "The office",
+            title: "The rest of the week, in the same login.",
+            points: [
+              "CRM with calls, SMS, and sequences",
+              "A branded site, scheduled social posts, and e-sign",
+              "Tasks, reports, teams, and a fee request on the deal",
+            ],
+            href: "#pricing",
+            cta: "See pricing",
+          },
+        ],
+    scales: [
+      {
+        eyebrow: "Solo",
+        title: "Runs without a second hire.",
+        body: uk
+          ? "One user. Enquiries, the diary, listing drafts, and the progression checklist. £49 a month, in pounds."
+          : "One user. Enquiries, the diary, listing drafts, and the progression checklist. $59 a month, in dollars.",
+        href: "/app/signup?plan=solo",
+        cta: "Start solo",
+      },
+      {
+        eyebrow: "Team and multi-office",
+        title: "One standard as the office grows.",
+        body: "Team is up to 25 people, with lead routing and client links. Enterprise routes across offices. Same record, more seats.",
+        href: "#pricing",
+        cta: "Compare plans",
+      },
+    ],
+    reasons: uk
+      ? [
+          { title: "One record", body: "The enquiry, the viewing, the offer, and the file are the same property. Nothing is copied into a second system to progress it." },
+          { title: "Client links", body: "Vendor, buyer, landlord, and tenant open a link. They approve, book, offer, and report. They do not need an account." },
+          { title: "Drafts you approve", body: "A listing description and a sale summary are written from the fields on the record. You edit them before anyone else sees them." },
+          { title: "A price you can read", body: "Solo is £49. Team is £199. Enterprise is a conversation. Billing is in pounds. No invented bundle hiding the number." },
+          { title: "A seat for each job", body: "Owner, broker, team lead, agent, assistant, and accountant. The CRM stays shared across the office." },
+          { title: "Lettings, properly", body: "Repairs, rent, Right to Rent, keys, gas, EICR, EPC, deposits, HMO, alarms, inspections, and a dispute pack. England, Wales, and Scotland." },
+        ]
+      : [
+          { title: "One record", body: "The enquiry, the showing, the offer, and the file are the same property. Nothing is copied into a second system to progress it." },
+          { title: "Client links", body: "Seller, buyer, and landlord open a link. They approve, book, and offer. They do not need an account." },
+          { title: "Drafts you approve", body: "A listing description and a sale summary are written from the fields on the record. You edit them before anyone else sees them." },
+          { title: "A price you can read", body: "Solo is $59. Team is $249. Enterprise is a conversation. Billing is in dollars." },
+          { title: "A seat for each job", body: "Owner, broker, team lead, agent, assistant, and accountant. The CRM stays shared across the office." },
+          { title: "Stock, prepared", body: "Listing packs show MLS readiness and what is not connected. You are not told a board has already accepted the feed." },
+        ],
+    facts: uk
+      ? [
+          ["4", "Client links on an instruction"],
+          ["3", "Nations on the lettings desk"],
+          ["£49", "Solo, billed monthly"],
+          ["1", "Diary for the whole office"],
+        ]
+      : [
+          ["3", "Client links on a listing"],
+          ["1", "Record from enquiry to close"],
+          ["$59", "Solo, billed monthly"],
+          ["1", "Diary for the whole office"],
+        ],
     proof: uk
       ? [
           "Enquiry centre",

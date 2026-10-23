@@ -23,14 +23,26 @@ export function MarketingNav({ market }: { market: Market }) {
   }, []);
 
   return (
-    <header
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 border-b transition-colors",
-        scrolled
-          ? "border-[var(--border)] bg-[var(--surface-solid)]/90 backdrop-blur-md"
-          : "border-transparent bg-transparent",
-      )}
-    >
+    <div className="fixed inset-x-0 top-0 z-50">
+      <div className="bg-[var(--accent)] text-[var(--accent-foreground)]">
+        <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-2 text-center text-[13px]">
+          <span className="rounded-full bg-black/15 px-2 py-0.5 text-[10px] font-bold tracking-[0.14em]">NEW</span>
+          <span className="hidden sm:inline">{copy.banner}</span>
+          <span className="sm:hidden">Drafts, written from the record.</span>
+          <a
+            href="#jobs"
+            className="shrink-0 rounded-full border border-current/30 px-3 py-1 text-xs font-semibold"
+          >
+            See it
+          </a>
+        </div>
+      </div>
+      <header
+        className={cn(
+          "border-b bg-[var(--surface-solid)] transition-colors",
+          scrolled ? "border-[var(--border)]" : "border-transparent",
+        )}
+      >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
         <Link href={market === "uk" ? "/UK" : "/US"} className="flex items-center" aria-label="0neStreet">
           <BrandMark className="text-[15px]" />
@@ -59,10 +71,10 @@ export function MarketingNav({ market }: { market: Market }) {
               <Moon className="h-4 w-4" aria-hidden />
             )}
           </button>
-          <Button asChild variant="ghost" className="hidden h-9 sm:inline-flex">
+          <Button asChild variant="outline" className="hidden h-10 rounded-full px-4 sm:inline-flex">
             <Link href="/app/login">Sign in</Link>
           </Button>
-          <Button asChild className="hidden h-9 px-4 sm:inline-flex">
+          <Button asChild className="hidden h-10 rounded-full px-5 sm:inline-flex">
             <a href="#contact">{copy.primaryCta}</a>
           </Button>
           <details className="group relative lg:hidden">
@@ -98,6 +110,7 @@ export function MarketingNav({ market }: { market: Market }) {
           </details>
         </div>
       </div>
-    </header>
+      </header>
+    </div>
   );
 }
