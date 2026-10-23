@@ -124,7 +124,7 @@ export default function AppLoginPage() {
           Sign in to {brand.name}
         </h1>
         <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-          {brand.regionShort} · {brand.domain}
+          {brand.domain}
         </p>
         <p className="mt-2 text-sm text-[var(--muted)]">
           {authMode === "supabase"

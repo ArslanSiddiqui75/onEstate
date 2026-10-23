@@ -1,43 +1,30 @@
-"use client";
-
 import { cn } from "@/lib/utils";
-import { useBrand } from "@/components/brand/brand-provider";
 import type { BrandConfig } from "@/lib/brand/config";
 
-export function StreetMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 32 32" className={cn("h-[1.15em] w-[1.15em] shrink-0", className)} aria-hidden>
-      <rect width="32" height="32" rx="8" fill="#114740" />
-      <path
-        d="M16 5.4c-3.35 0-5.9 2.55-5.9 5.85 0 4.35 5.9 9.35 5.9 9.35s5.9-5 5.9-9.35c0-3.3-2.55-5.85-5.9-5.85z"
-        fill="#F4F1EA"
-      />
-      <circle cx="16" cy="11.15" r="1.85" fill="#114740" />
-      <path d="M7.25 24.15h17.5" stroke="#F4F1EA" strokeWidth="2.05" strokeLinecap="round" />
-    </svg>
-  );
-}
+/** "0ne" — geometric grotesque, numeral zero. */
+const ONE =
+  "M19.69 17.7c7.93 0 13.22 6.66 13.22 18.5c0 11.84-5.29 18.5-13.22 18.5c-7.93 0-13.21-6.66-13.21-18.5c0-11.84 5.28-18.5 13.21-18.5zM19.69 23.1c-3.89 0-6.71 4.45-6.71 13.1c0 8.65 2.82 13.1 6.71 13.1c3.9 0 6.72-4.45 6.72-13.1c0-8.65-2.82-13.1-6.72-13.1zM38 54v-32h6v6.2c1.39-3.02 4.83-6.7 9.55-6.7c5.41 0 10.65 4.84 10.65 12.1v20.4h-6.2v-19.6c0-4.56-2.53-7.6-6.6-7.6c-4.49 0-7.2 3.69-7.2 8.2v19zM84.21 21.4c8.54 0 14.4 6.4 14.4 16v2.6h-22.8c0 5.67 3.84 9.45 8.78 9.45c3.39 0 5.62-1.78 6.85-4.72l5.59 1.29c-2.25 5.41-6.41 8.68-12.59 8.68c-8.52 0-15.03-6.23-15.03-16.5c0-9.71 5.81-16.8 14.8-16.8zM75.81 35.2h16.5c0-5.13-3.36-8.55-8.31-8.55c-4.94 0-8.19 3.42-8.19 8.55z";
 
+/** "Street" */
+const STREET =
+  "M117.84 54.8c-8.65 0-15.3-5.38-15.59-12.8h6.5c.16 4.18 3.9 7.2 9.09 7.2c5.08 0 8.91-2.91 8.91-6.4c0-3.43-3.68-6.48-8.76-7.75c-8.55-2.13-14.74-7.07-14.74-13.45c0-6.34 6.13-12.3 14.87-12.3c8.04 0 14.25 5.04 14.53 12h-6.5c-.15-3.71-3.41-6.4-8.16-6.4c-4.62 0-8.24 2.55-8.24 6.1c0 3.36 3.25 6.63 7.75 7.75c9.13 2.27 15.75 7.41 15.75 13.85c0 6.32-6.37 12.2-15.41 12.2zM140 14h6.2v8h6.2v5.1h-6.2v17.9c0 2.32 .86 4 3.42 4c.73 0 1.62-.14 2.43-.2l.9 5.3c-1.67 .25-3.4 .5-4.13 .5c-2.8 0-8.82-3.78-8.82-9v-18.5h-4.65v-5.1h4.65zM156 54v-32h6v5.6c1.06-2.74 3.73-6.1 8.4-6.1c.66 0 2.18 .07 3 .15v5.95c-6.72-.81-11.2 2.5-11.2 7.2v19.2zM190.05 21.4c8.54 0 14.4 6.4 14.4 16v2.6h-22.8c0 5.67 3.84 9.45 8.78 9.45c3.39 0 5.63-1.78 6.85-4.72l5.59 1.29c-2.24 5.41-6.4 8.68-12.58 8.68c-8.53 0-15.04-6.23-15.04-16.5c0-9.71 5.82-16.8 14.8-16.8zM181.65 35.2h16.5c0-5.13-3.35-8.55-8.3-8.55c-4.95 0-8.2 3.42-8.2 8.55zM222.9 21.4c8.54 0 14.4 6.4 14.4 16v2.6h-22.8c0 5.67 3.84 9.45 8.78 9.45c3.39 0 5.63-1.78 6.85-4.72l5.59 1.29c-2.24 5.41-6.4 8.68-12.58 8.68c-8.53 0-15.04-6.23-15.04-16.5c0-9.71 5.82-16.8 14.8-16.8zM214.5 35.2h16.5c0-5.13-3.35-8.55-8.3-8.55c-4.95 0-8.2 3.42-8.2 8.55zM244 14h6.2v8h6.2v5.1h-6.2v17.9c0 2.32 .86 4 3.42 4c.73 0 1.62-.14 2.43-.2l.9 5.3c-1.67 .25-3.4 .5-4.13 .5c-2.8 0-8.82-3.78-8.82-9v-18.5h-4.65v-5.1h4.65z";
+
+/** The name is the logo. No separate symbol sits beside it. */
 export function BrandMark({
-  brand,
   className,
   accentClassName = "text-[var(--accent)]",
-  showMark = true,
 }: {
   brand?: BrandConfig;
   className?: string;
   accentClassName?: string;
   showMark?: boolean;
 }) {
-  const contextBrand = useBrand();
-  const active = brand ?? contextBrand;
   return (
-    <span className={cn("inline-flex items-center gap-[0.45em] font-sans font-semibold tracking-[-0.04em] [font-feature-settings:'zero'_1]", className)}>
-      {showMark ? <StreetMark /> : null}
-      <span>
-        0ne
-        <span className={accentClassName}>{active.suffix}</span>
-      </span>
+    <span className={cn("inline-flex items-center leading-none", className)}>
+      <svg viewBox="0 0 264 64" className="h-[1.45em] w-auto" role="img" aria-label="0neStreet">
+        <path fill="currentColor" d={ONE} />
+        <path className={accentClassName} fill="currentColor" d={STREET} />
+      </svg>
     </span>
   );
 }

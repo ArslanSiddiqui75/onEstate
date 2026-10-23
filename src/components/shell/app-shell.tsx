@@ -193,7 +193,7 @@ export function AppShell({
     items.find((item) => item.id === "dashboard") ||
     items[0];
 
-  const statusLine = headerMeta || `${brand.name} ${brand.regionShort} · ${PLANS[plan].name}`;
+  const statusLine = headerMeta || `${brand.name} · ${PLANS[plan].name}`;
 
   useEffect(() => {
     document.title = `${activePage.title} — ${brand.name}`;

@@ -32,14 +32,11 @@ export function MarketingNav({ market }: { market: Market }) {
       )}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
-        <Link href={market === "uk" ? "/UK" : "/US"} className="flex items-center gap-2.5">
+        <Link href={market === "uk" ? "/UK" : "/US"} className="flex items-center" aria-label="0neStreet">
           <BrandMark
-            className="text-[15px] text-[var(--foreground)]"
+            className="text-[17px] text-[var(--foreground)]"
             accentClassName="text-[var(--accent)]"
           />
-          <span className="text-[11px] font-medium tracking-[0.16em] text-[var(--muted)]">
-            {copy.brand.regionShort}
-          </span>
         </Link>
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Product">
           {copy.nav.map((link) => (

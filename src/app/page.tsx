@@ -5,7 +5,7 @@ import { requestMarket } from "@/lib/brand/request";
 export async function generateMetadata(): Promise<Metadata> {
   const { brand } = await requestMarket();
   return {
-    title: `${brand.name} ${brand.regionShort}`,
+    title: brand.name,
     description: brand.supporting,
   };
 }
