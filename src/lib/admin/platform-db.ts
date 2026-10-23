@@ -469,11 +469,43 @@ export async function patchPlatformTenant(
       subPatch.internal_notes = patch.notes;
     }
     await supabase.from("platform_tenants").update(subPatch).eq("id", orgId);
+    const now = new Date().toISOString();
     if (patch.lifecycleStatus === "suspended") {
       await supabase
+        .from("organizations")
+        .update({ subscription_status: "paused", updated_at: now })
+        .eq("id", orgId);
+      await supabase
         .from("platform_subscriptions")
-        .update({ status: "paused", updated_at: new Date().toISOString() })
+        .update({ status: "paused", mrr: 0, updated_at: now })
         .eq("org_id", orgId);
+    }
+    if (patch.lifecycleStatus === "active") {
+      const { data: sub } = await supabase
+        .from("platform_subscriptions")
+        .select("status, unit_amount, trial_ends_at")
+        .eq("org_id", orgId)
+        .maybeSingle();
+      if (sub?.status === "paused") {
+        const trialEnds = sub.trial_ends_at ? new Date(String(sub.trial_ends_at)).getTime() : 0;
+        const stillTrialing = Number.isFinite(trialEnds) && trialEnds > Date.now();
+        const status = stillTrialing ? "trialing" : "active";
+        const mrr = stillTrialing ? 0 : Number(sub.unit_amount || 0);
+        await supabase
+          .from("organizations")
+          .update({ subscription_status: status, updated_at: now })
+          .eq("id", orgId);
+        await supabase
+          .from("platform_subscriptions")
+          .update({ status, mrr, updated_at: now })
+          .eq("org_id", orgId);
+        if (stillTrialing) {
+          await supabase
+            .from("platform_tenants")
+            .update({ lifecycle_status: "trialing", updated_at: now })
+            .eq("id", orgId);
+        }
+      }
     }
     if (patch.lifecycleStatus === "churned" || patch.lifecycleStatus === "canceled") {
       await supabase

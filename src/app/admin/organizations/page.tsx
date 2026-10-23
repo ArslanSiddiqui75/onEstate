@@ -154,7 +154,8 @@ function matchesFilters(
 }
 
 export default function AdminOrganizationsPage() {
-  const { registry } = useAdminSession();
+  const { registry, updateLifecycle, canSuspend } = useAdminSession();
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [market, setMarket] = useState<MarketFilter>("all");
   const [plan, setPlan] = useState<PlanFilter>("all");
@@ -415,16 +416,36 @@ export default function AdminOrganizationsPage() {
                   </TD>
                   <TD className="text-right">
                     <Button
+                      type="button"
                       size="sm"
                       variant={tenant.lifecycleStatus === "suspended" ? "default" : "secondary"}
+                      disabled={pendingId === tenant.id || (!canSuspend && tenant.lifecycleStatus !== "suspended")}
+                      data-org-action={tenant.id}
+                      data-org-lifecycle={tenant.lifecycleStatus}
                       onClick={() => {
                         const nextStatus = tenant.lifecycleStatus === "suspended" ? "active" : "suspended";
-                        tenant.lifecycleStatus = nextStatus;
-                        toast.info(`Organization "${tenant.name}" set to ${nextStatus}`);
+                        const name = tenant.name;
+                        setPendingId(tenant.id);
+                        void updateLifecycle(tenant.id, nextStatus)
+                          .then(() => {
+                            toast.success(
+                              nextStatus === "suspended" ? `Suspended ${name}.` : `Activated ${name}.`,
+                            );
+                          })
+                          .catch((error: unknown) => {
+                            toast.error(
+                              error instanceof Error ? error.message : "Could not update this organization",
+                            );
+                          })
+                          .finally(() => setPendingId(null));
                       }}
                       className="text-xs"
                     >
-                      {tenant.lifecycleStatus === "suspended" ? "Activate" : "Suspend"}
+                      {pendingId === tenant.id
+                        ? "Saving…"
+                        : tenant.lifecycleStatus === "suspended"
+                          ? "Activate"
+                          : "Suspend"}
                     </Button>
                   </TD>
                 </TR>

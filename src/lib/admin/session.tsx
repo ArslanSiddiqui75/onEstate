@@ -65,7 +65,7 @@ interface AdminState {
     orgId: string,
     status: TenantLifecycleStatus,
     notes?: string,
-  ) => void;
+  ) => Promise<void>;
   saveNotes: (orgId: string, notes: string) => void;
   renameTenant: (orgId: string, name: string) => void;
   canImpersonate: boolean;
@@ -87,7 +87,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   const [registryError, setRegistryError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
-    void (async () => {
+    return (async () => {
       try {
         const res = await fetch("/api/admin/registry");
         const json = (await res.json().catch(() => null)) as {
@@ -192,7 +192,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
         throw new Error(json?.error || "Update failed");
       }
       if (json?.source === "local") localFallback();
-      refresh();
+      await refresh();
     },
     [refresh],
   );
@@ -259,7 +259,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       if (!adminCanSuspendTenants(admin.role) && status === "suspended") {
         throw new Error("Suspend permission required");
       }
-      void persistTenant(
+      return persistTenant(
         orgId,
         { lifecycleStatus: status, notes },
         () => setTenantLifecycle(orgId, status, admin.email, notes),

@@ -468,6 +468,16 @@ export function setTenantLifecycle(
   }
   if (lifecycleStatus === "suspended") {
     tenant.subscription.status = "paused";
+    tenant.subscription.mrr = 0;
+  }
+  if (lifecycleStatus === "active" && tenant.subscription.status === "paused") {
+    const trialEnds = tenant.subscription.trialEndsAt
+      ? new Date(tenant.subscription.trialEndsAt).getTime()
+      : 0;
+    const stillTrialing = Number.isFinite(trialEnds) && trialEnds > Date.now();
+    tenant.subscription.status = stillTrialing ? "trialing" : "active";
+    tenant.lifecycleStatus = stillTrialing ? "trialing" : "active";
+    tenant.subscription.mrr = stillTrialing ? 0 : tenant.subscription.unitAmount;
   }
   if (lifecycleStatus === "churned") {
     tenant.subscription.status = "canceled";
@@ -480,7 +490,7 @@ export function setTenantLifecycle(
     action: "tenant.lifecycle_changed",
     entityType: "tenant",
     entityId: tenant.id,
-    summary: `Lifecycle ${previous} → ${lifecycleStatus} for ${tenant.name}`,
+    summary: `Lifecycle ${previous} → ${tenant.lifecycleStatus} for ${tenant.name}`,
   });
   savePlatformRegistry(registry);
   return tenant;
