@@ -463,17 +463,14 @@ body::before {
   padding-right: 0.6rem;
 }
 
-.data-table thead th select.header-col-filter {
+.data-table thead th .header-col-filter {
   text-transform: none;
   letter-spacing: normal;
   font-size: 0.75rem;
   font-weight: 500;
-  padding-left: 0.45rem;
-  padding-right: 1.35rem;
-  background-position: right 0.35rem center;
 }
 
-.data-table thead th select.header-col-filter[data-active="true"] {
+.data-table thead th .header-col-filter[data-active="true"] {
   border-color: var(--accent);
   color: var(--accent);
 }

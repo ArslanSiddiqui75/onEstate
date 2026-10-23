@@ -10,6 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Table, TBody, TD, TH, THead, TR, TableShell, EmptyRow } from "@/components/ui/table";
 import { formatMoney, cn } from "@/lib/utils";
 import { PLANS } from "@/lib/plans/catalog";
@@ -34,8 +41,10 @@ type HealthFilter = "all" | "healthy" | "watch" | "risk";
 type ActiveFilter = "all" | "today" | "7d" | "30d" | "older";
 type ActionFilter = "all" | "suspend" | "activate";
 
-const FILTER_SELECT =
-  "mt-1.5 h-8 w-auto max-w-[8.5rem] cursor-pointer rounded-lg border bg-[var(--surface-elevated)] px-2 pr-7 text-xs font-medium normal-case tracking-normal";
+function sentenceCase(value: string) {
+  const label = value.replaceAll("_", " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
 
 function HeaderFilter<T extends string>({
   label,
@@ -54,23 +63,29 @@ function HeaderFilter<T extends string>({
   return (
     <div className={cn("flex flex-col", align === "right" && "items-end")}>
       <span>{label}</span>
-      <select
-        aria-label={`Filter ${label}`}
-        value={value}
-        onChange={(event) => onChange(event.target.value as T)}
-        data-active={active ? "true" : undefined}
-        className={cn(
-          "header-col-filter",
-          FILTER_SELECT,
-          active ? "border-[var(--accent)]" : "border-[var(--border)]",
-        )}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <Select value={value} onValueChange={(next) => onChange(next as T)}>
+        <SelectTrigger
+          aria-label={`Filter ${label}`}
+          data-active={active ? "true" : undefined}
+          className={cn(
+            "header-col-filter mt-1.5 h-8 w-fit max-w-[9.5rem] gap-1 rounded-lg px-2 py-0 text-xs font-medium shadow-none [&_svg]:h-3.5 [&_svg]:w-3.5",
+            active ? "border-[var(--accent)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--foreground)]",
+          )}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent
+          align={align === "right" ? "end" : "start"}
+          data-header-filter-menu=""
+          className="w-max min-w-[var(--radix-select-trigger-width)]"
+        >
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -254,7 +269,7 @@ export default function AdminOrganizationsPage() {
                   onChange={setStatus}
                   options={STATUSES.map((value) => ({
                     value,
-                    label: value === "all" ? "All statuses" : value.replace("_", " "),
+                    label: value === "all" ? "All statuses" : sentenceCase(value),
                   }))}
                 />
               </TH>
