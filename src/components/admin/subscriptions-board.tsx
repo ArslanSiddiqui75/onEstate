@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
 import { Badge } from "@/components/ui/badge";
-import { StatCard } from "@/components/ui/stat-card";
 import {
   Select,
   SelectContent,
@@ -53,22 +52,85 @@ function matchesCard(tenant: TenantRecord, filter: CardFilter) {
   return tenant.subscription.plan === filter.plan;
 }
 
-function StackedValue({ uk, us }: { uk: ReactNode; us: ReactNode }) {
+const TONE_CHIP = {
+  accent: "bg-[var(--accent-soft)] text-[var(--accent)]",
+  success: "bg-[var(--success-soft)] text-[var(--success)]",
+  danger: "bg-[var(--danger-soft)] text-[var(--danger)]",
+  neutral: "bg-[var(--surface-muted)] text-[var(--foreground)]",
+};
+
+function RegionLine({
+  code,
+  value,
+  detail,
+}: {
+  code: "UK" | "US";
+  value: ReactNode;
+  detail?: ReactNode;
+}) {
   return (
-    <span className="flex flex-col gap-2" data-stacked-values="true">
-      <span className="flex items-baseline gap-2">
-        <span className="w-7 shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-          UK
+    <div className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-baseline gap-3 py-2.5">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">{code}</span>
+      {detail != null ? (
+        <span className="grid grid-cols-[minmax(0,1fr)_4.5rem] items-baseline gap-3">
+          <span className="text-right font-display text-xl leading-none tracking-tight whitespace-nowrap tabular-nums">
+            {value}
+          </span>
+          <span className="text-right text-[11px] font-medium text-[var(--muted)]">{detail}</span>
         </span>
-        <span>{uk}</span>
-      </span>
-      <span className="flex items-baseline gap-2">
-        <span className="w-7 shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-          US
+      ) : (
+        <span className="text-right font-display text-xl leading-none tracking-tight whitespace-nowrap tabular-nums">
+          {value}
         </span>
-        <span>{us}</span>
-      </span>
-    </span>
+      )}
+    </div>
+  );
+}
+
+function RegionPair({
+  uk,
+  us,
+  ukDetail,
+  usDetail,
+}: {
+  uk: ReactNode;
+  us: ReactNode;
+  ukDetail?: ReactNode;
+  usDetail?: ReactNode;
+}) {
+  return (
+    <div className="mt-1 divide-y divide-[var(--border)]" data-stacked-values="true">
+      <RegionLine code="UK" value={uk} detail={ukDetail} />
+      <RegionLine code="US" value={us} detail={usDetail} />
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  icon: Icon,
+  tone,
+  uk,
+  us,
+  className,
+}: {
+  label: string;
+  icon: typeof DollarSign;
+  tone: keyof typeof TONE_CHIP;
+  uk: ReactNode;
+  us: ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.div variants={fadeUp} className={cn("data-card data-card-hover flex h-full flex-col p-5", className)}>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">{label}</p>
+        <span className={cn("stat-icon-chip h-9 w-9 rounded-[0.7rem]", TONE_CHIP[tone])}>
+          <Icon className="h-4 w-4" aria-hidden />
+        </span>
+      </div>
+      <RegionPair uk={uk} us={us} />
+    </motion.div>
   );
 }
 
@@ -189,9 +251,10 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
           pressed={card?.type === "mrr"}
           onClick={() => selectCard({ type: "mrr" })}
         >
-          <StatCard
+          <MetricCard
             label="MRR"
-            value={<StackedValue uk={formatMoney(uk.mrr, "uk")} us={formatMoney(us.mrr, "us")} />}
+            uk={formatMoney(uk.mrr, "uk")}
+            us={formatMoney(us.mrr, "us")}
             icon={DollarSign}
             tone="accent"
             className={cardClass(card?.type === "mrr")}
@@ -202,9 +265,10 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
           pressed={card?.type === "arr"}
           onClick={() => selectCard({ type: "arr" })}
         >
-          <StatCard
+          <MetricCard
             label="ARR"
-            value={<StackedValue uk={formatMoney(uk.arr, "uk")} us={formatMoney(us.arr, "us")} />}
+            uk={formatMoney(uk.arr, "uk")}
+            us={formatMoney(us.arr, "us")}
             icon={TrendingUp}
             tone="accent"
             className={cardClass(card?.type === "arr")}
@@ -215,9 +279,10 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
           pressed={card?.type === "past_due"}
           onClick={() => selectCard({ type: "past_due" })}
         >
-          <StatCard
+          <MetricCard
             label="Past due"
-            value={<StackedValue uk={uk.pastDueCount} us={us.pastDueCount} />}
+            uk={uk.pastDueCount}
+            us={us.pastDueCount}
             icon={AlertTriangle}
             tone={uk.pastDueCount + us.pastDueCount > 0 ? "danger" : "neutral"}
             className={cardClass(card?.type === "past_due")}
@@ -228,9 +293,10 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
           pressed={card?.type === "active"}
           onClick={() => selectCard({ type: "active" })}
         >
-          <StatCard
+          <MetricCard
             label="Active subs"
-            value={<StackedValue uk={uk.activeCount} us={us.activeCount} />}
+            uk={uk.activeCount}
+            us={us.activeCount}
             icon={CheckCircle2}
             tone="success"
             className={cardClass(card?.type === "active")}
@@ -260,16 +326,12 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
                 )}
               >
                 <p className="font-semibold">{PLANS[row.plan].name}</p>
-                <div className="mt-3 font-display text-3xl tracking-tight">
-                  <StackedValue
-                    uk={formatMoney(row.ukMrr, "uk")}
-                    us={formatMoney(row.usMrr, "us")}
-                  />
-                </div>
-                <p className="mt-3 text-xs text-[var(--muted)]">
-                  {row.ukCount} UK {row.ukCount === 1 ? "org" : "orgs"} · {row.usCount} US{" "}
-                  {row.usCount === 1 ? "org" : "orgs"}
-                </p>
+                <RegionPair
+                  uk={formatMoney(row.ukMrr, "uk")}
+                  us={formatMoney(row.usMrr, "us")}
+                  ukDetail={`${row.ukCount} ${row.ukCount === 1 ? "org" : "orgs"}`}
+                  usDetail={`${row.usCount} ${row.usCount === 1 ? "org" : "orgs"}`}
+                />
                 <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
                   <div
                     className="h-full rounded-full bg-[var(--accent-gradient)] transition-all duration-700"
