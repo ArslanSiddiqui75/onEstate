@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard,
   Building2,
@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   Activity,
   Users2,
+  Menu,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -180,7 +182,9 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   );
   const Icon = activePage.icon;
 
+  const [menuOpen, setMenuOpen] = useState(false);
   const [orgSessionEmail, setOrgSessionEmail] = useState<string | null>(null);
+
   useEffect(() => {
     if (!admin || !isSupabaseConfigured()) return;
     let cancelled = false;
@@ -225,9 +229,35 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-dvh w-full gap-3 overflow-hidden bg-[var(--canvas)] p-2 sm:gap-4 sm:p-3">
-        <aside className="hidden w-64 shrink-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/8 bg-[linear-gradient(165deg,#0b121a_0%,#152031_100%)] bg-[image:var(--ink-mesh),linear-gradient(165deg,#0b121a_0%,#152031_100%)] p-4 text-white shadow-[var(--shadow-ink)] lg:flex">
-          <div className="flex items-center gap-2">
+        <AnimatePresence>
+          {menuOpen ? (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-30 bg-[#0b121a]/45 backdrop-blur-sm lg:hidden"
+              aria-label="Close menu"
+              onClick={() => setMenuOpen(false)}
+            />
+          ) : null}
+        </AnimatePresence>
+        <aside
+          className={cn(
+            "fixed top-2 bottom-2 left-2 z-40 w-[min(18.5rem,calc(100vw-1.25rem))] flex-col overflow-hidden rounded-[1.75rem] border border-white/8 bg-[linear-gradient(165deg,#0b121a_0%,#152031_100%)] bg-[image:var(--ink-mesh),linear-gradient(165deg,#0b121a_0%,#152031_100%)] p-4 text-white shadow-[var(--shadow-ink)] sm:top-3 sm:bottom-3 sm:left-3 lg:static lg:inset-auto lg:flex lg:w-64",
+            menuOpen ? "flex" : "hidden lg:flex",
+          )}
+        >
+          <div className="flex items-center justify-between gap-2">
             <BrandMark tone="dark" className="text-xl" />
+            <button
+              type="button"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white lg:hidden"
+              onClick={() => setMenuOpen(false)}
+              aria-label="Close menu"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
           </div>
           <div className="mt-1.5 flex items-center gap-1.5">
             <ShieldCheck className="h-3 w-3 text-[var(--accent-on-ink)]" aria-hidden />
@@ -244,6 +274,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setMenuOpen(false)}
                   className={cn(
                     "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
                     active ? "text-white" : "text-white/65 hover:bg-white/8 hover:text-white",
@@ -298,14 +329,24 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden">
-          <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-[var(--shadow-card)] sm:px-5">
-            <div className="flex min-w-0 flex-1 items-start gap-3">
-              <span className="stat-icon-chip mt-0.5 h-10 w-10 shrink-0 rounded-[0.85rem] sm:h-11 sm:w-11 sm:rounded-[0.9rem]">
-                <Icon className="h-5 w-5" aria-hidden />
+          <header className="flex shrink-0 items-center gap-2 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 shadow-[var(--shadow-card)] sm:gap-3 sm:px-5 sm:py-3">
+            <button
+              type="button"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--foreground)] hover:bg-[var(--surface-muted)] lg:hidden"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" aria-hidden />
+            </button>
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="mt-0.5 hidden shrink-0 sm:block">
+                <span className="stat-icon-chip h-10 w-10 rounded-[0.85rem] sm:h-11 sm:w-11 sm:rounded-[0.9rem]">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
               </span>
               <div className="min-w-0">
                 <p className="eyebrow truncate">{activePage.eyebrow}</p>
-                <h1 className="mt-0.5 truncate font-display text-xl tracking-tight sm:text-2xl">
+                <h1 className="truncate font-display text-lg tracking-tight sm:text-2xl">
                   {activePage.title}
                 </h1>
                 <p className="mt-0.5 hidden truncate text-xs text-[var(--muted)] sm:block">
@@ -313,20 +354,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex max-w-full flex-wrap gap-2 lg:hidden">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="rounded-full border border-[var(--border)] px-3 py-1 text-xs"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-              <ThemeToggle />
-            </div>
+            <ThemeToggle />
           </header>
           <main className="surface-panel min-h-0 flex-1 overflow-y-auto scrollbar-thin p-4 sm:p-6">
             {orgSessionEmail ? (
