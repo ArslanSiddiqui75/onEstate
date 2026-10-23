@@ -200,14 +200,14 @@ export function AppShell({
   }, [activePage.title, brand.name]);
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-[var(--canvas)] text-[var(--foreground)]">
+    <div className="flex h-dvh w-full gap-3 overflow-hidden bg-[var(--canvas)] p-2 text-[var(--foreground)] sm:gap-4 sm:p-3">
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 h-full w-[17.5rem] flex-col overflow-hidden lg:static lg:flex",
+            "fixed top-2 bottom-2 left-2 z-40 w-[17.5rem] flex-col overflow-hidden rounded-[1.75rem] sm:top-3 sm:bottom-3 sm:left-3 lg:static lg:inset-auto lg:flex",
             open ? "flex" : "hidden lg:flex",
             ink
-              ? "border-r border-white/8 bg-[linear-gradient(165deg,#0b121a_0%,#152031_100%)] bg-[image:var(--ink-mesh),linear-gradient(165deg,#0b121a_0%,#152031_100%)] text-[var(--ink-foreground)]"
-              : "border-r border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)]",
+              ? "border border-white/8 bg-[linear-gradient(165deg,#0b121a_0%,#152031_100%)] bg-[image:var(--ink-mesh),linear-gradient(165deg,#0b121a_0%,#152031_100%)] text-[var(--ink-foreground)] shadow-[var(--shadow-ink)]"
+              : "border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[var(--shadow-soft)]",
           )}
         >
           <div className="flex items-center justify-between px-5 pt-5">
@@ -422,8 +422,8 @@ export function AppShell({
           ) : null}
         </AnimatePresence>
 
-        <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-          <header className="flex shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:px-6">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden">
+          <header className="surface-panel flex shrink-0 items-center gap-3 px-3 py-3 sm:px-4">
             <Button
               variant="ghost"
               size="icon"
@@ -454,7 +454,7 @@ export function AppShell({
             <ThemeToggle />
           </header>
 
-          <main className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-4 py-4 sm:px-6 lg:px-8">
+          <main className="surface-panel min-h-0 flex-1 overflow-y-auto scrollbar-thin p-4 sm:p-6 lg:p-8">
             <motion.div key={pathname}>{children}</motion.div>
           </main>
         </div>
