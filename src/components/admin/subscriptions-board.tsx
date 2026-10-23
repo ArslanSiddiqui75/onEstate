@@ -269,7 +269,6 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
                       <p className="mt-3 font-display text-3xl tracking-tight">
                         {formatMoney(row.mrr, market)}
                       </p>
-                      <p className="text-xs text-[var(--muted)]">{currency} monthly recurring revenue</p>
                       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
                         <div
                           className="h-full rounded-full bg-[var(--accent-gradient)] transition-all duration-700"
