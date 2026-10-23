@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Search, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Search } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,17 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "@/components/ui/toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Table, TBody, TD, TH, THead, TR, TableShell, EmptyRow } from "@/components/ui/table";
-import { formatMoney } from "@/lib/utils";
+import { formatMoney, cn } from "@/lib/utils";
 import { PLANS } from "@/lib/plans/catalog";
-import type { TenantLifecycleStatus } from "@/lib/admin/types";
+import type { TenantLifecycleStatus, TenantRecord } from "@/lib/admin/types";
+import type { Market, PlanId } from "@/types";
 
 const STATUSES: Array<TenantLifecycleStatus | "all"> = [
   "all",
@@ -32,65 +26,305 @@ const STATUSES: Array<TenantLifecycleStatus | "all"> = [
   "churned",
 ];
 
+type MarketFilter = "all" | Market;
+type PlanFilter = "all" | PlanId;
+type MrrFilter = "all" | "none" | "under_100" | "100_199" | "200_plus";
+type SeatsFilter = "all" | "one" | "two_five" | "six_plus";
+type HealthFilter = "all" | "healthy" | "watch" | "risk";
+type ActiveFilter = "all" | "today" | "7d" | "30d" | "older";
+type ActionFilter = "all" | "suspend" | "activate";
+
+const FILTER_SELECT =
+  "mt-1.5 h-8 w-auto max-w-[8.5rem] cursor-pointer rounded-lg border bg-[var(--surface-elevated)] px-2 pr-7 text-xs font-medium normal-case tracking-normal";
+
+function HeaderFilter<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+  align,
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: ReadonlyArray<{ value: T; label: string }>;
+  align?: "right";
+}) {
+  const active = value !== "all";
+  return (
+    <div className={cn("flex flex-col", align === "right" && "items-end")}>
+      <span>{label}</span>
+      <select
+        aria-label={`Filter ${label}`}
+        value={value}
+        onChange={(event) => onChange(event.target.value as T)}
+        data-active={active ? "true" : undefined}
+        className={cn(
+          "header-col-filter",
+          FILTER_SELECT,
+          active ? "border-[var(--accent)]" : "border-[var(--border)]",
+        )}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function sameCalendarDay(iso: string, now: Date) {
+  const date = new Date(iso);
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
+function matchesFilters(
+  tenant: TenantRecord,
+  filters: {
+    query: string;
+    market: MarketFilter;
+    plan: PlanFilter;
+    status: (typeof STATUSES)[number];
+    mrr: MrrFilter;
+    seats: SeatsFilter;
+    health: HealthFilter;
+    active: ActiveFilter;
+    action: ActionFilter;
+    now: Date;
+  },
+) {
+  const q = filters.query.trim().toLowerCase();
+  if (q) {
+    const haystack = [tenant.name, tenant.ownerEmail, tenant.billingEmail, tenant.id]
+      .join(" ")
+      .toLowerCase();
+    if (!haystack.includes(q)) return false;
+  }
+  if (filters.market !== "all" && tenant.market !== filters.market) return false;
+  if (filters.plan !== "all" && tenant.subscription.plan !== filters.plan) return false;
+  if (filters.status !== "all" && tenant.lifecycleStatus !== filters.status) return false;
+
+  const mrr = tenant.subscription.mrr || 0;
+  if (filters.mrr === "none" && mrr !== 0) return false;
+  if (filters.mrr === "under_100" && !(mrr > 0 && mrr < 100)) return false;
+  if (filters.mrr === "100_199" && !(mrr >= 100 && mrr < 200)) return false;
+  if (filters.mrr === "200_plus" && mrr < 200) return false;
+
+  const seats = tenant.subscription.seatsUsed;
+  if (filters.seats === "one" && seats !== 1) return false;
+  if (filters.seats === "two_five" && (seats < 2 || seats > 5)) return false;
+  if (filters.seats === "six_plus" && seats < 6) return false;
+
+  if (filters.health === "healthy" && tenant.healthScore < 70) return false;
+  if (filters.health === "watch" && (tenant.healthScore < 40 || tenant.healthScore >= 70)) return false;
+  if (filters.health === "risk" && tenant.healthScore >= 40) return false;
+
+  const ageDays = (filters.now.getTime() - new Date(tenant.lastActiveAt).getTime()) / 86_400_000;
+  if (filters.active === "today" && !sameCalendarDay(tenant.lastActiveAt, filters.now)) return false;
+  if (filters.active === "7d" && ageDays > 7) return false;
+  if (filters.active === "30d" && ageDays > 30) return false;
+  if (filters.active === "older" && ageDays <= 30) return false;
+
+  const canActivate = tenant.lifecycleStatus === "suspended";
+  if (filters.action === "activate" && !canActivate) return false;
+  if (filters.action === "suspend" && canActivate) return false;
+
+  return true;
+}
+
 export default function AdminOrganizationsPage() {
   const { registry } = useAdminSession();
   const [query, setQuery] = useState("");
+  const [market, setMarket] = useState<MarketFilter>("all");
+  const [plan, setPlan] = useState<PlanFilter>("all");
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("all");
+  const [mrr, setMrr] = useState<MrrFilter>("all");
+  const [seats, setSeats] = useState<SeatsFilter>("all");
+  const [health, setHealth] = useState<HealthFilter>("all");
+  const [active, setActive] = useState<ActiveFilter>("all");
+  const [action, setAction] = useState<ActionFilter>("all");
+
+  const filtersActive =
+    query.trim() !== "" ||
+    market !== "all" ||
+    plan !== "all" ||
+    status !== "all" ||
+    mrr !== "all" ||
+    seats !== "all" ||
+    health !== "all" ||
+    active !== "all" ||
+    action !== "all";
 
   const rows = useMemo(() => {
+    const now = new Date();
     return registry.tenants
-      .filter((t) => status === "all" || t.lifecycleStatus === status)
-      .filter((t) => {
-        const q = query.trim().toLowerCase();
-        if (!q) return true;
-        return (
-          t.name.toLowerCase().includes(q) ||
-          t.ownerEmail.toLowerCase().includes(q) ||
-          t.id.toLowerCase().includes(q) ||
-          t.billingEmail.toLowerCase().includes(q)
-        );
-      })
+      .filter((tenant) =>
+        matchesFilters(tenant, {
+          query,
+          market,
+          plan,
+          status,
+          mrr,
+          seats,
+          health,
+          active,
+          action,
+          now,
+        }),
+      )
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [registry.tenants, query, status]);
+  }, [registry.tenants, query, market, plan, status, mrr, seats, health, active, action]);
+
+  function clearFilters() {
+    setQuery("");
+    setMarket("all");
+    setPlan("all");
+    setStatus("all");
+    setMrr("all");
+    setSeats("all");
+    setHealth("all");
+    setActive("all");
+    setAction("all");
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        <div className="relative max-w-sm flex-1 min-w-[14rem]">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative max-w-sm min-w-[14rem] flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
           <Input
             className="pl-9"
             placeholder="Search name, email, org id…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search organizations"
           />
         </div>
-        <Select value={status} onValueChange={(v) => setStatus(v as (typeof STATUSES)[number])}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s === "all" ? "All statuses" : s.replace("_", " ")}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <p className="text-sm text-[var(--muted)]">
+          {rows.length === registry.tenants.length
+            ? `${rows.length} organizations`
+            : `${rows.length} of ${registry.tenants.length} organizations`}
+        </p>
+        {filtersActive ? (
+          <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        ) : null}
       </div>
 
       <TableShell>
-        <Table>
+        <Table className="table-filterable">
           <THead>
             <TR>
-              <TH>Organization</TH>
-              <TH>Plan</TH>
-              <TH>Status</TH>
-              <TH>MRR</TH>
-              <TH>Seats</TH>
-              <TH>Health</TH>
-              <TH>Last active</TH>
-              <TH className="text-right">Actions</TH>
+              <TH>
+                <HeaderFilter
+                  label="Organization"
+                  value={market}
+                  onChange={setMarket}
+                  options={[
+                    { value: "all", label: "All markets" },
+                    { value: "uk", label: "UK" },
+                    { value: "us", label: "US" },
+                  ]}
+                />
+              </TH>
+              <TH>
+                <HeaderFilter
+                  label="Plan"
+                  value={plan}
+                  onChange={setPlan}
+                  options={[
+                    { value: "all", label: "All plans" },
+                    { value: "solo", label: "Solo" },
+                    { value: "team", label: "Team" },
+                    { value: "enterprise", label: "Enterprise" },
+                  ]}
+                />
+              </TH>
+              <TH>
+                <HeaderFilter
+                  label="Status"
+                  value={status}
+                  onChange={setStatus}
+                  options={STATUSES.map((value) => ({
+                    value,
+                    label: value === "all" ? "All statuses" : value.replace("_", " "),
+                  }))}
+                />
+              </TH>
+              <TH>
+                <HeaderFilter
+                  label="MRR"
+                  value={mrr}
+                  onChange={setMrr}
+                  options={[
+                    { value: "all", label: "Any" },
+                    { value: "none", label: "None" },
+                    { value: "under_100", label: "Under 100" },
+                    { value: "100_199", label: "100–199" },
+                    { value: "200_plus", label: "200+" },
+                  ]}
+                />
+              </TH>
+              <TH>
+                <HeaderFilter
+                  label="Seats"
+                  value={seats}
+                  onChange={setSeats}
+                  options={[
+                    { value: "all", label: "Any" },
+                    { value: "one", label: "1" },
+                    { value: "two_five", label: "2–5" },
+                    { value: "six_plus", label: "6+" },
+                  ]}
+                />
+              </TH>
+              <TH>
+                <HeaderFilter
+                  label="Health"
+                  value={health}
+                  onChange={setHealth}
+                  options={[
+                    { value: "all", label: "Any" },
+                    { value: "healthy", label: "70+" },
+                    { value: "watch", label: "40–69" },
+                    { value: "risk", label: "Under 40" },
+                  ]}
+                />
+              </TH>
+              <TH>
+                <HeaderFilter
+                  label="Last active"
+                  value={active}
+                  onChange={setActive}
+                  options={[
+                    { value: "all", label: "Any" },
+                    { value: "today", label: "Today" },
+                    { value: "7d", label: "7 days" },
+                    { value: "30d", label: "30 days" },
+                    { value: "older", label: "Older" },
+                  ]}
+                />
+              </TH>
+              <TH>
+                <HeaderFilter
+                  label="Actions"
+                  value={action}
+                  onChange={setAction}
+                  align="right"
+                  options={[
+                    { value: "all", label: "All" },
+                    { value: "suspend", label: "Suspend" },
+                    { value: "activate", label: "Activate" },
+                  ]}
+                />
+              </TH>
             </TR>
           </THead>
           <TBody>
@@ -183,8 +417,7 @@ export default function AdminOrganizationsPage() {
             })}
             {rows.length === 0 ? (
               <EmptyRow colSpan={8}>
-                No organizations match. Create a workspace in <code>/app</code> or sign in
-                with a seed account to populate the registry.
+                No organizations match these filters.
               </EmptyRow>
             ) : null}
           </TBody>

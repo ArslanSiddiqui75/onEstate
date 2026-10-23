@@ -442,6 +442,35 @@ body::before {
   white-space: nowrap;
 }
 
+.data-table.table-filterable {
+  width: max-content;
+  min-width: 100%;
+}
+
+.data-table.table-filterable thead th {
+  padding: 0.65rem 0.55rem 0.7rem;
+}
+
+.data-table.table-filterable tbody td {
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
+}
+
+.data-table thead th select.header-col-filter {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding-left: 0.45rem;
+  padding-right: 1.35rem;
+  background-position: right 0.35rem center;
+}
+
+.data-table thead th select.header-col-filter[data-active="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .data-table tbody td {
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--border);
