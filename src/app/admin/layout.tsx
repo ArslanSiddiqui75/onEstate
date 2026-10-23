@@ -224,9 +224,8 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   const forbidden = !adminCanViewPath(admin.role, pathname);
 
   return (
-    <div className="h-screen overflow-hidden bg-[var(--canvas)]">
-      <div className="mx-auto flex h-full max-w-[1600px] gap-4 p-3 lg:p-4">
-        <aside className="hidden w-64 shrink-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/8 bg-[linear-gradient(165deg,#0b121a_0%,#152031_100%)] bg-[image:var(--ink-mesh),linear-gradient(165deg,#0b121a_0%,#152031_100%)] p-4 text-white shadow-[var(--shadow-ink)] lg:flex">
+    <div className="flex h-dvh w-full overflow-hidden bg-[var(--canvas)]">
+        <aside className="hidden h-full w-64 shrink-0 flex-col overflow-hidden border-r border-white/8 bg-[linear-gradient(165deg,#0b121a_0%,#152031_100%)] bg-[image:var(--ink-mesh),linear-gradient(165deg,#0b121a_0%,#152031_100%)] p-4 text-white lg:flex">
           <div className="flex items-center gap-2">
             <BrandMark tone="dark" className="text-xl" />
           </div>
@@ -298,8 +297,8 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
 
-        <div className="flex h-full min-w-0 flex-1 flex-col gap-3 overflow-hidden">
-          <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-[var(--shadow-card)] sm:px-5">
+        <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+          <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:px-6">
             <div className="flex min-w-0 flex-1 items-start gap-3">
               <span className="stat-icon-chip mt-0.5 h-10 w-10 shrink-0 rounded-[0.85rem] sm:h-11 sm:w-11 sm:rounded-[0.9rem]">
                 <Icon className="h-5 w-5" aria-hidden />
@@ -329,11 +328,11 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
               <ThemeToggle />
             </div>
           </header>
-          <main className="surface-panel min-h-0 flex-1 overflow-y-auto scrollbar-thin p-4 sm:p-6">
+          <main className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-4 py-4 sm:px-6 sm:py-6">
             {orgSessionEmail ? (
               <div
                 role="alert"
-                className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300"
+                className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300"
               >
                 <span>
                   A brokerage session ({orgSessionEmail}) is also active in this
@@ -358,7 +357,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
             {registryError ? (
               <div
                 role="alert"
-                className="mx-auto mb-4 flex max-w-[1400px] flex-wrap items-center justify-between gap-2 rounded-xl border border-red-300/50 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"
+                className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-300/50 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"
               >
                 <span>Tenant data could not be loaded: {registryError}</span>
                 <button
@@ -370,10 +369,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
             ) : null}
-            <motion.div
-              key={pathname}
-              className="mx-auto max-w-[1400px]"
-            >
+            <motion.div key={pathname}>
               {forbidden ? (
                 <div
                   role="alert"
@@ -398,7 +394,6 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
             </motion.div>
           </main>
         </div>
-      </div>
     </div>
   );
 }
