@@ -110,7 +110,7 @@ const PAGES: Array<{
     match: (p) => p.startsWith("/admin/subscriptions"),
     eyebrow: "Revenue",
     title: "Subscriptions",
-    description: "Billing state, plan mix, and renewal risk across the SaaS base.",
+    description: "UK subscriptions in GBP and US subscriptions in USD, each on its own Stripe account.",
     icon: CreditCard,
   },
   {
