@@ -67,7 +67,7 @@ function Desk({ uk }: { uk: boolean }) {
   return (
     <div className="grid min-h-[22rem] grid-cols-[7.5rem_1fr] sm:grid-cols-[9.5rem_1fr]">
       <aside className="border-r border-[var(--border)] bg-[var(--surface-muted)] px-3 py-4">
-        <BrandMark className="px-2 text-sm text-[var(--foreground)]" accentClassName="text-[var(--accent)]" />
+        <BrandMark className="px-1 text-base" />
         <ul className="mt-5 space-y-1 text-xs font-medium">
           {["Today", "Enquiries", "Diary", "Deals"].map((item, index) => (
             <li

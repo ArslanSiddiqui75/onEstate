@@ -500,6 +500,25 @@ select:not([multiple]) optgroup {
   border-radius: var(--radius-sm);
 }
 
+/* Theme lockup. The image height follows the surrounding font size. */
+.brand-mark img {
+  display: block;
+  height: 2.45em;
+  width: auto;
+}
+
+.brand-mark[data-tone="auto"] .brand-mark-dark {
+  display: none;
+}
+
+.dark .brand-mark[data-tone="auto"] .brand-mark-light {
+  display: none;
+}
+
+.dark .brand-mark[data-tone="auto"] .brand-mark-dark {
+  display: block;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-float-slow,
   .animate-pulse-ring,

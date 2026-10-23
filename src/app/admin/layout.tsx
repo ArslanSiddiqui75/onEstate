@@ -228,7 +228,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
       <div className="mx-auto flex h-full max-w-[1600px] gap-4 p-3 lg:p-4">
         <aside className="hidden w-64 shrink-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/8 bg-[linear-gradient(165deg,#0b121a_0%,#152031_100%)] bg-[image:var(--ink-mesh),linear-gradient(165deg,#0b121a_0%,#152031_100%)] p-4 text-white shadow-[var(--shadow-ink)] lg:flex">
           <div className="flex items-center gap-2">
-            <BrandMark className="text-xl text-white" />
+            <BrandMark tone="dark" className="text-xl" />
           </div>
           <div className="mt-1.5 flex items-center gap-1.5">
             <ShieldCheck className="h-3 w-3 text-[var(--accent-on-ink)]" aria-hidden />
