@@ -266,18 +266,18 @@ export function AppShell({
                   ) : null}
                   <span
                     className={cn(
-                      "relative z-10 flex h-8 w-8 items-center justify-center rounded-xl transition",
+                      "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors",
                       active
                         ? "bg-[var(--accent-gradient)] text-white shadow-[0_4px_14px_-2px_rgba(12,110,99,0.65)]"
                         : ink
                           ? "bg-white/6 text-white/70 group-hover:bg-white/10"
-                          : "bg-[var(--surface-muted)] text-[var(--muted)]",
+                          : "bg-[var(--surface-elevated)] text-[var(--muted)] ring-1 ring-[var(--border)] group-hover:text-[var(--foreground)]",
                     )}
                   >
                     {item.locked ? (
-                      <Lock className="h-3.5 w-3.5" aria-hidden />
+                      <Lock className="h-3.5 w-3.5 overflow-visible" aria-hidden />
                     ) : (
-                      <Icon className="h-4 w-4" aria-hidden />
+                      <Icon className="h-4 w-4 overflow-visible" aria-hidden />
                     )}
                   </span>
                   <span className="relative z-10 min-w-0 flex-1 truncate font-medium">
