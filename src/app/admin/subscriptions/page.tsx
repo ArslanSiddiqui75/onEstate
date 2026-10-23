@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import {
   Select,
@@ -16,10 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TBody, TD, TH, THead, TR, TableShell, EmptyRow } from "@/components/ui/table";
-import { formatMoney } from "@/lib/utils";
+import { cn, formatMoney } from "@/lib/utils";
 import { PLANS } from "@/lib/plans/catalog";
 import { staggerContainer, fadeUp } from "@/lib/motion";
-import type { SubscriptionStatus } from "@/lib/admin/types";
+import type { SubscriptionStatus, TenantRecord } from "@/lib/admin/types";
+import type { PlanId } from "@/types";
 
 const STATUSES: Array<SubscriptionStatus | "all"> = [
   "all",
@@ -32,15 +32,75 @@ const STATUSES: Array<SubscriptionStatus | "all"> = [
   "paused",
 ];
 
+type CardFilter =
+  | { type: "mrr" }
+  | { type: "arr" }
+  | { type: "past_due" }
+  | { type: "active" }
+  | { type: "plan"; plan: PlanId };
+
+function sameFilter(a: CardFilter | null, b: CardFilter) {
+  if (!a) return false;
+  if (a.type !== b.type) return false;
+  return a.type !== "plan" || b.type !== "plan" || a.plan === b.plan;
+}
+
+function matchesCard(tenant: TenantRecord, filter: CardFilter) {
+  if (filter.type === "mrr" || filter.type === "arr") return tenant.subscription.mrr > 0;
+  if (filter.type === "past_due") return tenant.lifecycleStatus === "past_due";
+  if (filter.type === "active") return tenant.lifecycleStatus === "active";
+  return tenant.subscription.plan === filter.plan;
+}
+
+function cardClass(selected: boolean) {
+  return selected ? "is-filter-selected" : undefined;
+}
+
+function FilterCard({
+  label,
+  pressed,
+  onClick,
+  children,
+}: {
+  label: string;
+  pressed: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      aria-label={label}
+      onClick={onClick}
+      className="block h-full w-full cursor-pointer rounded-[1.25rem] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function AdminSubscriptionsPage() {
   const { registry, metrics } = useAdminSession();
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("all");
+  const [card, setCard] = useState<CardFilter | null>(null);
+
+  function selectCard(next: CardFilter) {
+    const turningOff = sameFilter(card, next);
+    setCard(turningOff ? null : next);
+    setStatus(
+      turningOff || (next.type !== "past_due" && next.type !== "active") ? "all" : next.type,
+    );
+  }
 
   const rows = useMemo(() => {
     return registry.tenants
-      .filter((t) => status === "all" || t.subscription.status === status)
+      .filter((tenant) => {
+        if (card) return matchesCard(tenant, card);
+        return status === "all" || tenant.subscription.status === status;
+      })
       .sort((a, b) => b.subscription.mrr - a.subscription.mrr);
-  }, [registry.tenants, status]);
+  }, [registry.tenants, status, card]);
 
   const byPlan = (Object.keys(PLANS) as Array<keyof typeof PLANS>).map(
     (plan) => ({
@@ -61,15 +121,46 @@ export default function AdminSubscriptionsPage() {
         animate="show"
         className="grid gap-3 md:grid-cols-4"
       >
-        <StatCard label="MRR" value={formatMoney(metrics.mrr, "uk")} icon={DollarSign} tone="accent" />
-        <StatCard label="ARR" value={formatMoney(metrics.arr, "uk")} icon={TrendingUp} tone="accent" />
-        <StatCard
-          label="Past due"
-          value={metrics.pastDueCount}
-          icon={AlertTriangle}
-          tone={metrics.pastDueCount > 0 ? "danger" : "neutral"}
-        />
-        <StatCard label="Active subs" value={metrics.activeCount} icon={CheckCircle2} tone="success" />
+        <FilterCard
+          label="Show subscriptions that make up MRR"
+          pressed={card?.type === "mrr"}
+          onClick={() => selectCard({ type: "mrr" })}
+        >
+          <StatCard label="MRR" value={formatMoney(metrics.mrr, "uk")} icon={DollarSign} tone="accent" className={cardClass(card?.type === "mrr")} />
+        </FilterCard>
+        <FilterCard
+          label="Show subscriptions that make up ARR"
+          pressed={card?.type === "arr"}
+          onClick={() => selectCard({ type: "arr" })}
+        >
+          <StatCard label="ARR" value={formatMoney(metrics.arr, "uk")} icon={TrendingUp} tone="accent" className={cardClass(card?.type === "arr")} />
+        </FilterCard>
+        <FilterCard
+          label="Show past due subscriptions"
+          pressed={card?.type === "past_due"}
+          onClick={() => selectCard({ type: "past_due" })}
+        >
+          <StatCard
+            label="Past due"
+            value={metrics.pastDueCount}
+            icon={AlertTriangle}
+            tone={metrics.pastDueCount > 0 ? "danger" : "neutral"}
+            className={cardClass(card?.type === "past_due")}
+          />
+        </FilterCard>
+        <FilterCard
+          label="Show active subscriptions"
+          pressed={card?.type === "active"}
+          onClick={() => selectCard({ type: "active" })}
+        >
+          <StatCard
+            label="Active subs"
+            value={metrics.activeCount}
+            icon={CheckCircle2}
+            tone="success"
+            className={cardClass(card?.type === "active")}
+          />
+        </FilterCard>
       </motion.div>
 
       <motion.div
@@ -78,33 +169,53 @@ export default function AdminSubscriptionsPage() {
         animate="show"
         className="grid gap-3 md:grid-cols-3"
       >
-        {byPlan.map((row) => (
-          <motion.div key={row.plan} variants={fadeUp}>
-            <Card hover>
-              <div className="flex items-center justify-between">
-                <p className="font-semibold">{PLANS[row.plan].name}</p>
-                <Badge tone="accent">{row.count} orgs</Badge>
-              </div>
-              <p className="mt-3 font-display text-3xl tracking-tight">
-                {formatMoney(row.mrr, "uk")}
-              </p>
-              <p className="text-xs text-[var(--muted)]">Monthly recurring revenue</p>
-              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
-                <div
-                  className="h-full rounded-full bg-[var(--accent-gradient)] transition-all duration-700"
-                  style={{ width: `${(row.count / totalTenants) * 100}%` }}
-                />
-              </div>
-            </Card>
-          </motion.div>
-        ))}
+        {byPlan.map((row) => {
+          const selected = card?.type === "plan" && card.plan === row.plan;
+          return (
+            <motion.div key={row.plan} variants={fadeUp}>
+              <button
+                type="button"
+                aria-pressed={selected}
+                aria-label={`Show ${PLANS[row.plan].name} subscriptions`}
+                onClick={() => selectCard({ type: "plan", plan: row.plan })}
+                className={cn(
+                  "data-card data-card-hover w-full cursor-pointer p-5 text-left",
+                  cardClass(selected),
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold">{PLANS[row.plan].name}</p>
+                  <Badge tone="accent">{row.count} orgs</Badge>
+                </div>
+                <p className="mt-3 font-display text-3xl tracking-tight">
+                  {formatMoney(row.mrr, "uk")}
+                </p>
+                <p className="text-xs text-[var(--muted)]">Monthly recurring revenue</p>
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
+                  <div
+                    className="h-full rounded-full bg-[var(--accent-gradient)] transition-all duration-700"
+                    style={{ width: `${(row.count / totalTenants) * 100}%` }}
+                  />
+                </div>
+              </button>
+            </motion.div>
+          );
+        })}
       </motion.div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-medium text-[var(--muted)]">
-          {rows.length} subscription{rows.length === 1 ? "" : "s"}
+          {card || status !== "all"
+            ? `${rows.length} of ${registry.tenants.length} subscriptions`
+            : `${rows.length} subscription${rows.length === 1 ? "" : "s"}`}
         </p>
-        <Select value={status} onValueChange={(v) => setStatus(v as (typeof STATUSES)[number])}>
+        <Select
+          value={status}
+          onValueChange={(v) => {
+            setCard(null);
+            setStatus(v as (typeof STATUSES)[number]);
+          }}
+        >
           <SelectTrigger className="w-56">
             <SelectValue />
           </SelectTrigger>

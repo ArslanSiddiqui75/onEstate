@@ -365,6 +365,13 @@ body::before {
   border-color: var(--border-strong);
 }
 
+.data-card.is-filter-selected,
+.data-card.is-filter-selected:hover,
+.data-card-hover.is-filter-selected:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-card);
+}
+
 .data-card-ink {
   background: linear-gradient(165deg, #0b121a 0%, #152031 100%);
   background-image: var(--ink-mesh), linear-gradient(165deg, #0b121a 0%, #152031 100%);
