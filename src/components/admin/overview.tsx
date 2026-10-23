@@ -16,13 +16,11 @@ import {
 import { useAdminSession } from "@/lib/admin/session";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
-import { StatCard } from "@/components/ui/stat-card";
 import { Avatar } from "@/components/ui/avatar";
+import { MetricCard } from "@/components/admin/region-metric";
 import { formatMoney } from "@/lib/utils";
 import { PLANS } from "@/lib/plans/catalog";
 import { fadeUp, staggerContainer } from "@/lib/motion";
-import { getBrandByMarket } from "@/lib/brand/config";
-import type { MarketMetrics } from "@/lib/admin/registry";
 import type { StripeRegionConnection } from "@/lib/stripe/config";
 import type { Market } from "@/types";
 
@@ -55,7 +53,7 @@ function StripePill({ connection }: { connection: StripeRegionConnection }) {
       : `Set ${connection.secretEnv} and ${connection.webhookEnv}. Webhook: /api/stripe/webhook/${connection.market}`;
 
   return (
-    <div className="max-w-md text-left sm:text-right">
+    <div className="max-w-md text-left">
       <span
         className={`stripe-region-pill inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${tone}`}
         data-stripe-region={connection.market}
@@ -77,54 +75,6 @@ function StripePill({ connection }: { connection: StripeRegionConnection }) {
   );
 }
 
-function RegionBook({
-  market,
-  stats,
-  connection,
-}: {
-  market: Market;
-  stats: MarketMetrics;
-  connection: StripeRegionConnection;
-}) {
-  const brand = getBrandByMarket(market);
-  const title = market === "uk" ? "UK region" : "US region";
-
-  return (
-    <section className="space-y-3" data-region-book={market} aria-label={title}>
-      <div className="flex flex-wrap items-end justify-between gap-3 px-1">
-        <div>
-          <p className="eyebrow">{brand.localeLabel}</p>
-          <h2 className="mt-1 font-display text-xl tracking-tight">{title}</h2>
-          <p className="text-sm text-[var(--muted)]">
-            {brand.domain} · {brand.currency} · its own Stripe account
-          </p>
-        </div>
-        <StripePill connection={connection} />
-      </div>
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-      >
-        <StatCard label="Tenants" value={stats.tenantCount} icon={Building2} tone="neutral" />
-        <StatCard label="Active" value={stats.activeCount} icon={CheckCircle2} tone="success" />
-        <StatCard label="Trialing" value={stats.trialingCount} icon={Clock} tone="accent" />
-        <StatCard
-          label="Past due"
-          value={stats.pastDueCount}
-          icon={AlertTriangle}
-          tone={stats.pastDueCount > 0 ? "danger" : "neutral"}
-        />
-        <StatCard label="MRR" value={formatMoney(stats.mrr, market)} icon={DollarSign} tone="accent" />
-        <StatCard label="ARR" value={formatMoney(stats.arr, market)} icon={TrendingUp} tone="accent" />
-        <StatCard label="Seats in use" value={stats.seats} icon={Users2} tone="neutral" />
-        <StatCard label="Avg health" value={stats.avgHealth} icon={Activity} tone="success" />
-      </motion.div>
-    </section>
-  );
-}
-
 export function AdminOverview({ connections }: { connections: StripeRegionConnection[] }) {
   const { metrics, registry, recentAudit } = useAdminSession();
   const byMarket = Object.fromEntries(connections.map((row) => [row.market, row])) as Record<
@@ -136,10 +86,48 @@ export function AdminOverview({ connections }: { connections: StripeRegionConnec
     .filter((t) => ["past_due", "suspended", "trialing"].includes(t.lifecycleStatus))
     .slice(0, 8);
 
+  const uk = metrics.byMarket.uk;
+  const us = metrics.byMarket.us;
+
   return (
     <div className="space-y-8">
-      <RegionBook market="uk" stats={metrics.byMarket.uk} connection={byMarket.uk} />
-      <RegionBook market="us" stats={metrics.byMarket.us} connection={byMarket.us} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        {byMarket.uk ? <StripePill connection={byMarket.uk} /> : null}
+        {byMarket.us ? <StripePill connection={byMarket.us} /> : null}
+      </div>
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <MetricCard label="Tenants" uk={uk.tenantCount} us={us.tenantCount} icon={Building2} tone="neutral" />
+        <MetricCard label="Active" uk={uk.activeCount} us={us.activeCount} icon={CheckCircle2} tone="success" />
+        <MetricCard label="Trialing" uk={uk.trialingCount} us={us.trialingCount} icon={Clock} tone="accent" />
+        <MetricCard
+          label="Past due"
+          uk={uk.pastDueCount}
+          us={us.pastDueCount}
+          icon={AlertTriangle}
+          tone={uk.pastDueCount + us.pastDueCount > 0 ? "danger" : "neutral"}
+        />
+        <MetricCard
+          label="MRR"
+          uk={formatMoney(uk.mrr, "uk")}
+          us={formatMoney(us.mrr, "us")}
+          icon={DollarSign}
+          tone="accent"
+        />
+        <MetricCard
+          label="ARR"
+          uk={formatMoney(uk.arr, "uk")}
+          us={formatMoney(us.arr, "us")}
+          icon={TrendingUp}
+          tone="accent"
+        />
+        <MetricCard label="Seats in use" uk={uk.seats} us={us.seats} icon={Users2} tone="neutral" />
+        <MetricCard label="Avg health" uk={uk.avgHealth} us={us.avgHealth} icon={Activity} tone="success" />
+      </motion.div>
 
       <motion.div
         variants={staggerContainer}
