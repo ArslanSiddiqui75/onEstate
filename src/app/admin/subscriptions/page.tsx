@@ -102,15 +102,17 @@ export default function AdminSubscriptionsPage() {
       .sort((a, b) => b.subscription.mrr - a.subscription.mrr);
   }, [registry.tenants, status, card]);
 
-  const byPlan = (Object.keys(PLANS) as Array<keyof typeof PLANS>).map(
-    (plan) => ({
+  const byPlan = (Object.keys(PLANS) as Array<keyof typeof PLANS>).map((plan) => {
+    const onPlan = registry.tenants.filter((t) => t.subscription.plan === plan);
+    const mrrFor = (market: "uk" | "us") =>
+      onPlan.filter((t) => t.market === market).reduce((s, t) => s + t.subscription.mrr, 0);
+    return {
       plan,
-      count: registry.tenants.filter((t) => t.subscription.plan === plan).length,
-      mrr: registry.tenants
-        .filter((t) => t.subscription.plan === plan)
-        .reduce((s, t) => s + t.subscription.mrr, 0),
-    }),
-  );
+      count: onPlan.length,
+      mrrUk: mrrFor("uk"),
+      mrrUs: mrrFor("us"),
+    };
+  });
   const totalTenants = Math.max(registry.tenants.length, 1);
 
   return (
@@ -126,14 +128,42 @@ export default function AdminSubscriptionsPage() {
           pressed={card?.type === "mrr"}
           onClick={() => selectCard({ type: "mrr" })}
         >
-          <StatCard label="MRR" value={formatMoney(metrics.mrr, "uk")} icon={DollarSign} tone="accent" className={cardClass(card?.type === "mrr")} />
+          <StatCard
+            label="MRR"
+            value={
+              <span className="flex flex-col gap-1">
+                <span>{formatMoney(metrics.byMarket.uk.mrr, "uk")}</span>
+                <span className="text-[1.15rem] leading-none text-[var(--muted)]">
+                  {formatMoney(metrics.byMarket.us.mrr, "us")}
+                </span>
+              </span>
+            }
+            sub="UK pounds, then US dollars"
+            icon={DollarSign}
+            tone="accent"
+            className={cardClass(card?.type === "mrr")}
+          />
         </FilterCard>
         <FilterCard
           label="Show subscriptions that make up ARR"
           pressed={card?.type === "arr"}
           onClick={() => selectCard({ type: "arr" })}
         >
-          <StatCard label="ARR" value={formatMoney(metrics.arr, "uk")} icon={TrendingUp} tone="accent" className={cardClass(card?.type === "arr")} />
+          <StatCard
+            label="ARR"
+            value={
+              <span className="flex flex-col gap-1">
+                <span>{formatMoney(metrics.byMarket.uk.arr, "uk")}</span>
+                <span className="text-[1.15rem] leading-none text-[var(--muted)]">
+                  {formatMoney(metrics.byMarket.us.arr, "us")}
+                </span>
+              </span>
+            }
+            sub="UK pounds, then US dollars"
+            icon={TrendingUp}
+            tone="accent"
+            className={cardClass(card?.type === "arr")}
+          />
         </FilterCard>
         <FilterCard
           label="Show past due subscriptions"
@@ -187,10 +217,13 @@ export default function AdminSubscriptionsPage() {
                   <p className="font-semibold">{PLANS[row.plan].name}</p>
                   <Badge tone="accent">{row.count} orgs</Badge>
                 </div>
-                <p className="mt-3 font-display text-3xl tracking-tight">
-                  {formatMoney(row.mrr, "uk")}
+                <p className="mt-3 font-display text-2xl leading-tight tracking-tight">
+                  {formatMoney(row.mrrUk, "uk")}
+                  <span className="mt-1 block text-lg text-[var(--muted)]">
+                    {formatMoney(row.mrrUs, "us")}
+                  </span>
                 </p>
-                <p className="text-xs text-[var(--muted)]">Monthly recurring revenue</p>
+                <p className="text-xs text-[var(--muted)]">UK pounds, then US dollars</p>
                 <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
                   <div
                     className="h-full rounded-full bg-[var(--accent-gradient)] transition-all duration-700"

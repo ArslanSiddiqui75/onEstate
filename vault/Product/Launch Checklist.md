@@ -2,7 +2,7 @@
 
 Client / ops remaining (not “more polish tickets”):
 
-- [ ] Stripe Production keys, price IDs, webhook → live invoices after one checkout
+- [ ] Separate UK and US Stripe accounts: `STRIPE_SECRET_KEY_UK` / `STRIPE_SECRET_KEY_US`, matching webhook secrets, and regional price ids. Webhooks: `/api/stripe/webhook/uk` and `/api/stripe/webhook/us`
 - [ ] Confirm Supabase Auth redirect URLs include production app origin
 - [ ] Partner portal commercial API access (if live portal push is required)
 - [ ] WhatsApp (later) — keep Twilio until then

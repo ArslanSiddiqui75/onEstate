@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getStripe, getStripePriceId, isStripeConfigured } from "@/lib/stripe/config";
+import type { Market } from "@/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
@@ -54,45 +55,53 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing orgId" }, { status: 400 });
   }
 
-  if (!isStripeConfigured()) {
-    // Platform Stripe keys belong to the operator — never asked of tenants.
+  // The org's market picks the Stripe account. A UK tenant is never charged
+  // on the US account, even if the client sends the other market.
+  let market: Market = parsed.data.market === "us" ? "us" : "uk";
+  let existingCustomerId: string | null = null;
+  let existingSubscriptionId: string | null = null;
+  if (supabase) {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("market, stripe_customer_id, stripe_subscription_id")
+      .eq("id", orgId)
+      .maybeSingle();
+    if (org?.market === "uk" || org?.market === "us") market = org.market;
+    existingCustomerId = org?.stripe_customer_id ? String(org.stripe_customer_id) : null;
+    existingSubscriptionId = org?.stripe_subscription_id
+      ? String(org.stripe_subscription_id)
+      : null;
+  }
+
+  const regionLabel = market === "uk" ? "UK" : "US";
+
+  if (!isStripeConfigured(market)) {
+    // Each region has its own Stripe account. Keys stay with the operator.
     return NextResponse.json({
       mode: "demo",
+      market,
       message: supabase
-        ? "Stripe isn't connected on the server yet, so this plan can't be billed for real. Ask your platform admin to add the Stripe keys."
-        : "Subscription preview applied. Live mode collects the tenant card on platform Stripe Checkout.",
-      preview: { plan: parsed.data.plan, successUrl, cancelUrl },
+        ? `The ${regionLabel} Stripe account isn't connected, so this plan can't be billed. Add that region's secret key and webhook secret.`
+        : `Subscription preview applied. Live mode collects the card on the ${regionLabel} Stripe account.`,
+      preview: { plan: parsed.data.plan, market, successUrl, cancelUrl },
     });
   }
 
   if (parsed.data.plan === "enterprise") {
     return NextResponse.json({
       mode: "sales",
+      market,
       message: "Enterprise plans are sales-assisted. Contact sales to scope rollout and integrations.",
     });
   }
 
-  const stripe = getStripe();
-  const priceId = getStripePriceId(parsed.data.plan, parsed.data.market || "uk");
+  const stripe = getStripe(market);
+  const priceId = getStripePriceId(parsed.data.plan, market);
   if (!stripe || !priceId) {
     return NextResponse.json(
-      { error: "Missing Stripe price ID for selected plan" },
+      { error: `Missing ${regionLabel} Stripe price ID for ${parsed.data.plan}` },
       { status: 500 },
     );
-  }
-
-  let existingCustomerId: string | null = null;
-  let existingSubscriptionId: string | null = null;
-  if (supabase) {
-    const { data: org } = await supabase
-      .from("organizations")
-      .select("stripe_customer_id, stripe_subscription_id")
-      .eq("id", orgId)
-      .maybeSingle();
-    existingCustomerId = org?.stripe_customer_id ? String(org.stripe_customer_id) : null;
-    existingSubscriptionId = org?.stripe_subscription_id
-      ? String(org.stripe_subscription_id)
-      : null;
   }
 
   // Tenant already has a live subscription — swap the price on it instead of
@@ -157,11 +166,11 @@ export async function POST(request: Request) {
     payment_method_collection: "always",
     billing_address_collection: "required",
     client_reference_id: orgId,
-    metadata: { plan: parsed.data.plan, org_id: orgId },
+    metadata: { plan: parsed.data.plan, org_id: orgId, market },
     // Metadata on the Checkout Session does NOT carry over to the Subscription
     // object, so every later customer.subscription.* / invoice.* webhook event
     // would arrive without org_id unless we copy it here too.
-    subscription_data: { metadata: { plan: parsed.data.plan, org_id: orgId } },
+    subscription_data: { metadata: { plan: parsed.data.plan, org_id: orgId, market } },
   });
 
   return NextResponse.json({ mode: "live", url: session.url, id: session.id });

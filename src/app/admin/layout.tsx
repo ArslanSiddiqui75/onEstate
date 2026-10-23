@@ -88,7 +88,7 @@ const PAGES: Array<{
     match: (p) => p === "/admin",
     eyebrow: "Command center",
     title: "Platform overview",
-    description: "Live SaaS health across tenants, subscriptions, and seats.",
+    description: "UK and US books side by side. Each region is billed on its own Stripe account.",
     icon: Activity,
   },
   {

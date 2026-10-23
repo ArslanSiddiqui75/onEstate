@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/config";
+import type { Market } from "@/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
   // open someone else's billing portal. Resolve the caller's own org instead.
   const supabase = createServiceSupabaseClient();
   let customerId = parsed.data.customerId || null;
+  let market: Market = "uk";
   if (supabase) {
     const profile = await resolveProfileFromRequest(request);
     if (!profile) {
@@ -34,21 +36,24 @@ export async function POST(request: Request) {
     if (denied) return denied;
     const { data: org } = await supabase
       .from("organizations")
-      .select("stripe_customer_id")
+      .select("market, stripe_customer_id")
       .eq("id", profile.orgId)
       .maybeSingle();
+    if (org?.market === "uk" || org?.market === "us") market = org.market;
     customerId = org?.stripe_customer_id ? String(org.stripe_customer_id) : null;
   }
 
-  if (!isStripeConfigured() || !customerId) {
+  const regionLabel = market === "uk" ? "UK" : "US";
+  if (!isStripeConfigured(market) || !customerId) {
     return NextResponse.json({
       mode: "demo",
-      message: "Payment method portal opens after your first successful card checkout.",
+      market,
+      message: `The ${regionLabel} billing portal opens after the first successful card checkout on the ${regionLabel} Stripe account.`,
       returnUrl,
     });
   }
 
-  const stripe = getStripe();
+  const stripe = getStripe(market);
   if (!stripe) {
     return NextResponse.json({ error: "Stripe unavailable" }, { status: 500 });
   }

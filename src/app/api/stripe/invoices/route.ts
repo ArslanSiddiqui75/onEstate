@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/config";
+import type { Market } from "@/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
@@ -18,25 +19,26 @@ export async function GET(request: Request) {
   const denied = forbiddenIfNoModule(profile, "billing", "view");
   if (denied) return denied;
 
-  if (!isStripeConfigured()) {
-    return NextResponse.json({ mode: "demo", invoices: [] });
-  }
-
   const { data: org } = await supabase
     .from("organizations")
-    .select("stripe_customer_id, plan")
+    .select("market, stripe_customer_id, plan")
     .eq("id", profile.orgId)
     .maybeSingle();
+
+  const market: Market = org?.market === "us" ? "us" : "uk";
+  if (!isStripeConfigured(market)) {
+    return NextResponse.json({ mode: "demo", market, invoices: [] });
+  }
 
   const customerId = org?.stripe_customer_id
     ? String(org.stripe_customer_id)
     : null;
 
   if (!customerId) {
-    return NextResponse.json({ mode: "live", invoices: [] });
+    return NextResponse.json({ mode: "live", market, invoices: [] });
   }
 
-  const stripe = getStripe();
+  const stripe = getStripe(market);
   if (!stripe) {
     return NextResponse.json({ mode: "demo", invoices: [] });
   }

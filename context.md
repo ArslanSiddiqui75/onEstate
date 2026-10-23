@@ -33,7 +33,7 @@ Live: https://on-estate.vercel.app · Repo: `ArslanSiddiqui75/onEstate` (`main`)
 |---|---|
 | QA ship-blockers (listings/deals persist, admin tenants, invite RBAC, session sign-out) | Done in code + hosted schema |
 | Deep UI polish (sidebar, dialer, reports snapshot, etc.) | On `main` (`fe7e695`+) |
-| Stripe live invoices | Ops: set `STRIPE_*` + webhook + one checkout |
+| Stripe live invoices | Ops: separate UK and US accounts (`STRIPE_SECRET_KEY_UK` / `_US`, webhook secrets, regional price ids). Webhooks: `/api/stripe/webhook/uk` and `/us` |
 | Partner portal live HTTP | Blocked on commercial APIs |
 | WhatsApp path | Later — do not rip out Twilio |
 | X (Twitter) live publish | Skipped until paid API / asked |

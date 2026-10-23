@@ -1,31 +1,85 @@
 import Stripe from "stripe";
 import type { Market, PlanId } from "@/types";
 
-export function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return null;
-  return new Stripe(key);
+const clients = new Map<string, Stripe>();
+
+function envValue(name: string): string | null {
+  const value = process.env[name]?.trim();
+  return value || null;
 }
 
-export function getStripePriceId(plan: PlanId, market: Market = "uk"): string | null {
-  const regional: Record<Market, Record<PlanId, string | undefined>> = {
+/** UK and US are separate Stripe accounts. The old shared secret is not used. */
+export function stripeSecretEnv(market: Market) {
+  return market === "uk" ? "STRIPE_SECRET_KEY_UK" : "STRIPE_SECRET_KEY_US";
+}
+
+export function stripeWebhookEnv(market: Market) {
+  return market === "uk" ? "STRIPE_WEBHOOK_SECRET_UK" : "STRIPE_WEBHOOK_SECRET_US";
+}
+
+export function stripeSecretKey(market: Market): string | null {
+  return envValue(stripeSecretEnv(market));
+}
+
+export function stripeWebhookSecret(market: Market): string | null {
+  return envValue(stripeWebhookEnv(market));
+}
+
+export function getStripe(market: Market): Stripe | null {
+  const key = stripeSecretKey(market);
+  if (!key) return null;
+  const cached = clients.get(key);
+  if (cached) return cached;
+  const client = new Stripe(key);
+  clients.set(key, client);
+  return client;
+}
+
+function regionalPriceEnv(plan: PlanId, market: Market) {
+  const names: Record<Market, Record<PlanId, string>> = {
     uk: {
-      solo: process.env.STRIPE_PRICE_SOLO_UK,
-      team: process.env.STRIPE_PRICE_TEAM_UK,
-      enterprise: process.env.STRIPE_PRICE_ENTERPRISE_UK,
+      solo: "STRIPE_PRICE_SOLO_UK",
+      team: "STRIPE_PRICE_TEAM_UK",
+      enterprise: "STRIPE_PRICE_ENTERPRISE_UK",
     },
     us: {
-      solo: process.env.STRIPE_PRICE_SOLO_US,
-      team: process.env.STRIPE_PRICE_TEAM_US,
-      enterprise: process.env.STRIPE_PRICE_ENTERPRISE_US,
+      solo: "STRIPE_PRICE_SOLO_US",
+      team: "STRIPE_PRICE_TEAM_US",
+      enterprise: "STRIPE_PRICE_ENTERPRISE_US",
     },
   };
-  const shared: Record<PlanId, string | undefined> = {
-    solo: process.env.STRIPE_PRICE_SOLO,
-    team: process.env.STRIPE_PRICE_TEAM,
-    enterprise: process.env.STRIPE_PRICE_ENTERPRISE,
-  };
-  return regional[market][plan] || shared[plan] || null;
+  return envValue(names[market][plan]);
+}
+
+/** Price ids are account-scoped, so a UK checkout never falls back to a shared or US price. */
+export function getStripePriceId(plan: PlanId, market: Market = "uk"): string | null {
+  return regionalPriceEnv(plan, market);
+}
+
+export interface StripeRegionConnection {
+  market: Market;
+  label: "UK" | "US";
+  secretEnv: string;
+  webhookEnv: string;
+  accountConfigured: boolean;
+  webhookConfigured: boolean;
+  prices: { solo: boolean; team: boolean; enterprise: boolean };
+}
+
+export function stripeRegionConnections(): StripeRegionConnection[] {
+  return (["uk", "us"] as const).map((market) => ({
+    market,
+    label: market === "uk" ? "UK" : "US",
+    secretEnv: stripeSecretEnv(market),
+    webhookEnv: stripeWebhookEnv(market),
+    accountConfigured: Boolean(stripeSecretKey(market)),
+    webhookConfigured: Boolean(stripeWebhookSecret(market)),
+    prices: {
+      solo: Boolean(getStripePriceId("solo", market)),
+      team: Boolean(getStripePriceId("team", market)),
+      enterprise: Boolean(getStripePriceId("enterprise", market)),
+    },
+  }));
 }
 
 /** Reverse lookup for webhook events, which only carry the Stripe price id. */
@@ -44,6 +98,6 @@ export function planFromPriceId(priceId: string | null | undefined): PlanId | nu
   return null;
 }
 
-export function isStripeConfigured() {
-  return Boolean(process.env.STRIPE_SECRET_KEY);
+export function isStripeConfigured(market: Market) {
+  return Boolean(stripeSecretKey(market));
 }

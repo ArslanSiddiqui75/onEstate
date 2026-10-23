@@ -471,21 +471,33 @@ export function ensureSeedTenantsVisible() {
   return registry;
 }
 
-export function getPlatformMetrics(registry: PlatformRegistry) {
-  const active = registry.tenants.filter((t) => t.lifecycleStatus === "active");
-  const trialing = registry.tenants.filter((t) => t.lifecycleStatus === "trialing");
-  const pastDue = registry.tenants.filter((t) => t.lifecycleStatus === "past_due");
-  const suspended = registry.tenants.filter((t) => t.lifecycleStatus === "suspended");
-  const canceled = registry.tenants.filter(
+export interface MarketMetrics {
+  market: Market;
+  tenantCount: number;
+  activeCount: number;
+  trialingCount: number;
+  pastDueCount: number;
+  suspendedCount: number;
+  canceledCount: number;
+  mrr: number;
+  arr: number;
+  seats: number;
+  avgHealth: number;
+}
+
+export function metricsForTenants(tenants: TenantRecord[], market: Market): MarketMetrics {
+  const active = tenants.filter((t) => t.lifecycleStatus === "active");
+  const trialing = tenants.filter((t) => t.lifecycleStatus === "trialing");
+  const pastDue = tenants.filter((t) => t.lifecycleStatus === "past_due");
+  const suspended = tenants.filter((t) => t.lifecycleStatus === "suspended");
+  const canceled = tenants.filter(
     (t) => t.lifecycleStatus === "canceled" || t.lifecycleStatus === "churned",
   );
-  const mrr = registry.tenants.reduce((sum, t) => sum + (t.subscription.mrr || 0), 0);
-  const seats = registry.tenants.reduce(
-    (sum, t) => sum + t.subscription.seatsUsed,
-    0,
-  );
+  const mrr = tenants.reduce((sum, t) => sum + (t.subscription.mrr || 0), 0);
+  const seats = tenants.reduce((sum, t) => sum + t.subscription.seatsUsed, 0);
   return {
-    tenantCount: registry.tenants.length,
+    market,
+    tenantCount: tenants.length,
     activeCount: active.length,
     trialingCount: trialing.length,
     pastDueCount: pastDue.length,
@@ -495,11 +507,34 @@ export function getPlatformMetrics(registry: PlatformRegistry) {
     arr: mrr * 12,
     seats,
     avgHealth:
-      registry.tenants.length === 0
+      tenants.length === 0
         ? 0
-        : Math.round(
-            registry.tenants.reduce((s, t) => s + t.healthScore, 0) /
-              registry.tenants.length,
-          ),
+        : Math.round(tenants.reduce((s, t) => s + t.healthScore, 0) / tenants.length),
+  };
+}
+
+export function getPlatformMetrics(registry: PlatformRegistry) {
+  const uk = metricsForTenants(
+    registry.tenants.filter((t) => t.market === "uk"),
+    "uk",
+  );
+  const us = metricsForTenants(
+    registry.tenants.filter((t) => t.market === "us"),
+    "us",
+  );
+  const combined = metricsForTenants(registry.tenants, "uk");
+  return {
+    tenantCount: combined.tenantCount,
+    activeCount: combined.activeCount,
+    trialingCount: combined.trialingCount,
+    pastDueCount: combined.pastDueCount,
+    suspendedCount: combined.suspendedCount,
+    canceledCount: combined.canceledCount,
+    seats: combined.seats,
+    avgHealth: combined.avgHealth,
+    // Counts can be added. Money cannot: pounds and dollars stay on byMarket.
+    mrr: uk.mrr,
+    arr: uk.arr,
+    byMarket: { uk, us },
   };
 }
