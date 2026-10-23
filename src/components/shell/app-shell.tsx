@@ -156,7 +156,7 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const brand = useBrand();
   const { theme } = useTheme();
-  const [ink, setInk] = useState(true);
+  const [ink, setInk] = useState(false);
   useEffect(() => {
     setInk(document.documentElement.classList.contains("dark"));
   }, [theme]);

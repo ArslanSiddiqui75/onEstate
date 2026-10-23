@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* The theme toggle sets `.dark` on <html>. Utilities follow that class. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --canvas: #edf1f4;
   --canvas-deep: #e3e9ef;

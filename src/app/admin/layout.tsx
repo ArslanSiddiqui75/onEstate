@@ -244,15 +244,15 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
         </AnimatePresence>
         <aside
           className={cn(
-            "fixed top-2 bottom-2 left-2 z-40 w-[min(18.5rem,calc(100vw-1.25rem))] flex-col overflow-hidden rounded-[1.75rem] border border-white/8 bg-[linear-gradient(165deg,#0b121a_0%,#152031_100%)] bg-[image:var(--ink-mesh),linear-gradient(165deg,#0b121a_0%,#152031_100%)] p-4 text-white shadow-[var(--shadow-ink)] sm:top-3 sm:bottom-3 sm:left-3 lg:static lg:inset-auto lg:flex lg:w-64",
+            "fixed top-2 bottom-2 left-2 z-40 w-[min(18.5rem,calc(100vw-1.25rem))] flex-col overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface-elevated)] p-4 text-[var(--foreground)] shadow-[var(--shadow-soft)] sm:top-3 sm:bottom-3 sm:left-3 lg:static lg:inset-auto lg:flex lg:w-64 dark:border-white/8 dark:bg-[image:var(--ink-mesh),linear-gradient(165deg,#0b121a_0%,#152031_100%)] dark:text-white dark:shadow-[var(--shadow-ink)]",
             menuOpen ? "flex" : "hidden lg:flex",
           )}
         >
           <div className="flex items-center justify-between gap-2">
-            <BrandMark tone="dark" className="text-xl" />
+            <BrandMark className="text-xl" />
             <button
               type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white lg:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] lg:hidden dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
               onClick={() => setMenuOpen(false)}
               aria-label="Close menu"
             >
@@ -260,8 +260,8 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
             </button>
           </div>
           <div className="mt-1.5 flex items-center gap-1.5">
-            <ShieldCheck className="h-3 w-3 text-[var(--accent-on-ink)]" aria-hidden />
-            <p className="text-xs text-white/50">SaaS Admin Console</p>
+            <ShieldCheck className="h-3 w-3 text-[var(--accent)] dark:text-[var(--accent-on-ink)]" aria-hidden />
+            <p className="text-xs text-[var(--muted)] dark:text-white/50">SaaS Admin Console</p>
           </div>
 
           <nav className="mt-6 flex-1 space-y-1 overflow-y-auto">
@@ -277,14 +277,16 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
                   onClick={() => setMenuOpen(false)}
                   className={cn(
                     "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
-                    active ? "text-white" : "text-white/65 hover:bg-white/8 hover:text-white",
+                    active
+                      ? "text-[var(--foreground)] dark:text-white"
+                      : "text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] dark:text-white/65 dark:hover:bg-white/8 dark:hover:text-white",
                   )}
                 >
                   {active ? (
                     <motion.span
                       layoutId="admin-nav-active"
                       transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                      className="absolute inset-0 rounded-xl bg-white/12"
+                      className="absolute inset-0 rounded-xl bg-[var(--accent-soft)] dark:bg-white/12"
                     />
                   ) : null}
                   <span
@@ -292,7 +294,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
                       "relative z-10 flex h-7 w-7 items-center justify-center rounded-lg transition",
                       active
                         ? "bg-[var(--accent-gradient)] text-white shadow-[0_4px_14px_-2px_rgba(12,110,99,0.65)]"
-                        : "bg-white/6 text-white/70 group-hover:bg-white/10",
+                        : "bg-[var(--surface-muted)] text-[var(--muted)] group-hover:bg-[var(--border)] dark:bg-white/6 dark:text-white/70 dark:group-hover:bg-white/10",
                     )}
                   >
                     <NavIcon className="h-3.5 w-3.5" aria-hidden />
@@ -302,21 +304,21 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
-          <div className="mt-auto rounded-2xl border border-white/8 bg-white/5 p-4">
+          <div className="mt-auto rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 dark:border-white/8 dark:bg-white/5">
             <div className="flex items-center gap-3">
               <Avatar name={admin.name} size="md" />
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">{admin.name}</p>
-                <p className="truncate text-xs text-white/50">{admin.email}</p>
+                <p className="truncate text-sm font-semibold text-[var(--foreground)] dark:text-white">{admin.name}</p>
+                <p className="truncate text-xs text-[var(--muted)] dark:text-white/50">{admin.email}</p>
               </div>
             </div>
             <div className="mt-3 flex items-center justify-between">
-              <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-semibold capitalize text-white/70">
+              <span className="rounded-full bg-[var(--surface)] px-2 py-0.5 text-[10px] font-semibold capitalize text-[var(--muted)] dark:bg-white/8 dark:text-white/70">
                 {admin.role.replace("_", " ")}
               </span>
               <button
                 type="button"
-                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-white/55 transition hover:bg-white/10 hover:text-white"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:bg-[var(--surface)] hover:text-[var(--foreground)] dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
                 onClick={() => {
                   void signOut().then(() => router.replace("/admin/login"));
                 }}
