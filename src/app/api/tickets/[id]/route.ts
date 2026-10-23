@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { applyHostedCustomerReply, TicketDeskError } from "@/lib/admin/ticket-db";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
@@ -34,7 +35,8 @@ export async function GET(
     .select("*")
     .eq("ticket_id", id)
     .order("created_at");
-  return NextResponse.json({ ticket, messages: messages || [] });
+  const visible = (messages || []).filter((message) => message.author_kind !== "internal");
+  return NextResponse.json({ ticket, messages: visible });
 }
 
 export async function POST(
@@ -63,15 +65,12 @@ export async function POST(
   if (!ticket) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  await supabase.from("support_ticket_messages").insert({
-    ticket_id: id,
-    author_email: profile.email,
-    author_kind: "org",
-    body: parsed.data.body,
-  });
-  await supabase
-    .from("support_tickets")
-    .update({ status: "pending", updated_at: new Date().toISOString() })
-    .eq("id", id);
-  return NextResponse.json({ ok: true });
+  try {
+    await applyHostedCustomerReply(supabase, id, profile.email, parsed.data.body);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not send reply";
+    const status = error instanceof TicketDeskError ? error.status : 502;
+    return NextResponse.json({ error: message }, { status });
+  }
 }

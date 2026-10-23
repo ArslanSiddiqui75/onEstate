@@ -7,7 +7,7 @@ import { useAppSession } from "@/lib/app/session";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { TicketStatusBadge } from "@/components/support/ticket-status";
 import { toast } from "@/components/ui/toast";
 
 export default function AppTicketDetailPage() {
@@ -48,7 +48,7 @@ export default function AppTicketDetailPage() {
       </Link>
       <div className="flex items-center gap-2">
         <h2 className="text-xl font-semibold">{ticket.subject}</h2>
-        <Badge className="capitalize">{ticket.status}</Badge>
+        <TicketStatusBadge status={ticket.status} audience="tenant" />
       </div>
       {messages.map((message) => (
         <Card key={message.id} className="p-3">

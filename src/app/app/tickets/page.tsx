@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { TicketStatusBadge } from "@/components/support/ticket-status";
 import { toast } from "@/components/ui/toast";
 
 type Ticket = {
@@ -102,7 +102,7 @@ export default function AppTicketsPage() {
                   {new Date(ticket.updated_at).toLocaleString()}
                 </p>
               </div>
-              <Badge className="capitalize">{ticket.status}</Badge>
+              <TicketStatusBadge status={ticket.status} audience="tenant" />
             </Card>
           </Link>
         ))}

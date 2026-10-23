@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdminRole } from "@/lib/admin/request-admin";
+import { listDeskTickets, TicketDeskError } from "@/lib/admin/ticket-db";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -9,30 +10,14 @@ export async function GET() {
   }
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return NextResponse.json({ tickets: [] });
+    return NextResponse.json({ source: "local", schema: "desk", tickets: [] });
   }
-  const { data, error } = await supabase
-    .from("support_tickets")
-    .select("id, org_id, subject, status, priority, created_at, updated_at, organizations(name)")
-    .order("updated_at", { ascending: false })
-    .limit(200);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 502 });
+  try {
+    const desk = await listDeskTickets(supabase);
+    return NextResponse.json({ source: "hosted", schema: desk.schema, tickets: desk.tickets });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not load tickets";
+    const status = error instanceof TicketDeskError ? error.status : 502;
+    return NextResponse.json({ error: message }, { status });
   }
-  return NextResponse.json({
-    tickets: (data || []).map((row) => {
-      const org = row.organizations as { name?: string } | { name?: string }[] | null;
-      const orgName = Array.isArray(org) ? org[0]?.name : org?.name;
-      return {
-        id: row.id,
-        orgId: row.org_id,
-        orgName: orgName || "Workspace",
-        subject: row.subject,
-        status: row.status,
-        priority: row.priority,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-      };
-    }),
-  });
 }

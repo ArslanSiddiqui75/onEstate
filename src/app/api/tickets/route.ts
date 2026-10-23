@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { insertHostedTicket, TicketDeskError } from "@/lib/admin/ticket-db";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
@@ -42,26 +43,19 @@ export async function POST(request: Request) {
   if (!supabase) {
     return NextResponse.json({ error: "Hosted mode required" }, { status: 503 });
   }
-
-  const { data, error } = await supabase
-    .from("support_tickets")
-    .insert({
-      org_id: profile.orgId,
-      created_by: profile.userId,
+  try {
+    const id = await insertHostedTicket(supabase, {
+      orgId: profile.orgId,
+      userId: profile.userId,
+      email: profile.email,
       subject: parsed.data.subject,
       body: parsed.data.body,
       priority: parsed.data.priority || "normal",
-    })
-    .select("id")
-    .single();
-  if (error || !data) {
-    return NextResponse.json({ error: error?.message || "Could not create ticket" }, { status: 502 });
+    });
+    return NextResponse.json({ id });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not create ticket";
+    const status = error instanceof TicketDeskError ? error.status : 502;
+    return NextResponse.json({ error: message }, { status });
   }
-  await supabase.from("support_ticket_messages").insert({
-    ticket_id: data.id,
-    author_email: profile.email,
-    author_kind: "org",
-    body: parsed.data.body,
-  });
-  return NextResponse.json({ id: data.id });
 }

@@ -124,7 +124,7 @@ const PAGES: Array<{
     match: (p) => p.startsWith("/admin/tickets") || p.startsWith("/admin/support"),
     eyebrow: "Support",
     title: "Tickets",
-    description: "Tenant-filed issues and operator replies.",
+    description: "Who resolved each ticket, how long they took, and what is still waiting on support.",
     icon: Ticket,
   },
   {
