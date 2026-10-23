@@ -179,7 +179,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
       : "Real estate software for the United States. Payments in dollars.",
     pricingTitle: uk ? "UK pricing, in pounds." : "US pricing, in dollars.",
     pricingBody: uk
-      ? "The UK book includes lettings, viewings, and client links for vendors, buyers, landlords, and tenants. It is a separate setup from 0nestreet.com."
-      : "The US book includes showings, MLS-ready stock, and client links for sellers, buyers, and landlords. It is a separate setup from 0nestreet.co.uk.",
+      ? "The UK book includes lettings, viewings, and client links for vendors, buyers, landlords, and tenants."
+      : "The US book includes showings, MLS-ready stock, and client links for sellers, buyers, and landlords.",
   };
 }

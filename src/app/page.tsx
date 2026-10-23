@@ -16,6 +16,6 @@ export default async function MarketingPage({
   searchParams: Promise<{ demo?: string }>;
 }) {
   const { demo } = await searchParams;
-  const { market, alternateHref } = await requestMarket();
-  return <MarketingHome market={market} alternateHref={alternateHref} demo={demo} />;
+  const { market } = await requestMarket();
+  return <MarketingHome market={market} demo={demo} />;
 }

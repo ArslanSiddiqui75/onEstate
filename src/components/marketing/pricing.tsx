@@ -17,8 +17,8 @@ export function Pricing({ market }: { market: Market }) {
         </h2>
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-[var(--muted)] sm:text-base">
           {market === "uk"
-            ? "Lettings, viewings, and the four client links are on this setup. Dollar billing and MLS language live on 0nestreet.com."
-            : "Showings, MLS-ready stock, and dollar billing are on this setup. Lettings and pound billing live on 0nestreet.co.uk."}
+            ? "Lettings, viewings, and the four client links are included. Billing is in pounds."
+            : "Showings, MLS-ready stock, and client links are included. Billing is in dollars."}
         </p>
         <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {modules.map((item) => (

@@ -11,18 +11,16 @@ import type { Market } from "@/types";
 
 export function MarketingHome({
   market,
-  alternateHref,
   demo,
 }: {
   market: Market;
-  alternateHref: string;
   demo?: string;
 }) {
   const copy = getMarketingCopy(market);
 
   return (
     <div className="overflow-x-hidden text-[var(--foreground)]">
-      <MarketingNav market={market} alternateHref={alternateHref} />
+      <MarketingNav market={market} />
       <main>
         {demo === "received" || demo === "invalid" || demo === "error" ? (
           <p

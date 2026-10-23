@@ -10,7 +10,7 @@ import { getMarketingCopy } from "@/components/marketing/copy";
 import { useTheme } from "@/lib/theme/provider";
 import type { Market } from "@/types";
 
-export function MarketingNav({ market, alternateHref }: { market: Market; alternateHref: string }) {
+export function MarketingNav({ market }: { market: Market }) {
   const copy = getMarketingCopy(market);
   const { theme, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
@@ -53,12 +53,6 @@ export function MarketingNav({ market, alternateHref }: { market: Market; altern
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <a
-            href={alternateHref}
-            className="hidden px-3 py-1.5 text-[13px] font-medium text-[var(--muted)] hover:text-[var(--foreground)] sm:inline"
-          >
-            {market === "uk" ? "US site" : "UK site"}
-          </a>
           <button
             type="button"
             onClick={toggleTheme}
@@ -99,9 +93,6 @@ export function MarketingNav({ market, alternateHref }: { market: Market; altern
                 </a>
               ))}
               <div className="mt-2 grid gap-2">
-                <a href={alternateHref} className="rounded-2xl px-4 py-3 text-sm font-medium hover:bg-[var(--surface-muted)]">
-                  {market === "uk" ? "Open the US site" : "Open the UK site"}
-                </a>
                 <Button asChild variant="outline" className="rounded-full">
                   <Link href="/app/login">Sign in</Link>
                 </Button>
