@@ -85,6 +85,67 @@ function FilterCard({
   );
 }
 
+function RegionCountCard({
+  label,
+  type,
+  icon: Icon,
+  tone,
+  card,
+  counts,
+  onSelect,
+}: {
+  label: string;
+  type: "past_due" | "active";
+  icon: typeof AlertTriangle;
+  tone: "danger" | "neutral" | "success";
+  card: CardFilter | null;
+  counts: Record<Market, number>;
+  onSelect: (next: CardFilter) => void;
+}) {
+  const toneChip = {
+    danger: "bg-[var(--danger-soft)] text-[var(--danger)]",
+    neutral: "bg-[var(--surface-muted)] text-[var(--foreground)]",
+    success: "bg-[var(--success-soft)] text-[var(--success)]",
+  }[tone];
+  const selected = card?.type === type;
+
+  return (
+    <div
+      className={cn("data-card data-card-hover p-5", selected && "is-filter-selected")}
+      data-region-counts={type}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">{label}</p>
+        <span className={cn("stat-icon-chip h-9 w-9 rounded-[0.7rem]", toneChip)}>
+          <Icon className="h-4 w-4" aria-hidden />
+        </span>
+      </div>
+      <div className="mt-3 space-y-1">
+        {MARKETS.map((market) => {
+          const pressed = selected && card.market === market;
+          const name = market === "uk" ? "UK" : "US";
+          return (
+            <button
+              key={market}
+              type="button"
+              aria-pressed={pressed}
+              aria-label={`Show ${name} ${label.toLowerCase()} subscriptions`}
+              onClick={() => onSelect({ market, type })}
+              className={cn(
+                "flex w-full items-baseline justify-between rounded-xl px-2 py-1.5 text-left",
+                pressed ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--surface-muted)]",
+              )}
+            >
+              <span className="text-sm font-semibold tracking-[0.08em]">{name}</span>
+              <span className="font-display text-[1.85rem] leading-none tracking-tight">{counts[market]}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function stripeLabel(connection: StripeRegionConnection) {
   if (connection.accountConfigured && connection.webhookConfigured) {
     return { state: "connected", text: `${connection.label} Stripe connected` };
@@ -124,6 +185,28 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
 
   return (
     <div className="space-y-8">
+      <div className="grid gap-3 md:grid-cols-2">
+        <RegionCountCard
+          label="Past due"
+          type="past_due"
+          icon={AlertTriangle}
+          tone={
+            metrics.byMarket.uk.pastDueCount + metrics.byMarket.us.pastDueCount > 0 ? "danger" : "neutral"
+          }
+          card={card}
+          counts={{ uk: metrics.byMarket.uk.pastDueCount, us: metrics.byMarket.us.pastDueCount }}
+          onSelect={selectCard}
+        />
+        <RegionCountCard
+          label="Active subs"
+          type="active"
+          icon={CheckCircle2}
+          tone="success"
+          card={card}
+          counts={{ uk: metrics.byMarket.uk.activeCount, us: metrics.byMarket.us.activeCount }}
+          onSelect={selectCard}
+        />
+      </div>
       {MARKETS.map((market) => {
         const stats = metrics.byMarket[market];
         const brand = getBrandByMarket(market);
@@ -184,7 +267,7 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
               variants={staggerContainer}
               initial="hidden"
               animate="show"
-              className="grid gap-3 md:grid-cols-4"
+              className="grid gap-3 md:grid-cols-2"
             >
               <FilterCard
                 label={`Show ${region} subscriptions that make up ${currency} MRR`}
@@ -210,32 +293,6 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
                   icon={TrendingUp}
                   tone="accent"
                   className={cardClass(card?.market === market && card.type === "arr")}
-                />
-              </FilterCard>
-              <FilterCard
-                label={`Show past due ${region} subscriptions`}
-                pressed={card?.market === market && card.type === "past_due"}
-                onClick={() => selectCard({ market, type: "past_due" })}
-              >
-                <StatCard
-                  label={`Past due · ${region}`}
-                  value={stats.pastDueCount}
-                  icon={AlertTriangle}
-                  tone={stats.pastDueCount > 0 ? "danger" : "neutral"}
-                  className={cardClass(card?.market === market && card.type === "past_due")}
-                />
-              </FilterCard>
-              <FilterCard
-                label={`Show active ${region} subscriptions`}
-                pressed={card?.market === market && card.type === "active"}
-                onClick={() => selectCard({ market, type: "active" })}
-              >
-                <StatCard
-                  label={`Active · ${region}`}
-                  value={stats.activeCount}
-                  icon={CheckCircle2}
-                  tone="success"
-                  className={cardClass(card?.market === market && card.type === "active")}
                 />
               </FilterCard>
             </motion.div>
