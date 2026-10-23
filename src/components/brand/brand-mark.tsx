@@ -4,9 +4,9 @@ import type { BrandConfig } from "@/lib/brand/config";
 type Tone = "auto" | "light" | "dark";
 
 /**
- * The supplied skyline lockup. Light and dark files are the two theme versions.
- * `auto` follows the `.dark` class on the document. Pass `dark` on surfaces that
- * stay ink-colored in both themes, such as the admin sidebar.
+ * The supplied skyline lockup, used opposite its source background:
+ * the deep version on light surfaces, the bright version on dark ones.
+ * `auto` follows the `.dark` class. Pass `dark` on surfaces that stay ink-colored.
  */
 export function BrandMark({
   className,
@@ -27,11 +27,11 @@ export function BrandMark({
     >
       {tone !== "dark" ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src="/brand/logo-light.png" alt="" className="brand-mark-light" />
+        <img src="/brand/logo-dark.png" alt="" className="brand-mark-light" />
       ) : null}
       {tone !== "light" ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src="/brand/logo-dark.png" alt="" className="brand-mark-dark" />
+        <img src="/brand/logo-light.png" alt="" className="brand-mark-dark" />
       ) : null}
     </span>
   );
