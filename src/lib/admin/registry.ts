@@ -2,6 +2,10 @@ import { PLANS, PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 import { getBrandByMarket, resolveBrandId } from "@/lib/brand/config";
 import type { Market, PlanId, Role } from "@/types";
 import {
+  projectMemberAction,
+  type MemberAction,
+} from "@/lib/admin/member-actions";
+import {
   projectSubscriptionAction,
   type SubscriptionAction,
 } from "@/lib/admin/subscription-actions";
@@ -446,6 +450,40 @@ export function applyTenantSubscriptionAction(
     entityId: tenant.subscription.id,
     summary: next.summary,
     metadata: { previous, status: next.subscription.status, plan: next.subscription.plan },
+  });
+  savePlatformRegistry(registry);
+  return { tenant, message: next.summary };
+}
+
+export function applyTenantMemberAction(
+  orgId: string,
+  memberId: string,
+  action: MemberAction,
+  actorEmail: string,
+  role?: TenantRecord["members"][number]["role"],
+) {
+  const registry = loadPlatformRegistry();
+  const tenant = registry.tenants.find((row) => row.id === orgId);
+  if (!tenant) throw new Error("Organization not found");
+  const next = projectMemberAction(tenant.members, memberId, action, role);
+  tenant.members = next.members;
+  tenant.subscription.seatsUsed = next.members.length;
+  const owner =
+    next.members.find((member) => member.role === "owner" && member.status !== "disabled") ||
+    next.members.find((member) => member.role === "owner");
+  if (owner) {
+    tenant.ownerName = owner.name;
+    tenant.ownerEmail = owner.email;
+  }
+  tenant.updatedAt = nowIso();
+  tenant.healthScore = healthFrom(tenant);
+  pushAudit(registry, {
+    actorEmail,
+    action: `member.${action}`,
+    entityType: "member",
+    entityId: memberId,
+    summary: next.summary,
+    metadata: { orgId, role: role || null },
   });
   savePlatformRegistry(registry);
   return { tenant, message: next.summary };

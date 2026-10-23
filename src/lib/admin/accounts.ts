@@ -52,3 +52,7 @@ export function adminCanEditNotes(role: PlatformAdminRole) {
 export function adminCanImpersonate(role: PlatformAdminRole) {
   return role === "super_admin" || role === "support_admin";
 }
+
+export function adminCanManageUsers(role: PlatformAdminRole) {
+  return role === "super_admin" || role === "support_admin";
+}

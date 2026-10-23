@@ -14,8 +14,8 @@ import { Alert } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { ImpersonateButton } from "@/components/admin/impersonate-button";
 import { SubscriptionManageMenu } from "@/components/admin/subscription-manage";
+import { UserManageMenu } from "@/components/admin/user-manage";
 import { ProgressRing, Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -75,7 +75,6 @@ export default function AdminOrganizationDetailPage() {
     updateLifecycle,
     saveNotes,
     renameTenant,
-    canImpersonate,
     recentAudit,
     refresh,
   } = useAdminSession();
@@ -445,7 +444,7 @@ export default function AdminOrganizationDetailPage() {
                   <TH>Role</TH>
                   <TH>Status</TH>
                   <TH>Last seen</TH>
-                  <TH></TH>
+                  <TH className="text-right">Manage</TH>
                 </TR>
               </THead>
               <TBody>
@@ -459,7 +458,7 @@ export default function AdminOrganizationDetailPage() {
                     </TD>
                     <TD>{member.email}</TD>
                     <TD>{ROLE_LABELS[member.role]}</TD>
-                    <TD className="capitalize">
+                    <TD>
                       <Badge
                         tone={
                           member.status === "active"
@@ -469,16 +468,19 @@ export default function AdminOrganizationDetailPage() {
                               : "neutral"
                         }
                       >
-                        {member.status}
+                        {sentenceStatus(member.status)}
                       </Badge>
                     </TD>
                     <TD className="text-xs text-[var(--muted)]">
                       {member.lastSeenAt ? new Date(member.lastSeenAt).toLocaleString() : "—"}
                     </TD>
-                    <TD>
-                      {canImpersonate && member.status === "active" ? (
-                        <ImpersonateButton userId={member.id} label="Open as" />
-                      ) : null}
+                    <TD className="text-right">
+                      <UserManageMenu
+                        orgId={tenant.id}
+                        orgName={tenant.name}
+                        member={member}
+                        members={tenant.members}
+                      />
                     </TD>
                   </TR>
                 ))}

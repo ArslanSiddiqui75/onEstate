@@ -13,6 +13,7 @@ import {
   adminCanEditNotes,
   adminCanImpersonate,
   adminCanManageBilling,
+  adminCanManageUsers,
   adminCanSuspendTenants,
 } from "@/lib/admin/accounts";
 import type {
@@ -24,7 +25,9 @@ import type {
   TenantRecord,
 } from "@/lib/admin/types";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import type { MemberAction } from "@/lib/admin/member-actions";
 import {
+  applyTenantMemberAction,
   applyTenantSubscriptionAction,
   clearPlatformAdminAuth,
   getPlatformMetrics,
@@ -36,7 +39,7 @@ import {
   updateTenantName,
 } from "@/lib/admin/registry";
 import type { SubscriptionAction } from "@/lib/admin/subscription-actions";
-import type { PlanId } from "@/types";
+import type { PlanId, Role } from "@/types";
 
 interface AdminState {
   admin: PlatformAdminUser | null;
@@ -69,6 +72,13 @@ interface AdminState {
   saveNotes: (orgId: string, notes: string) => void;
   renameTenant: (orgId: string, name: string) => void;
   canImpersonate: boolean;
+  canManageUsers: boolean;
+  manageMember: (
+    orgId: string,
+    memberId: string,
+    action: MemberAction,
+    role?: Role,
+  ) => Promise<string>;
   getTenant: (id: string) => TenantRecord | undefined;
   recentAudit: PlatformAuditEvent[];
 }
@@ -281,6 +291,36 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     [admin, persistTenant],
   );
 
+  const manageMember = useCallback(
+    async (orgId: string, memberId: string, action: MemberAction, role?: Role) => {
+      if (!admin) throw new Error("Not authenticated");
+      if (!adminCanManageUsers(admin.role)) {
+        throw new Error("User management permission required");
+      }
+      const res = await fetch("/api/admin/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId, memberId, action, role }),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        source?: string;
+        message?: string;
+        error?: string;
+      } | null;
+      if (!res.ok) {
+        throw new Error(json?.error || "Could not update this user");
+      }
+      if (json?.source === "local") {
+        const applied = applyTenantMemberAction(orgId, memberId, action, admin.email, role);
+        await refresh();
+        return applied.message;
+      }
+      await refresh();
+      return json?.message || "User updated.";
+    },
+    [admin, refresh],
+  );
+
   const renameTenant = useCallback(
     (orgId: string, name: string) => {
       if (!admin) throw new Error("Not authenticated");
@@ -308,6 +348,8 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       canSuspend: admin ? adminCanSuspendTenants(admin.role) : false,
       canEditNotes: admin ? adminCanEditNotes(admin.role) : false,
       canImpersonate: admin ? adminCanImpersonate(admin.role) : false,
+      canManageUsers: admin ? adminCanManageUsers(admin.role) : false,
+      manageMember,
       updatePlan,
       updateSubscriptionStatus,
       manageSubscription,
@@ -328,6 +370,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       updatePlan,
       updateSubscriptionStatus,
       manageSubscription,
+      manageMember,
       updateLifecycle,
       saveNotes,
       renameTenant,

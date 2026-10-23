@@ -14,10 +14,17 @@ import type {
   TenantRecord,
   TenantUsageSnapshot,
 } from "@/lib/admin/types";
+import { projectMemberAction, type MemberAction } from "@/lib/admin/member-actions";
 import type { SubscriptionProjection } from "@/lib/admin/subscription-actions";
 import type { Market, PlanId, Role } from "@/types";
 
 type ServiceClient = SupabaseClient;
+
+function memberStatus(user: { banned_until?: string; email_confirmed_at?: string } | undefined) {
+  if (user?.banned_until && new Date(user.banned_until).getTime() > Date.now()) return "disabled" as const;
+  if (user && !user.email_confirmed_at) return "invited" as const;
+  return "active" as const;
+}
 
 const LIFECYCLE_FROM_SUB: Record<string, TenantLifecycleStatus> = {
   trialing: "trialing",
@@ -184,6 +191,7 @@ export async function loadPlatformRegistryFromDb(
   }
 
   const usersRes = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const authById = new Map((usersRes.data?.users || []).map((user) => [user.id, user]));
   const emailById = new Map(
     (usersRes.data?.users || []).map((u) => [u.id, u.email || ""]),
   );
@@ -203,7 +211,7 @@ export async function loadPlatformRegistryFromDb(
       name: String(profile.full_name || "Member"),
       email: emailById.get(String(profile.id)) || "",
       role: (profile.role || "agent") as Role,
-      status: "active",
+      status: memberStatus(authById.get(String(profile.id))),
     });
     membersByOrg.set(orgId, list);
   }
@@ -409,6 +417,96 @@ export async function saveSubscriptionProjection(
     summary: next.summary,
     metadata: { status: sub.status, plan: sub.plan },
   });
+}
+
+export async function applyPlatformMemberAction(
+  supabase: ServiceClient,
+  orgId: string,
+  memberId: string,
+  action: MemberAction,
+  actorEmail: string,
+  role?: Role,
+) {
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, role")
+    .eq("org_id", orgId);
+  if (error) throw new Error(error.message);
+
+  const listed = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const authById = new Map((listed.data?.users || []).map((user) => [user.id, user]));
+  const members: TenantRecord["members"] = (profiles || []).map((profile) => ({
+    id: String(profile.id),
+    name: String(profile.full_name || "Member"),
+    email: authById.get(String(profile.id))?.email || "",
+    role: (profile.role || "agent") as Role,
+    status: memberStatus(authById.get(String(profile.id))),
+  }));
+  const next = projectMemberAction(members, memberId, action, role);
+  const now = new Date().toISOString();
+
+  if (action === "change_role" && role) {
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ role })
+      .eq("id", memberId)
+      .eq("org_id", orgId);
+    if (updateError) throw new Error(updateError.message);
+  }
+  if (action === "disable") {
+    const { error: banError } = await supabase.auth.admin.updateUserById(memberId, {
+      ban_duration: "876000h",
+    });
+    if (banError) throw new Error(banError.message);
+  }
+  if (action === "enable") {
+    const { error: banError } = await supabase.auth.admin.updateUserById(memberId, {
+      ban_duration: "none",
+    });
+    if (banError) throw new Error(banError.message);
+  }
+  if (action === "remove") {
+    const { error: deleteError } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", memberId)
+      .eq("org_id", orgId);
+    if (deleteError) {
+      const text = deleteError.message || "Could not remove this user";
+      if (/foreign key|violates/i.test(text)) {
+        throw new Error("This user still has records on the account. Disable them instead.");
+      }
+      throw new Error(text);
+    }
+    await supabase.auth.admin.updateUserById(memberId, { ban_duration: "876000h" });
+  }
+
+  await supabase
+    .from("platform_subscriptions")
+    .update({ seats_used: next.members.length, updated_at: now })
+    .eq("org_id", orgId);
+  const owner =
+    next.members.find((member) => member.role === "owner" && member.status !== "disabled") ||
+    next.members.find((member) => member.role === "owner");
+  if (owner) {
+    await supabase
+      .from("platform_tenants")
+      .update({
+        owner_name: owner.name,
+        owner_email: owner.email,
+        updated_at: now,
+      })
+      .eq("id", orgId);
+  }
+  await writeAudit(supabase, {
+    actorEmail,
+    action: `member.${action}`,
+    entityType: "member",
+    entityId: memberId,
+    summary: next.summary,
+    metadata: { orgId, role: role || null },
+  });
+  return next.summary;
 }
 
 export async function patchPlatformTenant(

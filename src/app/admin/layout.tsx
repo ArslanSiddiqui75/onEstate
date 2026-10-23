@@ -117,8 +117,7 @@ const PAGES: Array<{
     match: (p) => p.startsWith("/admin/users"),
     eyebrow: "Directory",
     title: "Users",
-    description:
-      "Cross-tenant directory of brokerage members and seat occupancy.",
+    description: "Change a role, disable sign-in, or remove someone from their organization.",
     icon: Users2,
   },
   {

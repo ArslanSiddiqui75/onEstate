@@ -7,12 +7,17 @@ import { useAdminSession } from "@/lib/admin/session";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
+import { UserManageMenu } from "@/components/admin/user-manage";
 import { Table, TBody, TD, TH, THead, TR, TableShell, EmptyRow } from "@/components/ui/table";
 import { ROLE_LABELS } from "@/lib/rbac/matrix";
-import { ImpersonateButton } from "@/components/admin/impersonate-button";
+
+function sentenceStatus(status: string) {
+  const label = status.replaceAll("_", " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
 
 export default function AdminUsersPage() {
-  const { registry, canImpersonate } = useAdminSession();
+  const { registry } = useAdminSession();
   const [query, setQuery] = useState("");
 
   const users = useMemo(() => {
@@ -23,16 +28,17 @@ export default function AdminUsersPage() {
         orgName: tenant.name,
         orgStatus: tenant.lifecycleStatus,
         market: tenant.market,
+        members: tenant.members,
       })),
     );
     const q = query.trim().toLowerCase();
     return flat
-      .filter((u) => {
+      .filter((user) => {
         if (!q) return true;
         return (
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          u.orgName.toLowerCase().includes(q)
+          user.name.toLowerCase().includes(q) ||
+          user.email.toLowerCase().includes(q) ||
+          user.orgName.toLowerCase().includes(q)
         );
       })
       .sort((a, b) => a.email.localeCompare(b.email));
@@ -40,18 +46,23 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="relative max-w-md">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-        <Input
-          className="pl-9"
-          placeholder="Search name, email, organization…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative max-w-md flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+          <Input
+            className="pl-9"
+            placeholder="Search name, email, organization…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <p className="text-sm font-medium text-[var(--muted)]">
+          {users.length} user{users.length === 1 ? "" : "s"}
+        </p>
       </div>
 
       <TableShell>
-        <Table>
+        <Table className="table-filterable">
           <THead>
             <TR>
               <TH>User</TH>
@@ -60,7 +71,7 @@ export default function AdminUsersPage() {
               <TH>Member status</TH>
               <TH>Tenant status</TH>
               <TH>Last seen</TH>
-              <TH></TH>
+              <TH className="text-right">Manage</TH>
             </TR>
           </THead>
           <TBody>
@@ -81,7 +92,7 @@ export default function AdminUsersPage() {
                   </Link>
                   <p className="text-xs text-[var(--muted)]">{user.market.toUpperCase()}</p>
                 </TD>
-                <TD>{ROLE_LABELS[user.role]}</TD>
+                <TD data-user-role={`${user.orgId}:${user.id}`}>{ROLE_LABELS[user.role]}</TD>
                 <TD>
                   <Badge
                     tone={
@@ -91,21 +102,36 @@ export default function AdminUsersPage() {
                           ? "accent"
                           : "neutral"
                     }
-                    className="capitalize"
+                    data-user-status={`${user.orgId}:${user.id}`}
                   >
-                    {user.status}
+                    {sentenceStatus(user.status)}
                   </Badge>
                 </TD>
                 <TD>
-                  <Badge className="capitalize">{user.orgStatus.replace("_", " ")}</Badge>
+                  <Badge
+                    tone={
+                      user.orgStatus === "active"
+                        ? "success"
+                        : user.orgStatus === "past_due"
+                          ? "danger"
+                          : user.orgStatus === "suspended"
+                            ? "warning"
+                            : "neutral"
+                    }
+                  >
+                    {sentenceStatus(user.orgStatus)}
+                  </Badge>
                 </TD>
                 <TD className="text-xs text-[var(--muted)]">
                   {user.lastSeenAt ? new Date(user.lastSeenAt).toLocaleString() : "—"}
                 </TD>
-                <TD>
-                  {canImpersonate && user.status === "active" ? (
-                    <ImpersonateButton userId={user.id} />
-                  ) : null}
+                <TD className="text-right">
+                  <UserManageMenu
+                    orgId={user.orgId}
+                    orgName={user.orgName}
+                    member={user}
+                    members={user.members}
+                  />
                 </TD>
               </TR>
             ))}

@@ -6,6 +6,28 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 
+export async function openWorkspaceAs(userId: string) {
+  const res = await fetch("/api/admin/impersonate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+  });
+  const json = (await res.json().catch(() => null)) as {
+    tokenHash?: string;
+    error?: string;
+  } | null;
+  if (!res.ok || !json?.tokenHash) {
+    throw new Error(json?.error || "Could not start impersonation");
+  }
+  const supabase = createBrowserSupabaseClient();
+  if (!supabase) throw new Error("Supabase is not configured");
+  const { error } = await supabase.auth.verifyOtp({
+    token_hash: json.tokenHash,
+    type: "email",
+  });
+  if (error) throw error;
+}
+
 export function ImpersonateButton({
   userId,
   label = "Open as",
@@ -25,25 +47,7 @@ export function ImpersonateButton({
         void (async () => {
           setBusy(true);
           try {
-            const res = await fetch("/api/admin/impersonate", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ userId }),
-            });
-            const json = (await res.json().catch(() => null)) as {
-              tokenHash?: string;
-              error?: string;
-            } | null;
-            if (!res.ok || !json?.tokenHash) {
-              throw new Error(json?.error || "Could not start impersonation");
-            }
-            const supabase = createBrowserSupabaseClient();
-            if (!supabase) throw new Error("Supabase is not configured");
-            const { error } = await supabase.auth.verifyOtp({
-              token_hash: json.tokenHash,
-              type: "email",
-            });
-            if (error) throw error;
+            await openWorkspaceAs(userId);
             router.push("/app");
           } catch (err) {
             toast.error(err instanceof Error ? err.message : "Impersonation failed");
