@@ -17,7 +17,6 @@ import {
 import { Table, TBody, TD, TH, THead, TR, TableShell, EmptyRow } from "@/components/ui/table";
 import { cn, formatMoney } from "@/lib/utils";
 import { PLANS } from "@/lib/plans/catalog";
-import { getBrandByMarket } from "@/lib/brand/config";
 import { staggerContainer, fadeUp } from "@/lib/motion";
 import type { SubscriptionStatus, TenantRecord } from "@/lib/admin/types";
 import type { StripeRegionConnection } from "@/lib/stripe/config";
@@ -34,27 +33,43 @@ const STATUSES: Array<SubscriptionStatus | "all"> = [
   "paused",
 ];
 
-const MARKETS: Market[] = ["uk", "us"];
-
 type CardFilter =
-  | { market: Market; type: "mrr" }
-  | { market: Market; type: "arr" }
-  | { market: Market; type: "past_due" }
-  | { market: Market; type: "active" }
-  | { market: Market; type: "plan"; plan: PlanId };
+  | { type: "mrr" }
+  | { type: "arr" }
+  | { type: "past_due" }
+  | { type: "active" }
+  | { type: "plan"; plan: PlanId };
 
 function sameFilter(a: CardFilter | null, b: CardFilter) {
   if (!a) return false;
-  if (a.market !== b.market || a.type !== b.type) return false;
+  if (a.type !== b.type) return false;
   return a.type !== "plan" || b.type !== "plan" || a.plan === b.plan;
 }
 
 function matchesCard(tenant: TenantRecord, filter: CardFilter) {
-  if (tenant.market !== filter.market) return false;
   if (filter.type === "mrr" || filter.type === "arr") return tenant.subscription.mrr > 0;
   if (filter.type === "past_due") return tenant.lifecycleStatus === "past_due";
   if (filter.type === "active") return tenant.lifecycleStatus === "active";
   return tenant.subscription.plan === filter.plan;
+}
+
+function StackedValue({ uk, us }: { uk: ReactNode; us: ReactNode }) {
+  return (
+    <span className="flex flex-col gap-2" data-stacked-values="true">
+      <span className="flex items-baseline gap-2">
+        <span className="w-7 shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+          UK
+        </span>
+        <span>{uk}</span>
+      </span>
+      <span className="flex items-baseline gap-2">
+        <span className="w-7 shrink-0 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+          US
+        </span>
+        <span>{us}</span>
+      </span>
+    </span>
+  );
 }
 
 function cardClass(selected: boolean) {
@@ -104,7 +119,7 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
   function selectCard(next: CardFilter) {
     const turningOff = sameFilter(card, next);
     setCard(turningOff ? null : next);
-    setMarketFilter(turningOff ? "all" : next.market);
+    setMarketFilter("all");
     setStatus(
       turningOff || (next.type !== "past_due" && next.type !== "active") ? "all" : next.type,
     );
@@ -121,169 +136,151 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
   }, [registry.tenants, status, card, marketFilter]);
 
   const filtered = Boolean(card) || status !== "all" || marketFilter !== "all";
+  const uk = metrics.byMarket.uk;
+  const us = metrics.byMarket.us;
+  const plans = (Object.keys(PLANS) as PlanId[]).map((plan) => {
+    const listed = (market: Market) =>
+      registry.tenants.filter((tenant) => tenant.market === market && tenant.subscription.plan === plan);
+    const ukOrgs = listed("uk");
+    const usOrgs = listed("us");
+    return {
+      plan,
+      ukCount: ukOrgs.length,
+      usCount: usOrgs.length,
+      ukMrr: ukOrgs.reduce((sum, tenant) => sum + tenant.subscription.mrr, 0),
+      usMrr: usOrgs.reduce((sum, tenant) => sum + tenant.subscription.mrr, 0),
+    };
+  });
+  const totalTenants = Math.max(registry.tenants.length, 1);
 
   return (
-    <div className="space-y-8">
-      {MARKETS.map((market) => {
-        const stats = metrics.byMarket[market];
-        const brand = getBrandByMarket(market);
-        const currency = market === "uk" ? "GBP" : "USD";
-        const region = market === "uk" ? "UK" : "US";
-        const connection = connections.find((row) => row.market === market);
-        const stripe = connection ? stripeLabel(connection) : null;
-        const inMarket = registry.tenants.filter((tenant) => tenant.market === market);
-        const plans = (Object.keys(PLANS) as PlanId[]).map((plan) => {
-          const onPlan = inMarket.filter((tenant) => tenant.subscription.plan === plan);
-          return {
-            plan,
-            count: onPlan.length,
-            mrr: onPlan.reduce((sum, tenant) => sum + tenant.subscription.mrr, 0),
-          };
-        });
-
-        return (
-          <section
-            key={market}
-            className="space-y-3"
-            data-region-book={market}
-            data-region-currency={currency}
-            aria-label={`${region} subscriptions in ${currency}`}
-          >
-            <div className="flex flex-wrap items-end justify-between gap-3 px-1">
-              <div>
-                <p className="eyebrow">
-                  {brand.localeLabel} · {currency}
-                </p>
-                <h2 className="mt-1 font-display text-xl tracking-tight">{region} subscriptions</h2>
-                <p className="text-sm text-[var(--muted)]">
-                  {brand.domain} · billed in {currency}
-                  {inMarket.length === 0
-                    ? `. No ${region} subscriptions yet.`
-                    : ` · ${inMarket.length} subscription${inMarket.length === 1 ? "" : "s"}.`}
-                </p>
-              </div>
-              {stripe && connection ? (
-                <span
-                  className={cn(
-                    "stripe-region-pill inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
-                    stripe.state === "connected"
-                      ? "border-transparent bg-[var(--success-soft)] text-[var(--success)]"
-                      : stripe.state === "partial"
-                        ? "border-transparent bg-[var(--warning-soft)] text-[var(--warning)]"
-                        : "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--muted)]",
-                  )}
-                  data-stripe-region={connection.market}
-                  data-stripe-state={stripe.state}
-                >
-                  {stripe.text}
-                </span>
-              ) : null}
-            </div>
-
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="show"
-              className="grid gap-3 md:grid-cols-4"
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2 px-1">
+        {connections.map((connection) => {
+          const stripe = stripeLabel(connection);
+          return (
+            <span
+              key={connection.market}
+              className={cn(
+                "stripe-region-pill inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
+                stripe.state === "connected"
+                  ? "border-transparent bg-[var(--success-soft)] text-[var(--success)]"
+                  : stripe.state === "partial"
+                    ? "border-transparent bg-[var(--warning-soft)] text-[var(--warning)]"
+                    : "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--muted)]",
+              )}
+              data-stripe-region={connection.market}
+              data-stripe-state={stripe.state}
             >
-              <FilterCard
-                label={`Show ${region} subscriptions that make up MRR`}
-                pressed={card?.market === market && card.type === "mrr"}
-                onClick={() => selectCard({ market, type: "mrr" })}
-              >
-                <StatCard
-                  label="MRR"
-                  value={formatMoney(stats.mrr, market)}
-                  icon={DollarSign}
-                  tone="accent"
-                  className={cardClass(card?.market === market && card.type === "mrr")}
-                />
-              </FilterCard>
-              <FilterCard
-                label={`Show ${region} subscriptions that make up ARR`}
-                pressed={card?.market === market && card.type === "arr"}
-                onClick={() => selectCard({ market, type: "arr" })}
-              >
-                <StatCard
-                  label="ARR"
-                  value={formatMoney(stats.arr, market)}
-                  icon={TrendingUp}
-                  tone="accent"
-                  className={cardClass(card?.market === market && card.type === "arr")}
-                />
-              </FilterCard>
-              <FilterCard
-                label={`Show ${region} past due subscriptions`}
-                pressed={card?.market === market && card.type === "past_due"}
-                onClick={() => selectCard({ market, type: "past_due" })}
-              >
-                <StatCard
-                  label="Past due"
-                  value={stats.pastDueCount}
-                  icon={AlertTriangle}
-                  tone={stats.pastDueCount > 0 ? "danger" : "neutral"}
-                  className={cardClass(card?.market === market && card.type === "past_due")}
-                />
-              </FilterCard>
-              <FilterCard
-                label={`Show ${region} active subscriptions`}
-                pressed={card?.market === market && card.type === "active"}
-                onClick={() => selectCard({ market, type: "active" })}
-              >
-                <StatCard
-                  label="Active subs"
-                  value={stats.activeCount}
-                  icon={CheckCircle2}
-                  tone="success"
-                  className={cardClass(card?.market === market && card.type === "active")}
-                />
-              </FilterCard>
-            </motion.div>
+              {stripe.text}
+            </span>
+          );
+        })}
+      </div>
 
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="show"
-              className="grid gap-3 md:grid-cols-3"
-            >
-              {plans.map((row) => {
-                const selected = card?.market === market && card.type === "plan" && card.plan === row.plan;
-                return (
-                  <motion.div key={row.plan} variants={fadeUp}>
-                    <button
-                      type="button"
-                      aria-pressed={selected}
-                      aria-label={`Show ${region} ${PLANS[row.plan].name} subscriptions in ${currency}`}
-                      onClick={() => selectCard({ market, type: "plan", plan: row.plan })}
-                      className={cn(
-                        "data-card data-card-hover w-full cursor-pointer p-5 text-left",
-                        cardClass(selected),
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold">{PLANS[row.plan].name}</p>
-                        <Badge tone="accent">
-                          {row.count} {row.count === 1 ? "org" : "orgs"}
-                        </Badge>
-                      </div>
-                      <p className="mt-3 font-display text-3xl tracking-tight">
-                        {formatMoney(row.mrr, market)}
-                      </p>
-                      <p className="text-xs text-[var(--muted)]">Monthly recurring revenue</p>
-                      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
-                        <div
-                          className="h-full rounded-full bg-[var(--accent-gradient)] transition-all duration-700"
-                          style={{ width: `${(row.count / Math.max(inMarket.length, 1)) * 100}%` }}
-                        />
-                      </div>
-                    </button>
-                  </motion.div>
-                );
-              })}
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+        className="grid gap-3 md:grid-cols-4"
+      >
+        <FilterCard
+          label="Show subscriptions that make up MRR"
+          pressed={card?.type === "mrr"}
+          onClick={() => selectCard({ type: "mrr" })}
+        >
+          <StatCard
+            label="MRR"
+            value={<StackedValue uk={formatMoney(uk.mrr, "uk")} us={formatMoney(us.mrr, "us")} />}
+            icon={DollarSign}
+            tone="accent"
+            className={cardClass(card?.type === "mrr")}
+          />
+        </FilterCard>
+        <FilterCard
+          label="Show subscriptions that make up ARR"
+          pressed={card?.type === "arr"}
+          onClick={() => selectCard({ type: "arr" })}
+        >
+          <StatCard
+            label="ARR"
+            value={<StackedValue uk={formatMoney(uk.arr, "uk")} us={formatMoney(us.arr, "us")} />}
+            icon={TrendingUp}
+            tone="accent"
+            className={cardClass(card?.type === "arr")}
+          />
+        </FilterCard>
+        <FilterCard
+          label="Show past due subscriptions"
+          pressed={card?.type === "past_due"}
+          onClick={() => selectCard({ type: "past_due" })}
+        >
+          <StatCard
+            label="Past due"
+            value={<StackedValue uk={uk.pastDueCount} us={us.pastDueCount} />}
+            icon={AlertTriangle}
+            tone={uk.pastDueCount + us.pastDueCount > 0 ? "danger" : "neutral"}
+            className={cardClass(card?.type === "past_due")}
+          />
+        </FilterCard>
+        <FilterCard
+          label="Show active subscriptions"
+          pressed={card?.type === "active"}
+          onClick={() => selectCard({ type: "active" })}
+        >
+          <StatCard
+            label="Active subs"
+            value={<StackedValue uk={uk.activeCount} us={us.activeCount} />}
+            icon={CheckCircle2}
+            tone="success"
+            className={cardClass(card?.type === "active")}
+          />
+        </FilterCard>
+      </motion.div>
+
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
+        className="grid gap-3 md:grid-cols-3"
+      >
+        {plans.map((row) => {
+          const selected = card?.type === "plan" && card.plan === row.plan;
+          const count = row.ukCount + row.usCount;
+          return (
+            <motion.div key={row.plan} variants={fadeUp}>
+              <button
+                type="button"
+                aria-pressed={selected}
+                aria-label={`Show ${PLANS[row.plan].name} subscriptions`}
+                onClick={() => selectCard({ type: "plan", plan: row.plan })}
+                className={cn(
+                  "data-card data-card-hover w-full cursor-pointer p-5 text-left",
+                  cardClass(selected),
+                )}
+              >
+                <p className="font-semibold">{PLANS[row.plan].name}</p>
+                <div className="mt-3 font-display text-3xl tracking-tight">
+                  <StackedValue
+                    uk={formatMoney(row.ukMrr, "uk")}
+                    us={formatMoney(row.usMrr, "us")}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-[var(--muted)]">
+                  {row.ukCount} UK {row.ukCount === 1 ? "org" : "orgs"} · {row.usCount} US{" "}
+                  {row.usCount === 1 ? "org" : "orgs"}
+                </p>
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-muted)]">
+                  <div
+                    className="h-full rounded-full bg-[var(--accent-gradient)] transition-all duration-700"
+                    style={{ width: `${(count / totalTenants) * 100}%` }}
+                  />
+                </div>
+              </button>
             </motion.div>
-          </section>
-        );
-      })}
+          );
+        })}
+      </motion.div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-medium text-[var(--muted)]">
@@ -394,7 +391,7 @@ export function SubscriptionsBoard({ connections }: { connections: StripeRegionC
             })}
             {rows.length === 0 ? (
               <EmptyRow colSpan={8}>
-                {marketFilter === "us" || card?.market === "us"
+                {marketFilter === "us"
                   ? "No USD subscriptions in this view."
                   : "No subscriptions match this filter."}
               </EmptyRow>
