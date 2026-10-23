@@ -38,13 +38,10 @@ export function MarketingHome({
         ) : null}
         <Hero market={market} />
 
-        <section className="border-y border-[var(--border)] bg-[var(--surface-muted)]">
-          <ul className="mx-auto flex max-w-7xl gap-3 overflow-x-auto px-5 py-4 sm:px-8">
+        <section className="border-y border-[var(--border)]">
+          <ul className="mx-auto flex max-w-7xl flex-wrap gap-x-8 gap-y-2 px-5 py-5 sm:px-8">
             {copy.proof.map((item) => (
-              <li
-                key={item}
-                className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-2 text-sm font-medium"
-              >
+              <li key={item} className="text-sm text-[var(--muted)]">
                 {item}
               </li>
             ))}
@@ -54,7 +51,7 @@ export function MarketingHome({
         <section id="software" className="mx-auto max-w-7xl scroll-mt-28 px-5 py-16 sm:px-8 sm:py-24">
           <div className="max-w-2xl">
             <p className="eyebrow">Software</p>
-            <h2 className="mt-3 font-display text-[clamp(2rem,4.5vw,3.4rem)] leading-[1.05]">
+            <h2 className="mt-3 font-display text-[clamp(2.1rem,4.2vw,3.5rem)] font-medium leading-[1.08]">
               Everything the office needs. Nothing bolted on afterwards.
             </h2>
           </div>
@@ -77,7 +74,7 @@ export function MarketingHome({
         <section id="clients" className="scroll-mt-28 border-y border-[var(--border)] bg-[var(--surface-muted)]">
           <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24">
             <p className="eyebrow">Clients</p>
-            <h2 className="mt-3 max-w-2xl font-display text-[clamp(2rem,4.5vw,3.4rem)] leading-[1.05]">
+            <h2 className="mt-3 max-w-2xl font-display text-[clamp(2.1rem,4.2vw,3.5rem)] font-medium leading-[1.08]">
               Your clients expect a link. The office keeps the file.
             </h2>
             <div className="mt-12">
@@ -89,7 +86,7 @@ export function MarketingHome({
         <section className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-2">
           <div>
             <p className="eyebrow">Sample office</p>
-            <h2 className="mt-3 font-display text-[clamp(2rem,4.5vw,3.4rem)] leading-[1.05]">{copy.sampleTitle}</h2>
+            <h2 className="mt-3 font-display text-[clamp(2.1rem,4.2vw,3.5rem)] font-medium leading-[1.08]">{copy.sampleTitle}</h2>
             <p className="mt-4 max-w-md text-base leading-relaxed text-[var(--muted)]">{copy.sampleBody}</p>
           </div>
           <ProductFrame uk={copy.uk} />
@@ -100,7 +97,7 @@ export function MarketingHome({
         <section id="ai" className="scroll-mt-28 border-t border-[var(--border)] bg-[var(--surface-muted)]">
           <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24">
             <p className="eyebrow">On the record</p>
-            <h2 className="mt-3 max-w-2xl font-display text-[clamp(2rem,4.5vw,3.4rem)] leading-[1.05]">
+            <h2 className="mt-3 max-w-2xl font-display text-[clamp(2.1rem,4.2vw,3.5rem)] font-medium leading-[1.08]">
               Drafts, referrals, and fee requests. Built into the deal.
             </h2>
             <div className="mt-10 grid gap-3 md:grid-cols-3">
@@ -123,7 +120,7 @@ export function MarketingHome({
         </section>
 
         <section className="mx-auto max-w-3xl px-5 py-16 text-center sm:px-8">
-          <h2 className="font-display text-[clamp(2rem,4vw,3rem)] leading-[1.05]">{copy.supportTitle}</h2>
+          <h2 className="font-display text-[clamp(2.1rem,4vw,3.15rem)] font-medium leading-[1.08]">{copy.supportTitle}</h2>
           <p className="mt-4 text-base leading-relaxed text-[var(--muted)]">{copy.supportBody}</p>
         </section>
 
@@ -131,7 +128,7 @@ export function MarketingHome({
           <div className="mx-auto grid max-w-7xl gap-10 rounded-[2rem] border border-[var(--border)] bg-[var(--surface-elevated)] px-6 py-10 shadow-[var(--shadow-card)] sm:px-10 sm:py-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
             <div>
               <p className="eyebrow">Book a demo</p>
-              <h2 className="mt-3 font-display text-[clamp(2rem,4.5vw,3.4rem)] leading-[1.05]">{copy.contactTitle}</h2>
+              <h2 className="mt-3 font-display text-[clamp(2.1rem,4.2vw,3.5rem)] font-medium leading-[1.08]">{copy.contactTitle}</h2>
               <p className="mt-4 max-w-md text-sm leading-relaxed text-[var(--muted)] sm:text-base">{copy.contactBody}</p>
             </div>
             <div className="rounded-[1.5rem] bg-[var(--surface-muted)] p-5 sm:p-6">

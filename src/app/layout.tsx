@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Newsreader } from "next/font/google";
 import { getBrandByMarket } from "@/lib/brand/config";
 import { defaultMarket, marketFromHost } from "@/lib/brand/host";
 import { BrandProvider } from "@/components/brand/brand-provider";
@@ -10,15 +10,18 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import type { Market } from "@/types";
 import "./globals.css";
 
-const display = Bricolage_Grotesque({
+const display = Newsreader({
   variable: "--font-display",
   subsets: ["latin"],
-  axes: ["opsz", "wdth"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
-const body = Plus_Jakarta_Sans({
+const body = Inter({
   variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 function marketFromHeaders(headerList: Headers): Market {
@@ -36,10 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: brand.supporting,
     icons: {
-      icon: [
-        { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
-        { url: "/brand/mark.png", sizes: "1024x1024", type: "image/png" },
-      ],
+      icon: [{ url: "/brand/mark.svg", type: "image/svg+xml" }],
       apple: "/brand/apple-touch.png",
     },
   };

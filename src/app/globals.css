@@ -207,7 +207,6 @@ body::before {
   background-image: var(--mesh);
   background-repeat: no-repeat;
   background-size: 120% 120%;
-  animation: mesh-drift 42s var(--ease-out-expo) infinite alternate;
 }
 
 ::selection {
@@ -216,8 +215,9 @@ body::before {
 }
 
 .font-display {
-  font-family: var(--font-display), system-ui, sans-serif;
-  letter-spacing: -0.04em;
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
 .marketing-grain::before {

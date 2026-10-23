@@ -23,21 +23,21 @@ export function MarketingNav({ market, alternateHref }: { market: Market; altern
   }, []);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5">
-      <div
-        className={cn(
-          "mx-auto flex h-14 max-w-7xl items-center justify-between rounded-full px-3 transition-all duration-300 sm:px-4",
-          scrolled
-            ? "border border-[var(--border)] bg-[var(--surface-solid)]/92 shadow-[var(--shadow-float)] backdrop-blur-xl"
-            : "bg-transparent",
-        )}
-      >
-        <Link href={market === "uk" ? "/UK" : "/US"} className="flex items-center gap-2">
+    <header
+      className={cn(
+        "fixed inset-x-0 top-0 z-50 border-b transition-colors",
+        scrolled
+          ? "border-[var(--border)] bg-[var(--surface-solid)]/90 backdrop-blur-md"
+          : "border-transparent bg-transparent",
+      )}
+    >
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
+        <Link href={market === "uk" ? "/UK" : "/US"} className="flex items-center gap-2.5">
           <BrandMark
-            className="text-lg text-[var(--foreground)]"
+            className="text-[15px] text-[var(--foreground)]"
             accentClassName="text-[var(--accent)]"
           />
-          <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold tracking-[0.14em] text-[var(--muted)]">
+          <span className="text-[11px] font-medium tracking-[0.16em] text-[var(--muted)]">
             {copy.brand.regionShort}
           </span>
         </Link>
@@ -46,7 +46,7 @@ export function MarketingNav({ market, alternateHref }: { market: Market; altern
             <a
               key={link.href}
               href={link.href}
-              className="rounded-full px-3 py-1.5 text-[13px] text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+              className="px-3 py-1.5 text-[13px] text-[var(--muted)] transition hover:text-[var(--foreground)]"
             >
               {link.label}
             </a>
@@ -55,7 +55,7 @@ export function MarketingNav({ market, alternateHref }: { market: Market; altern
         <div className="flex items-center gap-2">
           <a
             href={alternateHref}
-            className="hidden rounded-full px-3 py-1.5 text-[13px] font-medium text-[var(--muted)] hover:text-[var(--foreground)] sm:inline"
+            className="hidden px-3 py-1.5 text-[13px] font-medium text-[var(--muted)] hover:text-[var(--foreground)] sm:inline"
           >
             {market === "uk" ? "US site" : "UK site"}
           </a>
@@ -63,7 +63,7 @@ export function MarketingNav({ market, alternateHref }: { market: Market; altern
             type="button"
             onClick={toggleTheme}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[var(--foreground)] transition hover:bg-[var(--surface-muted)]"
           >
             {theme === "dark" ? (
               <Sun className="h-4 w-4" aria-hidden />
@@ -71,10 +71,10 @@ export function MarketingNav({ market, alternateHref }: { market: Market; altern
               <Moon className="h-4 w-4" aria-hidden />
             )}
           </button>
-          <Button asChild variant="ghost" className="hidden h-9 rounded-full sm:inline-flex">
+          <Button asChild variant="ghost" className="hidden h-9 sm:inline-flex">
             <Link href="/app/login">Sign in</Link>
           </Button>
-          <Button asChild className="hidden h-9 rounded-full px-4 sm:inline-flex">
+          <Button asChild className="hidden h-9 px-4 sm:inline-flex">
             <a href="#contact">{copy.primaryCta}</a>
           </Button>
           <details className="group relative lg:hidden">

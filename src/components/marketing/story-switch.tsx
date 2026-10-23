@@ -38,7 +38,7 @@ export function StorySwitch({ stories, uk = true }: { stories: Story[]; uk?: boo
           ))}
         </div>
         <p className="mt-8 eyebrow">{story.eyebrow}</p>
-        <h2 className="mt-3 font-display text-[clamp(2rem,4.5vw,3.4rem)] leading-[1.05]">{story.title}</h2>
+        <h2 className="mt-3 font-display text-[clamp(2.1rem,4.2vw,3.5rem)] font-medium leading-[1.08]">{story.title}</h2>
         <p className="mt-4 max-w-md text-base leading-relaxed text-[var(--muted)]">{story.body}</p>
       </div>
       <ProductFrame variant={frame} uk={uk} />
@@ -80,7 +80,7 @@ export function ClientSwitch({
             </button>
           ))}
         </div>
-        <h2 className="mt-8 font-display text-[clamp(2rem,4.5vw,3.4rem)] leading-[1.05]">{client.title}</h2>
+        <h2 className="mt-8 font-display text-[clamp(2.1rem,4.2vw,3.5rem)] font-medium leading-[1.08]">{client.title}</h2>
         <p className="mt-4 max-w-md text-base leading-relaxed text-[var(--muted)]">{client.body}</p>
       </div>
     </div>
