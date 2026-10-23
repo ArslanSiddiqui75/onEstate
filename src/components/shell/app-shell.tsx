@@ -213,10 +213,7 @@ export function AppShell({
         >
           <div className="flex items-center justify-between px-5 pt-5">
             <Link href={basePath}>
-              <BrandMark
-                className={cn("text-xl", ink ? "text-white" : "text-[var(--foreground)]")}
-                accentClassName={ink ? "text-[var(--accent-on-ink)]" : "text-[var(--accent)]"}
-              />
+              <BrandMark className="text-xl" tone={ink ? "dark" : "auto"} />
             </Link>
             <button
               className={cn(
