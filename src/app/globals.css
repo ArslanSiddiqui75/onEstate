@@ -571,7 +571,7 @@ select:not([multiple]) optgroup {
   border-radius: var(--radius-sm);
 }
 
-/* Sign-in field. Flat canvas, then two hairline arcs in the theme teal. */
+/* Sign-in field. The lockup sits as a thin plane, tilted back and kept quiet. */
 .login-screen {
   background: linear-gradient(180deg, var(--canvas) 0%, var(--canvas-deep) 100%);
 }
@@ -582,57 +582,52 @@ select:not([multiple]) optgroup {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+  perspective: 1200px;
 }
 
-.login-field-arc {
+.login-logo {
   position: absolute;
-  border-radius: 9999px;
-  border: 1px solid var(--accent);
+  width: min(46rem, 68vw);
+  max-width: 1040px;
+  right: -4vw;
+  bottom: 6vh;
+  transform: rotateX(16deg) rotateY(-34deg) rotateZ(-8deg);
+  transform-origin: 72% 50%;
+  opacity: 0.11;
 }
 
-.login-field-arc-a {
-  width: 78rem;
-  height: 78rem;
-  left: -34rem;
-  bottom: -46rem;
-  opacity: 0.14;
+.login-logo-face {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
-.login-field-arc-b {
-  width: 52rem;
-  height: 52rem;
-  right: -28rem;
-  top: -30rem;
-  opacity: 0.09;
+.login-logo-dark {
+  display: none;
 }
 
-.dark .login-field-arc-a {
-  opacity: 0.2;
+.dark .login-logo {
+  opacity: 0.16;
 }
 
-.dark .login-field-arc-b {
-  opacity: 0.12;
+.dark .login-logo-light {
+  display: none;
 }
 
-@media (max-width: 639px) {
-  .login-field-arc-a {
-    left: -48rem;
-    bottom: -56rem;
-    opacity: 0.1;
+.dark .login-logo-dark {
+  display: block;
+}
+
+@media (max-width: 1023px) {
+  .login-logo {
+    width: min(34rem, 120vw);
+    right: -28vw;
+    bottom: -1.5rem;
+    opacity: 0.08;
   }
 
-  .login-field-arc-b {
-    right: -40rem;
-    top: -42rem;
-    opacity: 0.07;
-  }
-
-  .dark .login-field-arc-a {
-    opacity: 0.14;
-  }
-
-  .dark .login-field-arc-b {
-    opacity: 0.09;
+  .dark .login-logo {
+    opacity: 0.12;
   }
 }
 
