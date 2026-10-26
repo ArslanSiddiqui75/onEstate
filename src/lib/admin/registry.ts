@@ -15,6 +15,7 @@ import type {
   SubscriptionStatus,
   TenantLifecycleStatus,
   TenantRecord,
+  TenantSubscription,
   TenantUsageSnapshot,
 } from "@/lib/admin/types";
 import { newId } from "@/lib/data/workspace-store";
@@ -163,6 +164,9 @@ export function upsertTenantRecord(
     usage?: Partial<TenantUsageSnapshot>;
     source?: TenantRecord["source"];
     stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
+    subscriptionStatus?: SubscriptionStatus;
+    lastPaymentStatus?: TenantSubscription["lastPaymentStatus"];
     actorEmail?: string;
   },
 ) {
@@ -197,6 +201,16 @@ export function upsertTenantRecord(
     if (input.stripeCustomerId) {
       existing.subscription.stripeCustomerId = input.stripeCustomerId;
     }
+    if (input.stripeSubscriptionId) {
+      existing.subscription.stripeSubscriptionId = input.stripeSubscriptionId;
+    }
+    if (input.subscriptionStatus === "active" && input.lastPaymentStatus === "paid") {
+      existing.lifecycleStatus = "active";
+      existing.subscription.status = "active";
+      existing.subscription.lastPaymentStatus = "paid";
+      existing.subscription.mrr = amount;
+      existing.subscription.trialEndsAt = undefined;
+    }
     existing.healthScore = healthFrom(existing);
     pushAudit(registry, {
       actorEmail: input.actorEmail || input.ownerEmail,
@@ -211,12 +225,16 @@ export function upsertTenantRecord(
 
   const createdAt = nowIso();
   const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const paidOnStripe =
+    input.subscriptionStatus === "active" &&
+    input.lastPaymentStatus === "paid" &&
+    Boolean(input.stripeCustomerId && input.stripeSubscriptionId);
   const tenant: TenantRecord = {
     id: input.id,
     name: input.name,
     market: input.market,
     brand: brand.id,
-    lifecycleStatus: "trialing",
+    lifecycleStatus: paidOnStripe ? "active" : "trialing",
     ownerName: input.ownerName,
     ownerEmail: input.ownerEmail,
     billingEmail: input.billingEmail || input.ownerEmail,
@@ -240,20 +258,22 @@ export function upsertTenantRecord(
     subscription: {
       id: newId("sub"),
       plan: input.plan,
-      status: "trialing",
+      status: paidOnStripe ? "active" : "trialing",
       interval: "month",
       currency,
       unitAmount: amount,
-      mrr: 0,
+      mrr: paidOnStripe ? amount : 0,
       seatsIncluded: seatLimit(input.plan),
       seatsUsed,
       stripeCustomerId: input.stripeCustomerId,
-      trialEndsAt: periodEnd,
+      stripeSubscriptionId: input.stripeSubscriptionId,
+      trialEndsAt: paidOnStripe ? undefined : periodEnd,
       currentPeriodStart: createdAt,
       currentPeriodEnd: periodEnd,
       cancelAtPeriodEnd: false,
       collectionMethod: "charge_automatically",
-      lastPaymentStatus: "none",
+      lastPaymentStatus: paidOnStripe ? "paid" : "none",
+      lastPaymentAt: paidOnStripe ? createdAt : undefined,
       nextInvoiceAt: periodEnd,
     },
     websitePublished: false,

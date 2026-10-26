@@ -37,6 +37,18 @@ export function syncWorkspaceToPlatformRegistry(
     },
     source,
     stripeCustomerId: snap.org.stripeCustomerId,
+    stripeSubscriptionId: snap.org.stripeSubscriptionId,
+    subscriptionStatus:
+      snap.org.subscriptionStatus === "active" || snap.org.subscriptionStatus === "trialing"
+        ? snap.org.subscriptionStatus
+        : undefined,
+    lastPaymentStatus:
+      snap.org.lastPaymentStatus === "paid" ||
+      snap.org.lastPaymentStatus === "failed" ||
+      snap.org.lastPaymentStatus === "pending" ||
+      snap.org.lastPaymentStatus === "none"
+        ? snap.org.lastPaymentStatus
+        : undefined,
     actorEmail: snap.user.email,
   });
 

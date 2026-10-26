@@ -59,7 +59,7 @@ export default function AppSignupPage() {
       screen="signup"
       kicker={`${brand.regionShort} workspace`}
       title="Create your workspace"
-      lede={`This is the ${brand.regionShort} book at ${brand.domain}. Next you'll review the plan in ${money}. The workspace opens after that step.`}
+      lede={`This is the ${brand.regionShort} book at ${brand.domain}. Next you'll pay in ${money} on Stripe. The workspace is created only after Stripe has the subscription.`}
       asideTitle={uk ? "A separate book for the UK." : "A separate book for the US."}
       asideBody={
         uk
@@ -126,7 +126,7 @@ export default function AppSignupPage() {
           Continue to checkout
         </Button>
         <p className="text-center text-xs leading-relaxed text-[var(--muted)]">
-          Nothing is created on this step. You'll confirm {plan === "enterprise" ? "Enterprise" : "the price"} next.
+          Nothing is created on this step. Payment is next, and the workspace opens only after Stripe has the subscription.
         </p>
       </form>
     </AuthFrame>

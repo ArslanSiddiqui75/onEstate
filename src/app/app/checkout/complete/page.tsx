@@ -13,7 +13,7 @@ import type { Market, PlanId } from "@/types";
 type Phase = "working" | "missing" | "already" | "error";
 
 export default function CheckoutCompletePage() {
-  const { user, loading, signUp, brand } = useAppSession();
+  const { user, loading, signUp, brand, authMode, getAuthToken } = useAppSession();
   const router = useRouter();
   const started = useRef(false);
   const [phase, setPhase] = useState<Phase>("working");
@@ -57,10 +57,41 @@ export default function CheckoutCompletePage() {
         if (paidEmail && paidEmail !== pending.email.toLowerCase()) {
           throw new Error("Checkout was completed for a different email than this browser saved.");
         }
-        const result = await completePendingSignup((input) => signUp({ ...input, plan: nextPlan }));
+        const customerId = typeof data?.customerId === "string" ? data.customerId : "";
+        const subscriptionId = typeof data?.subscriptionId === "string" ? data.subscriptionId : "";
+        if (!customerId || !subscriptionId) {
+          throw new Error("Stripe hasn't created the subscription yet.");
+        }
+        const result = await completePendingSignup((input) =>
+          signUp({
+            ...input,
+            plan: nextPlan,
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId,
+            subscriptionStatus: typeof data?.subscriptionStatus === "string" ? data.subscriptionStatus : "active",
+            currentPeriodEnd: typeof data?.currentPeriodEnd === "string" ? data.currentPeriodEnd : undefined,
+            lastPaymentStatus: "paid",
+            lastPaymentAt: new Date().toISOString(),
+          }),
+        );
         if (result === "missing") {
           setPhase("missing");
           return;
+        }
+        if (authMode === "supabase") {
+          const token = await getAuthToken();
+          const linked = await fetch("/api/stripe/signup-checkout/attach", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ sessionId, plan: nextPlan, market }),
+          });
+          const linkedBody = await linked.json().catch(() => null);
+          if (!linked.ok) {
+            throw new Error(linkedBody?.error || "The subscription exists on Stripe, but it could not be linked yet.");
+          }
         }
         router.replace("/app/onboarding");
       })
@@ -69,7 +100,7 @@ export default function CheckoutCompletePage() {
         setPhase("error");
         setMessage(err instanceof Error ? err.message : "Could not open the workspace.");
       });
-  }, [loading, user, signUp, router]);
+  }, [loading, user, signUp, router, authMode, getAuthToken]);
 
   const signupHref = `/app/signup?plan=${plan}`;
 

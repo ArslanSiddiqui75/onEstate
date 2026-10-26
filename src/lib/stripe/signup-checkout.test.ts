@@ -5,6 +5,7 @@ import {
   signupCheckoutDecision,
   signupCheckoutMetadata,
   signupCheckoutNote,
+  signupStripeCreated,
 } from "@/lib/stripe/signup-checkout";
 
 const pending = {
@@ -71,7 +72,7 @@ describe("signup checkout decision", () => {
     expect(Object.keys(metadata)).not.toContain("password");
   });
 
-  it("describes a preview without asking for a card payment", () => {
+  it("describes a preview without opening a workspace", () => {
     const note = signupCheckoutNote({
       mode: "preview",
       reason: "account",
@@ -80,9 +81,57 @@ describe("signup checkout decision", () => {
       priceLabel: "£199/mo",
     });
     expect(note).toContain("isn't connected");
-    expect(note).toContain("no card is charged");
+    expect(note).toContain("workspace is not created");
     expect(note.toLowerCase()).not.toContain("pay £");
-    expect(signupCheckoutActionLabel("preview")).toBe("Open workspace");
-    expect(signupCheckoutActionLabel("live")).toBe("Continue to Stripe");
+    expect(signupCheckoutActionLabel("preview")).toBe("Payment required");
+    expect(signupCheckoutActionLabel("live")).toBe("Continue to payment");
+  });
+});
+
+describe("signup stripe gate", () => {
+  it("accepts only a completed, paid subscription", () => {
+    expect(
+      signupStripeCreated({
+        metadataMatches: true,
+        status: "complete",
+        paymentStatus: "paid",
+        customerId: "cus_123",
+        subscriptionId: "sub_123",
+        subscriptionStatus: "active",
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("refuses an open session, a missing subscription, and an unpaid invoice", () => {
+    expect(
+      signupStripeCreated({
+        metadataMatches: true,
+        status: "open",
+        paymentStatus: "unpaid",
+        customerId: null,
+        subscriptionId: null,
+        subscriptionStatus: null,
+      }).ok,
+    ).toBe(false);
+    expect(
+      signupStripeCreated({
+        metadataMatches: true,
+        status: "complete",
+        paymentStatus: "paid",
+        customerId: "cus_123",
+        subscriptionId: null,
+        subscriptionStatus: null,
+      }).ok,
+    ).toBe(false);
+    expect(
+      signupStripeCreated({
+        metadataMatches: false,
+        status: "complete",
+        paymentStatus: "paid",
+        customerId: "cus_123",
+        subscriptionId: "sub_123",
+        subscriptionStatus: "active",
+      }).ok,
+    ).toBe(false);
   });
 });

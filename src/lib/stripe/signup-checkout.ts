@@ -46,17 +46,46 @@ export function signupCheckoutNote(input: {
   priceLabel: string;
 }) {
   if (input.mode === "sales") {
-    return `${input.planName} is scoped with sales at a custom price. No card is charged. Continue opens the workspace on this plan.`;
+    return `${input.planName} is scoped with sales at a custom price. No card is taken here, and the workspace is not created.`;
   }
   if (input.mode === "live") {
-    return `Card details are collected on Stripe for the ${input.region} account. The workspace is created after payment succeeds, in this browser.`;
+    return `Card details are collected on Stripe for the ${input.region} account before the workspace exists. The workspace is created only after Stripe has the subscription.`;
   }
   if (input.reason === "price") {
-    return `${input.planName} is ${input.priceLabel}. A Stripe price isn't connected for this plan yet, so no card is charged. Continue opens the workspace on this plan.`;
+    return `${input.planName} is ${input.priceLabel}. A Stripe price isn't connected for this plan yet, so a card can't be taken and the workspace is not created.`;
   }
-  return `${input.planName} is ${input.priceLabel}. The ${input.region} Stripe account isn't connected yet, so no card is charged. Continue opens the workspace on this plan. Card checkout will replace this step once that account is connected.`;
+  return `${input.planName} is ${input.priceLabel}. The ${input.region} Stripe account isn't connected yet, so a card can't be taken and the workspace is not created.`;
 }
 
 export function signupCheckoutActionLabel(mode: "sales" | "preview" | "live") {
-  return mode === "live" ? "Continue to Stripe" : "Open workspace";
+  return mode === "live" ? "Continue to payment" : "Payment required";
+}
+
+/**
+ * A signup workspace may open only after Stripe has a paid subscription
+ * for this checkout. A session that is merely open, or missing a customer,
+ * does not count.
+ */
+export function signupStripeCreated(input: {
+  metadataMatches: boolean;
+  status: string | null;
+  paymentStatus: string | null;
+  customerId: string | null;
+  subscriptionId: string | null;
+  subscriptionStatus: string | null;
+}): { ok: true } | { ok: false; error: string } {
+  if (!input.metadataMatches) {
+    return { ok: false, error: "Checkout session doesn't match this plan." };
+  }
+  if (input.status !== "complete") {
+    return { ok: false, error: "Payment isn't complete yet." };
+  }
+  if (!input.customerId || !input.subscriptionId) {
+    return { ok: false, error: "Stripe hasn't created the subscription yet." };
+  }
+  const active = input.subscriptionStatus === "active" || input.subscriptionStatus === "trialing";
+  if (input.paymentStatus !== "paid" || !active) {
+    return { ok: false, error: "Stripe hasn't collected payment for this subscription." };
+  }
+  return { ok: true };
 }

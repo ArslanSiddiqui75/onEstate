@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/config";
+import { signupStripeCreated } from "@/lib/stripe/signup-checkout";
 
 const schema = z
   .object({
@@ -47,16 +48,41 @@ export async function POST(request: Request) {
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     const metadata = session.metadata || {};
-    const matches =
-      metadata.source === "signup" && metadata.plan === plan && metadata.market === market;
-    if (!matches) {
-      return NextResponse.json({ error: "Checkout session doesn't match this plan." }, { status: 400 });
+    const customerId =
+      typeof session.customer === "string" ? session.customer : session.customer?.id || null;
+    const subscriptionId =
+      typeof session.subscription === "string" ? session.subscription : session.subscription?.id || null;
+    let subscriptionStatus: string | null = null;
+    let currentPeriodEnd: string | null = null;
+    if (subscriptionId) {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      subscriptionStatus = subscription.status;
+      const periodEnd = subscription.items.data[0]?.current_period_end;
+      currentPeriodEnd = typeof periodEnd === "number" ? new Date(periodEnd * 1000).toISOString() : null;
     }
-    if (session.status !== "complete") {
-      return NextResponse.json({ error: "Payment isn't complete yet." }, { status: 402 });
+    const verdict = signupStripeCreated({
+      metadataMatches: metadata.source === "signup" && metadata.plan === plan && metadata.market === market,
+      status: session.status,
+      paymentStatus: session.payment_status,
+      customerId,
+      subscriptionId,
+      subscriptionStatus,
+    });
+    if (!verdict.ok) {
+      const status = verdict.error.startsWith("Payment") || verdict.error.startsWith("Stripe hasn't collected") ? 402 : 400;
+      return NextResponse.json({ error: verdict.error }, { status });
     }
     const email = session.customer_details?.email || session.customer_email || metadata.email || "";
-    return NextResponse.json({ ok: true, email, plan, market });
+    return NextResponse.json({
+      ok: true,
+      email,
+      plan,
+      market,
+      customerId,
+      subscriptionId,
+      subscriptionStatus,
+      currentPeriodEnd,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not confirm checkout";
     return NextResponse.json({ error: message }, { status: 502 });

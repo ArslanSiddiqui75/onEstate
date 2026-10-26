@@ -179,6 +179,12 @@ interface AppState {
     password?: string;
     orgName: string;
     plan: PlanId;
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
+    subscriptionStatus?: string;
+    currentPeriodEnd?: string;
+    lastPaymentStatus?: string;
+    lastPaymentAt?: string;
   }) => Promise<void>;
   signOut: () => Promise<void>;
   setPlan: (plan: PlanId) => Promise<void>;
@@ -656,6 +662,12 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       password?: string;
       orgName: string;
       plan: PlanId;
+      stripeCustomerId?: string;
+      stripeSubscriptionId?: string;
+      subscriptionStatus?: string;
+      currentPeriodEnd?: string;
+      lastPaymentStatus?: string;
+      lastPaymentAt?: string;
     }) => {
       if (authMode === "supabase") {
         const supabase = createBrowserSupabaseClient();
@@ -716,6 +728,12 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         plan: input.plan,
         market: brand.market,
         role: "owner",
+        stripeCustomerId: input.stripeCustomerId,
+        stripeSubscriptionId: input.stripeSubscriptionId,
+        subscriptionStatus: input.subscriptionStatus,
+        currentPeriodEnd: input.currentPeriodEnd,
+        lastPaymentStatus: input.lastPaymentStatus,
+        lastPaymentAt: input.lastPaymentAt,
       });
       const workspace = createEmptyWorkspace({
         user: identity.user,

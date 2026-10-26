@@ -178,6 +178,12 @@ export function createLocalIdentity(input: {
   plan?: PlanId;
   role?: Role;
   market: Market;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  subscriptionStatus?: string;
+  currentPeriodEnd?: string;
+  lastPaymentStatus?: string;
+  lastPaymentAt?: string;
 }) {
   const userId = newId("user");
   const orgId = newId("org");
@@ -194,6 +200,12 @@ export function createLocalIdentity(input: {
     plan: input.plan || "solo",
     market: input.market,
     onboardingCompleted: false,
+    ...(input.stripeCustomerId ? { stripeCustomerId: input.stripeCustomerId } : {}),
+    ...(input.stripeSubscriptionId ? { stripeSubscriptionId: input.stripeSubscriptionId } : {}),
+    ...(input.subscriptionStatus ? { subscriptionStatus: input.subscriptionStatus } : {}),
+    ...(input.currentPeriodEnd ? { currentPeriodEnd: input.currentPeriodEnd } : {}),
+    ...(input.lastPaymentStatus ? { lastPaymentStatus: input.lastPaymentStatus } : {}),
+    ...(input.lastPaymentAt ? { lastPaymentAt: input.lastPaymentAt } : {}),
   };
   return { user, org };
 }

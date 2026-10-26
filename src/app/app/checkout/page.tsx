@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useAppSession } from "@/lib/app/session";
 import { formatPlanPrice, planLines } from "@/lib/brand/offer";
 import { PLANS } from "@/lib/plans/catalog";
@@ -12,7 +11,6 @@ import { toast } from "@/components/ui/toast";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { PlanPicker } from "@/components/auth/plan-picker";
 import {
-  clearPendingSignup,
   isPlanId,
   loadPendingSignup,
   updatePendingPlan,
@@ -28,9 +26,7 @@ import type { PlanId } from "@/types";
 type CheckoutMode = "sales" | "preview" | "live";
 
 export default function CheckoutPage() {
-  const { signUp, brand, market } = useAppSession();
-  const router = useRouter();
-  const opening = useRef(false);
+  const { brand, market } = useAppSession();
   const [booted, setBooted] = useState(false);
   const [plan, setPlan] = useState<PlanId>("team");
   const [pending, setPending] = useState<PendingSignup | null>(null);
@@ -89,37 +85,9 @@ export default function CheckoutPage() {
     window.history.replaceState(null, "", `${url.pathname}?${url.searchParams.toString()}`);
   }
 
-  async function openWorkspace() {
-    if (opening.current) return;
-    const current = loadPendingSignup();
-    if (!current) {
-      setPending(null);
-      return;
-    }
-    opening.current = true;
-    setWorking(true);
-    setFormError("");
-    try {
-      await signUp({ ...current, plan });
-      clearPendingSignup();
-      toast.success("Workspace created.");
-      router.push("/app/onboarding");
-    } catch (err) {
-      opening.current = false;
-      setWorking(false);
-      const message = err instanceof Error ? err.message : "Could not open the workspace.";
-      setFormError(message);
-      toast.error(message);
-    }
-  }
-
   async function confirm() {
-    if (!pending || !mode || working) return;
+    if (!pending || mode !== "live" || working) return;
     setFormError("");
-    if (mode !== "live") {
-      await openWorkspace();
-      return;
-    }
     setWorking(true);
     try {
       const res = await fetch("/api/stripe/signup-checkout", {
@@ -138,14 +106,8 @@ export default function CheckoutPage() {
         window.location.assign(data.url);
         return;
       }
-      if (data?.mode === "preview" || data?.mode === "sales") {
-        setMode(data.mode);
-        setReason(data.reason === "account" || data.reason === "price" ? data.reason : undefined);
-        setWorking(false);
-        await openWorkspace();
-        return;
-      }
-      throw new Error(data?.error || "Checkout failed");
+      setWorking(false);
+      throw new Error("Stripe didn't open payment. The workspace was not created.");
     } catch (err) {
       setWorking(false);
       const message = err instanceof Error ? err.message : "Checkout failed";
@@ -174,7 +136,7 @@ export default function CheckoutPage() {
       title="Review your plan"
       lede={
         pending
-          ? `Confirm ${item.name} for ${pending.orgName}. The workspace stays closed until this step finishes.`
+          ? `Payment for ${pending.orgName} comes first. The ${item.name} workspace is created only after Stripe has the subscription.`
           : "Checkout needs the workspace details from the previous step."
       }
       asideTitle={plan === "enterprise" ? "Custom, with the team." : `${item.name}, ${priceLabel}.`}
@@ -184,8 +146,8 @@ export default function CheckoutPage() {
             ? "You'll enter the card on the UK Stripe account. The workspace opens when you return."
             : "You'll enter the card on the US Stripe account. The workspace opens when you return."
           : brand.market === "uk"
-            ? "Pounds, on the UK Stripe account, once that account is connected."
-            : "Dollars, on the US Stripe account, once that account is connected."
+            ? "Pounds, on the UK Stripe account. Nothing is created until that account has the subscription."
+            : "Dollars, on the US Stripe account. Nothing is created until that account has the subscription."
       }
       points={planLines(market, plan)}
       footer={
@@ -270,7 +232,7 @@ export default function CheckoutPage() {
               type="button"
               className="w-full rounded-full"
               size="lg"
-              disabled={!mode || working}
+              disabled={mode !== "live" || working}
               onClick={confirm}
             >
               {working ? "Continuing…" : mode ? signupCheckoutActionLabel(mode) : "Checking checkout…"}
