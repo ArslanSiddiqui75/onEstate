@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
+import { LoginCityline } from "@/components/auth/login-cityline";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { loginSchema, validateForm } from "@/lib/auth/validation";
@@ -67,10 +68,7 @@ export default function AppLoginPage() {
 
   return (
     <div data-auth-screen="login" className="login-atmosphere relative flex min-h-dvh flex-col overflow-hidden">
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
-        <img src="/brand/mark.png" alt="" className="login-mark login-mark-a" />
-        <img src="/brand/mark.png" alt="" className="login-mark login-mark-b" />
-      </div>
+      <LoginCityline />
       <header className="relative z-10 flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <Link href={home} className="inline-flex lg:hidden" aria-label="OneStreet">
           <BrandMark className="text-[15px]" />

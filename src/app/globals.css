@@ -571,77 +571,49 @@ select:not([multiple]) optgroup {
   border-radius: var(--radius-sm);
 }
 
-/* Login field. The house mark and teal washes stay quieter than the card. */
+/* Login field. A hairline city outline sits behind the card, in the theme teal. */
 .login-atmosphere {
   background:
-    radial-gradient(ellipse 58% 46% at -4% 108%, rgba(12, 110, 99, 0.11), transparent 68%),
-    radial-gradient(ellipse 46% 38% at 108% -8%, rgba(20, 149, 138, 0.08), transparent 64%),
-    radial-gradient(ellipse 36% 28% at 72% 42%, rgba(12, 110, 99, 0.035), transparent 70%),
-    linear-gradient(165deg, #eef4f2 0%, #e5eeeb 48%, #e8f1ef 100%);
+    radial-gradient(ellipse 58% 46% at -4% 108%, rgba(12, 110, 99, 0.08), transparent 68%),
+    radial-gradient(ellipse 46% 38% at 108% -8%, rgba(20, 149, 138, 0.06), transparent 64%),
+    linear-gradient(165deg, #eef4f2 0%, #e7efec 52%, #e8f1ef 100%);
 }
 
 .dark .login-atmosphere {
   background:
-    radial-gradient(ellipse 58% 46% at -4% 108%, rgba(23, 186, 168, 0.11), transparent 68%),
-    radial-gradient(ellipse 46% 38% at 108% -8%, rgba(23, 186, 168, 0.07), transparent 64%),
-    radial-gradient(ellipse 36% 28% at 72% 42%, rgba(23, 186, 168, 0.04), transparent 70%),
+    radial-gradient(ellipse 58% 46% at -4% 108%, rgba(23, 186, 168, 0.08), transparent 68%),
+    radial-gradient(ellipse 46% 38% at 108% -8%, rgba(23, 186, 168, 0.05), transparent 64%),
     linear-gradient(165deg, #101618 0%, #0c1315 52%, #0e1618 100%);
 }
 
-.login-atmosphere::after {
-  content: "";
+.login-cityline {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 0;
-  pointer-events: none;
-  opacity: 0.04;
-  background-image: var(--grain);
-  background-size: 180px 180px;
-  mix-blend-mode: multiply;
-}
-
-.dark .login-atmosphere::after {
-  opacity: 0.055;
-  mix-blend-mode: soft-light;
-}
-
-.login-mark {
-  position: absolute;
-  width: min(48rem, 78vw);
+  width: 100%;
   height: auto;
+  color: #0c6e63;
   pointer-events: none;
   user-select: none;
-  filter: blur(1.5px);
-  mask-image: radial-gradient(closest-side, #000 28%, transparent 76%);
 }
 
-.login-mark-a {
-  left: -14rem;
-  bottom: -16rem;
-  opacity: 0.07;
-  transform: rotate(-8deg);
+.login-cityline-near {
+  fill: none;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.18;
+  stroke-width: 1.15;
 }
 
-.login-mark-b {
-  right: -22rem;
-  top: -22rem;
-  width: min(36rem, 58vw);
-  opacity: 0.04;
-  transform: rotate(16deg);
+.dark .login-cityline {
+  color: #17baa8;
 }
 
-.dark .login-mark-a,
-.dark .login-mark-b {
-  mix-blend-mode: screen;
-  filter: blur(6px) saturate(1.2) brightness(1.25);
-}
-
-.dark .login-mark-a {
-  opacity: 0.22;
-}
-
-.dark .login-mark-b {
-  opacity: 0.12;
+.dark .login-cityline-near {
+  opacity: 0.26;
 }
 
 /* Lockup height follows the surrounding font size. Width keeps the artwork ratio. */
