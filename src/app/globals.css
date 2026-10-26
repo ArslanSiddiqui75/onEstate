@@ -571,12 +571,30 @@ select:not([multiple]) optgroup {
   border-radius: var(--radius-sm);
 }
 
-/* The wordmark is the logo. Height follows the surrounding font size. */
-.brand-mark svg {
+/* Lockup height follows the surrounding font size. Width keeps the artwork ratio. */
+.brand-mark .brand-logo-light,
+.brand-mark .brand-wordmark {
   display: block;
   height: 1.5em;
   width: auto;
   max-width: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+
+/* Light theme shows the supplied lockup. Dark theme and ink surfaces use the wordmark. */
+.brand-mark[data-tone="auto"] .brand-wordmark,
+.brand-mark[data-tone="light"] .brand-wordmark,
+.brand-mark[data-tone="dark"] .brand-logo-light {
+  display: none;
+}
+
+.dark .brand-mark[data-tone="auto"] .brand-logo-light {
+  display: none;
+}
+
+.dark .brand-mark[data-tone="auto"] .brand-wordmark {
+  display: block;
 }
 
 @media (prefers-reduced-motion: reduce) {
