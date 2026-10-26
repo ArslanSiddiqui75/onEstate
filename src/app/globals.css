@@ -616,6 +616,20 @@ select:not([multiple]) optgroup {
   opacity: 0.26;
 }
 
+@media (max-width: 639px) {
+  .login-cityline {
+    bottom: -1.25rem;
+  }
+
+  .login-cityline-near {
+    opacity: 0.13;
+  }
+
+  .dark .login-cityline-near {
+    opacity: 0.18;
+  }
+}
+
 /* Lockup height follows the surrounding font size. Width keeps the artwork ratio. */
 .brand-mark .brand-logo-light,
 .brand-mark .brand-logo-dark {

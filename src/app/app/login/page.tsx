@@ -67,16 +67,16 @@ export default function AppLoginPage() {
   }
 
   return (
-    <div data-auth-screen="login" className="login-atmosphere relative flex min-h-dvh flex-col overflow-hidden">
+    <div data-auth-screen="login" className="login-atmosphere relative flex min-h-dvh flex-col overflow-x-hidden">
       <LoginCityline />
-      <header className="relative z-10 flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <Link href={home} className="inline-flex lg:hidden" aria-label="OneStreet">
+      <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6 sm:py-4">
+        <Link href={home} className="inline-flex min-w-0 lg:hidden" aria-label="OneStreet">
           <BrandMark className="text-[15px]" />
         </Link>
-        <div className="ml-auto flex items-center gap-2 sm:gap-4">
+        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
           <Link
             href={home}
-            className="text-sm font-medium text-[var(--muted)] transition hover:text-[var(--foreground)]"
+            className="text-[13px] font-medium text-[var(--muted)] transition hover:text-[var(--foreground)] sm:text-sm"
           >
             Back to site
           </Link>
@@ -85,8 +85,8 @@ export default function AppLoginPage() {
       </header>
 
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
-      <main className="flex flex-1 items-center pb-8">
-        <div className="grid w-full overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-black/5 dark:ring-white/10 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
+      <main className="flex flex-1 flex-col justify-start pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 lg:justify-center lg:py-8">
+        <div className="my-0 grid w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] lg:my-auto dark:ring-white/10 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
           <aside className="relative hidden min-h-[40rem] flex-col justify-between overflow-hidden border-white/10 bg-[#071015] p-10 text-white lg:flex lg:border-r xl:p-12">
             <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
             <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/20 blur-3xl" />
@@ -104,16 +104,15 @@ export default function AppLoginPage() {
             <div className="relative h-6" aria-hidden />
           </aside>
 
-          <div className="flex flex-col justify-center px-6 py-8 sm:px-10 sm:py-12 lg:px-12">
-            <div className="mb-8 rounded-2xl bg-[#071015] px-4 py-4 text-white lg:hidden">
-              <p className="text-base font-semibold tracking-[-0.03em]">One login.</p>
-            </div>
-
-            <h1 className="font-sans text-[2.6rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)]">
+          <div className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
+            <h1 className="font-sans text-[2.05rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.6rem]">
               Sign in
             </h1>
+            <p className="mt-2.5 text-balance text-[15px] leading-snug text-[var(--muted)] lg:hidden">
+              Everything you need, just a login away.
+            </p>
 
-            <form onSubmit={onSubmit} className="mt-8 space-y-5">
+            <form onSubmit={onSubmit} className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
               <div className="space-y-1.5">
                 <label htmlFor={emailId} className="text-sm font-medium text-[var(--foreground)]">
                   Email
@@ -140,7 +139,7 @@ export default function AppLoginPage() {
               </div>
 
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                   <label htmlFor={passwordId} className="text-sm font-medium text-[var(--foreground)]">
                     Password
                   </label>
