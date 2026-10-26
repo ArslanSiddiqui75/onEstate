@@ -96,9 +96,7 @@ export default function AppLoginPage() {
                 One login.
               </h2>
               <p className="mt-5 text-[15px] leading-relaxed text-white/70">
-                {uk
-                  ? "Enquiries, viewings, lettings, and the file."
-                  : "Enquiries, showings, progression, and the file."}
+                Everything you need, just a login away.
               </p>
             </div>
             <div className="relative h-6" aria-hidden />
