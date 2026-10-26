@@ -114,9 +114,6 @@ export default function AppLoginPage() {
             <h1 className="font-sans text-[2.6rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)]">
               Sign in
             </h1>
-            <p className="mt-3 max-w-sm text-sm leading-relaxed text-[var(--muted)]">
-              Use the email on your workspace.
-            </p>
 
             <form onSubmit={onSubmit} className="mt-8 space-y-5">
               <div className="space-y-1.5">
