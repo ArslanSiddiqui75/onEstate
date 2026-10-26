@@ -132,7 +132,7 @@ export default function AppLoginPage() {
                   placeholder="you@brokerage.com"
                   autoComplete="email"
                   autoFocus
-                  className="h-12 rounded-xl px-4 text-[15px]"
+                  className="h-12 rounded-[1rem] px-4 text-[15px]"
                   aria-invalid={fieldErrors.email ? true : undefined}
                 />
                 {fieldErrors.email ? (
@@ -162,7 +162,7 @@ export default function AppLoginPage() {
                     }}
                     placeholder="Password"
                     autoComplete="current-password"
-                    className="h-12 rounded-xl px-4 pr-12 text-[15px]"
+                    className="h-12 rounded-[1rem] px-4 pr-12 text-[15px]"
                     aria-invalid={fieldErrors.password ? true : undefined}
                   />
                   <button
@@ -184,7 +184,7 @@ export default function AppLoginPage() {
               {formError ? <Alert tone="danger">{formError}</Alert> : null}
               {formInfo ? <Alert tone="success">{formInfo}</Alert> : null}
 
-              <Button type="submit" className="w-full rounded-full" size="lg" disabled={loading}>
+              <Button type="submit" className="w-full rounded-[1rem]" size="lg" disabled={loading}>
                 {loading ? "Signing in…" : "Sign in"}
               </Button>
             </form>
