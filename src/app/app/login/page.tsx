@@ -92,41 +92,28 @@ export default function AppLoginPage() {
               <BrandMark tone="dark" className="text-[1.65rem]" />
             </Link>
             <div className="relative max-w-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7dccc2]">
-                {brand.regionShort}
-              </p>
-              <h2 className="mt-4 font-sans text-[3.25rem] font-semibold leading-[0.92] tracking-[-0.045em]">
+              <h2 className="font-sans text-[3.25rem] font-semibold leading-[0.92] tracking-[-0.045em]">
                 One login.
               </h2>
               <p className="mt-5 text-[15px] leading-relaxed text-white/70">
                 {uk
-                  ? "Enquiries, viewings, lettings, and the file, on 0nestreet.co.uk."
-                  : "Enquiries, showings, progression, and the file, on 0nestreet.com."}
+                  ? "Enquiries, viewings, lettings, and the file."
+                  : "Enquiries, showings, progression, and the file."}
               </p>
             </div>
-            <p className="relative text-xs text-white/45">
-              {uk ? "Pounds" : "Dollars"} · {brand.domain}
-            </p>
+            <div className="relative h-6" aria-hidden />
           </aside>
 
           <div className="flex flex-col justify-center px-6 py-8 sm:px-10 sm:py-12 lg:px-12">
             <div className="mb-8 rounded-2xl bg-[#071015] px-4 py-4 text-white lg:hidden">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7dccc2]">
-                {brand.regionShort}
-              </p>
-              <p className="mt-1 text-base font-semibold tracking-[-0.03em]">
-                One login on {brand.domain}
-              </p>
+              <p className="text-base font-semibold tracking-[-0.03em]">One login.</p>
             </div>
 
-            <p className="text-sm font-semibold text-[var(--accent)]">{brand.regionShort} workspace</p>
-            <h1 className="mt-2 font-sans text-[2.6rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)]">
+            <h1 className="font-sans text-[2.6rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)]">
               Sign in
             </h1>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-[var(--muted)]">
-              {uk
-                ? "The UK book. Use the email on your workspace."
-                : "The US book. Use the email on your workspace."}
+              Use the email on your workspace.
             </p>
 
             <form onSubmit={onSubmit} className="mt-8 space-y-5">
