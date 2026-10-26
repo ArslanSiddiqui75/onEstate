@@ -66,7 +66,11 @@ export default function AppLoginPage() {
   }
 
   return (
-    <div data-auth-screen="login" className="relative flex min-h-dvh flex-col overflow-x-hidden">
+    <div data-auth-screen="login" className="login-screen relative flex min-h-dvh flex-col overflow-x-hidden">
+      <div className="login-field" aria-hidden>
+        <span className="login-field-arc login-field-arc-a" />
+        <span className="login-field-arc login-field-arc-b" />
+      </div>
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6 sm:py-4">
         <Link href={home} className="inline-flex min-w-0 lg:hidden" aria-label="OneStreet">
           <BrandMark className="text-[15px]" />

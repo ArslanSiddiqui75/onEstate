@@ -571,6 +571,71 @@ select:not([multiple]) optgroup {
   border-radius: var(--radius-sm);
 }
 
+/* Sign-in field. Flat canvas, then two hairline arcs in the theme teal. */
+.login-screen {
+  background: linear-gradient(180deg, var(--canvas) 0%, var(--canvas-deep) 100%);
+}
+
+.login-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.login-field-arc {
+  position: absolute;
+  border-radius: 9999px;
+  border: 1px solid var(--accent);
+}
+
+.login-field-arc-a {
+  width: 78rem;
+  height: 78rem;
+  left: -34rem;
+  bottom: -46rem;
+  opacity: 0.14;
+}
+
+.login-field-arc-b {
+  width: 52rem;
+  height: 52rem;
+  right: -28rem;
+  top: -30rem;
+  opacity: 0.09;
+}
+
+.dark .login-field-arc-a {
+  opacity: 0.2;
+}
+
+.dark .login-field-arc-b {
+  opacity: 0.12;
+}
+
+@media (max-width: 639px) {
+  .login-field-arc-a {
+    left: -48rem;
+    bottom: -56rem;
+    opacity: 0.1;
+  }
+
+  .login-field-arc-b {
+    right: -40rem;
+    top: -42rem;
+    opacity: 0.07;
+  }
+
+  .dark .login-field-arc-a {
+    opacity: 0.14;
+  }
+
+  .dark .login-field-arc-b {
+    opacity: 0.09;
+  }
+}
+
 /* Lockup height follows the surrounding font size. Width keeps the artwork ratio. */
 .brand-mark .brand-logo-light,
 .brand-mark .brand-logo-dark {
