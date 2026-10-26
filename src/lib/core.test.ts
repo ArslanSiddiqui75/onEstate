@@ -194,6 +194,7 @@ describe("redirectTo validation", () => {
     expect(sanitizeRedirectTo("https://evil.test")).toBe("/app");
     expect(sanitizeRedirectTo("//evil.test")).toBe("/app");
     expect(sanitizeRedirectTo("/app/login")).toBe("/app");
+    expect(sanitizeRedirectTo("/app/checkout?plan=team")).toBe("/app");
   });
 });
 

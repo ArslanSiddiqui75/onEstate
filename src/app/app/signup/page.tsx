@@ -4,84 +4,52 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppSession } from "@/lib/app/session";
-import { formatPlanPrice } from "@/lib/brand/offer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/ui/form-field";
-import { Alert } from "@/components/ui/alert";
-import { toast } from "@/components/ui/toast";
 import { AuthFrame } from "@/components/auth/auth-frame";
+import { PlanPicker } from "@/components/auth/plan-picker";
 import { signupSchema, validateForm } from "@/lib/auth/validation";
+import { isPlanId, loadPendingSignup, savePendingSignup } from "@/lib/auth/pending-signup";
 import { PasswordStrengthBar } from "@/components/ui/password-strength";
-import { PLANS } from "@/lib/plans/catalog";
-import { cn } from "@/lib/utils";
 import type { PlanId } from "@/types";
 
-const PLAN_ORDER: PlanId[] = ["solo", "team", "enterprise"];
-
 export default function AppSignupPage() {
-  const { signUp, authMode, brand, market } = useAppSession();
+  const { brand, market } = useAppSession();
   const router = useRouter();
   const uk = brand.market === "uk";
   const [plan, setPlan] = useState<PlanId>("team");
-  const [loading, setLoading] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState("");
-  const [formInfo, setFormInfo] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [orgName, setOrgName] = useState("");
   const [password, setPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("plan");
-    if (requested === "solo" || requested === "team" || requested === "enterprise") {
-      setPlan(requested);
+    const pending = loadPendingSignup();
+    if (pending) {
+      setName(pending.name);
+      setEmail(pending.email);
+      setPassword(pending.password);
+      setOrgName(pending.orgName);
+      setPlan(pending.plan);
     }
+    const requested = new URLSearchParams(window.location.search).get("plan");
+    if (isPlanId(requested)) setPlan(requested);
   }, []);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFieldErrors({});
-    setFormError("");
-    setFormInfo("");
 
-    const form = new FormData(e.currentTarget);
-    const formData = {
-      name: String(form.get("name")),
-      email: String(form.get("email")),
-      password: String(form.get("password")),
-      orgName: String(form.get("orgName")),
-      plan: String(form.get("plan")),
-    };
-
-    const result = validateForm(signupSchema, formData);
+    const result = validateForm(signupSchema, { name, email, password, orgName, plan });
     if (!result.success) {
       setFieldErrors(result.errors);
       return;
     }
 
-    setLoading(true);
-    try {
-      await signUp({
-        name: result.data.name,
-        email: result.data.email,
-        password: result.data.password,
-        orgName: result.data.orgName,
-        plan: result.data.plan as PlanId,
-      });
-
-      if (authMode === "supabase" && !result.data.password) {
-        setFormInfo("Check your email to verify and finish setup.");
-        toast.success("Account created. Check your inbox.");
-      } else {
-        toast.success("Workspace created.");
-        router.push("/app/onboarding");
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Signup failed. Please try again.";
-      setFormError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
+    savePendingSignup(result.data);
+    router.push(`/app/checkout?plan=${result.data.plan}`);
   }
 
   const money = brand.currency === "GBP" ? "pounds" : "dollars";
@@ -91,7 +59,7 @@ export default function AppSignupPage() {
       screen="signup"
       kicker={`${brand.regionShort} workspace`}
       title="Create your workspace"
-      lede={`This is the ${brand.regionShort} book at ${brand.domain}. Payments are in ${money}. Social accounts already connected stay on the workspace they belong to.`}
+      lede={`This is the ${brand.regionShort} book at ${brand.domain}. Next you'll review the plan in ${money}. The workspace opens after that step.`}
       asideTitle={uk ? "A separate book for the UK." : "A separate book for the US."}
       asideBody={
         uk
@@ -114,10 +82,23 @@ export default function AppSignupPage() {
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <FormField label="Your name" error={fieldErrors.name} required>
-          <Input name="name" placeholder="Jane Smith" autoComplete="name" />
+          <Input
+            name="name"
+            placeholder="Jane Smith"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </FormField>
         <FormField label="Work email" error={fieldErrors.email} required>
-          <Input name="email" type="email" placeholder="jane@brokerage.com" autoComplete="email" />
+          <Input
+            name="email"
+            type="email"
+            placeholder="jane@brokerage.com"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </FormField>
         <FormField label="Password" error={fieldErrors.password} required>
           <Input
@@ -131,63 +112,22 @@ export default function AppSignupPage() {
         </FormField>
         <PasswordStrengthBar password={password} className="-mt-2" />
         <FormField label="Brokerage name" error={fieldErrors.orgName} required>
-          <Input name="orgName" placeholder={uk ? "Smith & Co" : "Smith Realty"} />
+          <Input
+            name="orgName"
+            placeholder={uk ? "Smith & Co" : "Smith Realty"}
+            value={orgName}
+            onChange={(e) => setOrgName(e.target.value)}
+          />
         </FormField>
 
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-[var(--foreground)]">
-            Plan
-            <span className="ml-0.5 text-[var(--danger)]" aria-hidden>
-              *
-            </span>
-          </legend>
-          <div className="grid gap-2">
-            {PLAN_ORDER.map((id) => {
-              const item = PLANS[id];
-              const price = formatPlanPrice(market, id);
-              const selected = plan === id;
-              return (
-                <label
-                  key={id}
-                  className={cn(
-                    "flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-3 transition",
-                    selected
-                      ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-                      : "border-[var(--border)] bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]",
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="plan"
-                    value={id}
-                    checked={selected}
-                    onChange={() => setPlan(id)}
-                    className="sr-only"
-                  />
-                  <span>
-                    <span className="block text-sm font-semibold">{item.name}</span>
-                    <span className="mt-0.5 block text-xs text-[var(--muted)]">{item.seats}</span>
-                  </span>
-                  <span className="shrink-0 text-sm font-semibold">
-                    {id === "enterprise" ? price : `${price}/mo`}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-          {fieldErrors.plan ? (
-            <p className="text-xs font-medium text-[var(--danger)]" role="alert">
-              {fieldErrors.plan}
-            </p>
-          ) : null}
-        </fieldset>
+        <PlanPicker plan={plan} market={market} onChange={setPlan} error={fieldErrors.plan} />
 
-        {formError ? <Alert tone="danger">{formError}</Alert> : null}
-        {formInfo ? <Alert tone="success">{formInfo}</Alert> : null}
-
-        <Button type="submit" className="w-full rounded-full" size="lg" disabled={loading}>
-          {loading ? "Creating…" : "Create workspace"}
+        <Button type="submit" className="w-full rounded-full" size="lg">
+          Continue to checkout
         </Button>
+        <p className="text-center text-xs leading-relaxed text-[var(--muted)]">
+          Nothing is created on this step. You'll confirm {plan === "enterprise" ? "Enterprise" : "the price"} next.
+        </p>
       </form>
     </AuthFrame>
   );

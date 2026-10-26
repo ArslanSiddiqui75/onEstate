@@ -22,7 +22,7 @@ export function AuthFrame({
   children,
   footer,
 }: {
-  screen: "login" | "signup" | "reset" | "admin";
+  screen: "login" | "signup" | "reset" | "checkout" | "admin";
   kicker: string;
   title: string;
   lede: string;

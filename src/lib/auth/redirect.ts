@@ -18,7 +18,8 @@ export function sanitizeRedirectTo(raw: string | null | undefined): string {
   if (
     decoded.startsWith("/app/login") ||
     decoded.startsWith("/app/signup") ||
-    decoded.startsWith("/app/reset-password")
+    decoded.startsWith("/app/reset-password") ||
+    decoded.startsWith("/app/checkout")
   ) {
     return fallback;
   }

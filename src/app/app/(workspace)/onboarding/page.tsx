@@ -20,7 +20,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [orgName, setOrgName] = useState(org?.name || "");
   const [selectedMarket, setSelectedMarket] = useState<"uk" | "us">(market || "uk");
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>("team");
+  const [selectedPlan, setSelectedPlan] = useState<PlanId>(org?.plan || "team");
   const [busy, setBusy] = useState(false);
 
   // Completed workspaces cannot re-enter onboarding (QA audit P1-9).
@@ -30,6 +30,10 @@ export default function OnboardingPage() {
       router.replace("/app");
     }
   }, [org?.onboardingCompleted, router]);
+
+  useEffect(() => {
+    if (org?.plan) setSelectedPlan(org.plan);
+  }, [org?.plan]);
 
   if (!user) return null;
   if (org?.onboardingCompleted) return null;

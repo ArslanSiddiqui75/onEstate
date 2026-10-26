@@ -17,7 +17,8 @@ function Guard({ children }: { children: React.ReactNode }) {
   const isAuthRoute =
     pathname.startsWith("/app/login") ||
     pathname.startsWith("/app/signup") ||
-    pathname.startsWith("/app/reset-password");
+    pathname.startsWith("/app/reset-password") ||
+    pathname.startsWith("/app/checkout");
 
   useEffect(() => {
     if (loading) return;
