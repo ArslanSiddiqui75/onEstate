@@ -203,9 +203,9 @@ export default function AppLoginPage() {
             </form>
 
             <p className="mt-6 text-sm text-[var(--muted)]">
-              New brokerage?{" "}
+              Still not on 0neStreet?{" "}
               <Link href="/app/signup" className="font-semibold text-[var(--accent)]">
-                Create a workspace
+                Sign Up Now
               </Link>
             </p>
 
