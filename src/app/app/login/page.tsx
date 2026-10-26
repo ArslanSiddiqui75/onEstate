@@ -66,9 +66,8 @@ export default function AppLoginPage() {
   }
 
   return (
-    <div data-auth-screen="login" className="flex min-h-dvh flex-col bg-[#e7edf1] px-4 dark:bg-[#10161c] sm:px-6">
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
-      <header className="flex items-center justify-between gap-4 py-4">
+    <div data-auth-screen="login" className="flex min-h-dvh flex-col bg-[#e7edf1] dark:bg-[#10161c]">
+      <header className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <Link href={home} className="inline-flex lg:hidden" aria-label="OneStreet">
           <BrandMark className="text-[15px]" />
         </Link>
@@ -83,6 +82,7 @@ export default function AppLoginPage() {
         </div>
       </header>
 
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
       <main className="flex flex-1 items-center pb-8">
         <div className="grid w-full overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-black/5 dark:ring-white/10 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
           <aside className="relative hidden min-h-[40rem] flex-col justify-between overflow-hidden border-white/10 bg-[#071015] p-10 text-white lg:flex lg:border-r xl:p-12">
