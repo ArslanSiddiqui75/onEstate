@@ -573,7 +573,7 @@ select:not([multiple]) optgroup {
 
 /* Lockup height follows the surrounding font size. Width keeps the artwork ratio. */
 .brand-mark .brand-logo-light,
-.brand-mark .brand-wordmark {
+.brand-mark .brand-logo-dark {
   display: block;
   height: 1.5em;
   width: auto;
@@ -582,9 +582,9 @@ select:not([multiple]) optgroup {
   object-position: left center;
 }
 
-/* Light theme shows the supplied lockup. Dark theme and ink surfaces use the wordmark. */
-.brand-mark[data-tone="auto"] .brand-wordmark,
-.brand-mark[data-tone="light"] .brand-wordmark,
+/* Light theme shows the dark-green lockup. Dark theme and ink surfaces show the bright one. */
+.brand-mark[data-tone="auto"] .brand-logo-dark,
+.brand-mark[data-tone="light"] .brand-logo-dark,
 .brand-mark[data-tone="dark"] .brand-logo-light {
   display: none;
 }
@@ -593,7 +593,7 @@ select:not([multiple]) optgroup {
   display: none;
 }
 
-.dark .brand-mark[data-tone="auto"] .brand-wordmark {
+.dark .brand-mark[data-tone="auto"] .brand-logo-dark {
   display: block;
 }
 
