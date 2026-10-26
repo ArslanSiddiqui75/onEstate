@@ -571,65 +571,6 @@ select:not([multiple]) optgroup {
   border-radius: var(--radius-sm);
 }
 
-/* Login field. A hairline city outline sits behind the card, in the theme teal. */
-.login-atmosphere {
-  background:
-    radial-gradient(ellipse 58% 46% at -4% 108%, rgba(12, 110, 99, 0.08), transparent 68%),
-    radial-gradient(ellipse 46% 38% at 108% -8%, rgba(20, 149, 138, 0.06), transparent 64%),
-    linear-gradient(165deg, #eef4f2 0%, #e7efec 52%, #e8f1ef 100%);
-}
-
-.dark .login-atmosphere {
-  background:
-    radial-gradient(ellipse 58% 46% at -4% 108%, rgba(23, 186, 168, 0.08), transparent 68%),
-    radial-gradient(ellipse 46% 38% at 108% -8%, rgba(23, 186, 168, 0.05), transparent 64%),
-    linear-gradient(165deg, #101618 0%, #0c1315 52%, #0e1618 100%);
-}
-
-.login-cityline {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 0;
-  width: 100%;
-  height: auto;
-  color: #0c6e63;
-  pointer-events: none;
-  user-select: none;
-}
-
-.login-cityline-near {
-  fill: none;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-  opacity: 0.18;
-  stroke-width: 1.15;
-}
-
-.dark .login-cityline {
-  color: #17baa8;
-}
-
-.dark .login-cityline-near {
-  opacity: 0.26;
-}
-
-@media (max-width: 639px) {
-  .login-cityline {
-    bottom: -1.25rem;
-  }
-
-  .login-cityline-near {
-    opacity: 0.13;
-  }
-
-  .dark .login-cityline-near {
-    opacity: 0.18;
-  }
-}
-
 /* Lockup height follows the surrounding font size. Width keeps the artwork ratio. */
 .brand-mark .brand-logo-light,
 .brand-mark .brand-logo-dark {
