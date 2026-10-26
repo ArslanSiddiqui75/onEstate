@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MarketingNav } from "@/components/marketing/nav";
 import { Hero } from "@/components/marketing/hero";
+import { BeforeAfter } from "@/components/marketing/before-after";
 import { JobPanel } from "@/components/marketing/job-panel";
 import { Pricing } from "@/components/marketing/pricing";
 import { WaitlistForm } from "@/components/marketing/waitlist-form";
@@ -35,6 +36,21 @@ export function MarketingHome({
         ) : null}
 
         <Hero market={market} />
+
+        <section id="compare" className="scroll-mt-36">
+          <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24">
+            <p className="text-sm font-semibold text-[var(--accent)]">The same morning</p>
+            <h2 className="mt-3 max-w-3xl font-sans text-[clamp(2.2rem,4.6vw,3.6rem)] font-semibold leading-[1.05] tracking-[-0.04em]">
+              Scattered across inboxes. Or on the file.
+            </h2>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-[var(--muted)]">
+              Drag the line. Calls, messages, and portal questions stay where they landed, until that property is on the desk.
+            </p>
+            <div className="mt-10">
+              <BeforeAfter uk={copy.uk} />
+            </div>
+          </div>
+        </section>
 
         <section className="border-y border-[var(--border)] bg-[var(--surface-muted)]">
           <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] lg:items-center">
