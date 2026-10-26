@@ -41,6 +41,12 @@ function Guard({ children }: { children: React.ReactNode }) {
     }
   }, [user, org, loading, isAuthRoute, router, pathname]);
 
+  // Auth screens render immediately. Session hydration used to block them,
+  // and the workspace skeleton then stayed on screen for signed-out visitors.
+  if (isAuthRoute) {
+    return <>{children}</>;
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center gap-3 text-sm text-[var(--muted)]">
@@ -48,10 +54,6 @@ function Guard({ children }: { children: React.ReactNode }) {
         Loading workspace…
       </div>
     );
-  }
-
-  if (isAuthRoute) {
-    return <>{children}</>;
   }
 
   if (!user || !org) {

@@ -33,7 +33,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useAppSession } from "@/lib/app/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,9 +51,6 @@ import { ROLE_LABELS } from "@/lib/rbac/matrix";
 
 export default function AppLoginPage() {
   const { signIn, authMode, brand } = useAppSession();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirectTo") || "/app";
 
   // ── Form state ──
   // Each `useState` hook tracks one piece of state.
@@ -99,7 +95,7 @@ export default function AppLoginPage() {
         toast.success("Magic link sent! Check your inbox.");
       } else {
         toast.success("Signed in successfully!");
-        // Guard in layout.tsx will auto-redirect once user state is set
+        // Guard in layout.tsx reads ?redirectTo= and sends the user on.
       }
     } catch (err) {
       console.error("[login] Full error:", err);
@@ -113,7 +109,10 @@ export default function AppLoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4">
+    <div
+      className="relative flex min-h-screen items-center justify-center p-4"
+      data-auth-screen="login"
+    >
       <ThemeToggle className="absolute right-4 top-4" />
       <div className="surface-panel relative w-full max-w-lg p-8 sm:p-10">
         <BrandMark

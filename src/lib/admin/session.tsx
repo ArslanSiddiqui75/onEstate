@@ -127,20 +127,32 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
+      let signedIn = false;
       try {
         const res = await fetch("/api/admin/session");
         if (res.ok) {
           const json = (await res.json()) as { admin?: PlatformAdminUser | null };
-          if (json.admin) setAdmin(json.admin);
+          if (json.admin) {
+            signedIn = true;
+            if (!cancelled) setAdmin(json.admin);
+          }
         }
       } catch {
         // Stay signed out if the session check fails.
-      } finally {
-        refresh();
-        setLoading(false);
       }
+      if (cancelled) return;
+      if (signedIn) {
+        await refresh();
+      } else {
+        setRegistryError(null);
+      }
+      if (!cancelled) setLoading(false);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -163,8 +175,12 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     } catch {
       // Org session cleanup is best-effort.
     }
+    // Load tenants before the console shell mounts. Setting the admin first
+    // painted the previous signed-out failure ("Unauthorized") for a few
+    // seconds, until this refresh replaced it.
+    setRegistryError(null);
+    await refresh();
     setAdmin(json.admin);
-    refresh();
   }, [refresh]);
 
   const signOut = useCallback(async () => {
@@ -181,6 +197,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     }
     clearPlatformAdminAuth();
     setAdmin(null);
+    setRegistryError(null);
   }, []);
 
   const persistTenant = useCallback(

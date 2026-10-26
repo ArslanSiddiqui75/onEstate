@@ -24,8 +24,8 @@
  */
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAppSession } from "@/lib/app/session";
 import { formatPlanPrice } from "@/lib/brand/offer";
 import { Button } from "@/components/ui/button";
@@ -42,13 +42,21 @@ import type { PlanId } from "@/types";
 export default function AppSignupPage() {
   const { signUp, authMode, brand, market } = useAppSession();
   const router = useRouter();
-  const requestedPlan = useSearchParams().get("plan");
-  const initialPlan = requestedPlan === "solo" || requestedPlan === "enterprise" ? requestedPlan : "team";
+  // Read ?plan= after mount. useSearchParams() suspends the whole page into
+  // the nearest loading boundary, which is how sign-in got stuck on a skeleton.
+  const [plan, setPlan] = useState<PlanId>("team");
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [formInfo, setFormInfo] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("plan");
+    if (requested === "solo" || requested === "team" || requested === "enterprise") {
+      setPlan(requested);
+    }
+  }, []);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -103,7 +111,10 @@ export default function AppSignupPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4">
+    <div
+      className="relative flex min-h-screen items-center justify-center p-4"
+      data-auth-screen="signup"
+    >
       <ThemeToggle className="absolute right-4 top-4" />
       <div className="surface-panel relative w-full max-w-lg p-8 sm:p-10">
         <BrandMark
@@ -166,7 +177,8 @@ export default function AppSignupPage() {
           >
             <select
               name="plan"
-              defaultValue={initialPlan}
+              value={plan}
+              onChange={(e) => setPlan(e.target.value as PlanId)}
               className="h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm"
               aria-label="Plan"
             >
