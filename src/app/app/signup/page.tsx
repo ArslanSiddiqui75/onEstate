@@ -1,28 +1,5 @@
 "use client";
 
-/**
- * Signup Page
- *
- * HOW THIS WORKS (for learning):
- *
- * This page lets new brokerages create a workspace. The flow is:
- * 1. User fills in: name, email, brokerage name, plan
- * 2. We validate all fields with Zod
- * 3. If valid, call `signUp()` to create the workspace
- * 4. In local mode: instantly redirects to /app
- *    In Supabase mode: shows "check your email" message
- *
- * WHAT'S `FormData`?
- * The browser has a built-in API called `FormData` that reads all the values
- * from a <form> element at once. Instead of tracking each field with useState,
- * we let the browser handle it and read the values on submit.
- *
- * WHY USE `FormData` HERE but `useState` on login?
- * Both approaches work! Login uses useState because we pre-fill the email
- * from seed accounts (easier with controlled inputs). Signup uses FormData
- * because it has more fields and we only need the values on submit.
- */
-
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -30,20 +7,22 @@ import { useAppSession } from "@/lib/app/session";
 import { formatPlanPrice } from "@/lib/brand/offer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BrandMark } from "@/components/brand/brand-mark";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { FormField } from "@/components/ui/form-field";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
+import { AuthFrame } from "@/components/auth/auth-frame";
 import { signupSchema, validateForm } from "@/lib/auth/validation";
 import { PasswordStrengthBar } from "@/components/ui/password-strength";
+import { PLANS } from "@/lib/plans/catalog";
+import { cn } from "@/lib/utils";
 import type { PlanId } from "@/types";
+
+const PLAN_ORDER: PlanId[] = ["solo", "team", "enterprise"];
 
 export default function AppSignupPage() {
   const { signUp, authMode, brand, market } = useAppSession();
   const router = useRouter();
-  // Read ?plan= after mount. useSearchParams() suspends the whole page into
-  // the nearest loading boundary, which is how sign-in got stuck on a skeleton.
+  const uk = brand.market === "uk";
   const [plan, setPlan] = useState<PlanId>("team");
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -64,7 +43,6 @@ export default function AppSignupPage() {
     setFormError("");
     setFormInfo("");
 
-    // Read all form values at once using the browser's FormData API
     const form = new FormData(e.currentTarget);
     const formData = {
       name: String(form.get("name")),
@@ -74,15 +52,12 @@ export default function AppSignupPage() {
       plan: String(form.get("plan")),
     };
 
-    // Validate with Zod
     const result = validateForm(signupSchema, formData);
-
     if (!result.success) {
       setFieldErrors(result.errors);
       return;
     }
 
-    // Validation passed — create the workspace
     setLoading(true);
     try {
       await signUp({
@@ -95,14 +70,13 @@ export default function AppSignupPage() {
 
       if (authMode === "supabase" && !result.data.password) {
         setFormInfo("Check your email to verify and finish setup.");
-        toast.success("Account created! Check your inbox.");
+        toast.success("Account created. Check your inbox.");
       } else {
-        toast.success("Workspace created!");
+        toast.success("Workspace created.");
         router.push("/app/onboarding");
       }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Signup failed. Please try again.";
+      const message = err instanceof Error ? err.message : "Signup failed. Please try again.";
       setFormError(message);
       toast.error(message);
     } finally {
@@ -110,113 +84,111 @@ export default function AppSignupPage() {
     }
   }
 
+  const money = brand.currency === "GBP" ? "pounds" : "dollars";
+
   return (
-    <div
-      className="relative flex min-h-screen items-center justify-center p-4"
-      data-auth-screen="signup"
-    >
-      <ThemeToggle className="absolute right-4 top-4" />
-      <div className="surface-panel relative w-full max-w-lg p-8 sm:p-10">
-        <BrandMark
-          className="text-3xl"
-          accentClassName="text-[var(--accent)]"
-        />
-        <h1 className="mt-5 text-xl font-semibold tracking-tight">
-          Create your workspace
-        </h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          You&apos;re joining the {brand.regionShort} setup at {brand.domain}. Payments are in{" "}
-          {brand.currency === "GBP" ? "pounds" : "dollars"}. Already connected social accounts live on
-          an existing workspace —{" "}
-          <Link href="/app/login" className="font-semibold text-[var(--accent)]">
-            sign in
-          </Link>{" "}
-          instead of creating another one.
-        </p>
-
-        <form onSubmit={onSubmit} className="mt-7 grid gap-3 sm:grid-cols-2">
-          <FormField label="Your name" error={fieldErrors.name} required>
-            <Input name="name" placeholder="Jane Smith" autoComplete="name" />
-          </FormField>
-
-          <FormField label="Work email" error={fieldErrors.email} required>
-            <Input
-              name="email"
-              type="email"
-              placeholder="jane@brokerage.com"
-              autoComplete="email"
-            />
-          </FormField>
-
-          <FormField label="Password" error={fieldErrors.password} required>
-            <Input
-              name="password"
-              type="password"
-              placeholder="Min. 6 characters"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <PasswordStrengthBar password={password} className="mt-2" />
-          </FormField>
-
-          <FormField
-            label="Brokerage name"
-            error={fieldErrors.orgName}
-            required
-            className="sm:col-span-2"
-          >
-            <Input name="orgName" placeholder="Smith & Co Realty" />
-          </FormField>
-
-          <FormField
-            label="Plan"
-            error={fieldErrors.plan}
-            required
-            className="sm:col-span-2"
-          >
-            <select
-              name="plan"
-              value={plan}
-              onChange={(e) => setPlan(e.target.value as PlanId)}
-              className="h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm"
-              aria-label="Plan"
-            >
-              <option value="solo">Solo — {formatPlanPrice(market, "solo")}/month</option>
-              <option value="team">Team — {formatPlanPrice(market, "team")}/month</option>
-              <option value="enterprise">Enterprise — custom</option>
-            </select>
-          </FormField>
-
-          {/* Form-level errors */}
-          {formError && (
-            <div className="sm:col-span-2">
-              <Alert tone="danger">{formError}</Alert>
-            </div>
-          )}
-          {formInfo && (
-            <div className="sm:col-span-2">
-              <Alert tone="success">{formInfo}</Alert>
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            className="rounded-full sm:col-span-2"
-            size="lg"
-            disabled={loading}
-          >
-            {loading ? "Creating…" : "Create workspace"}
-          </Button>
-        </form>
-
-        <p className="mt-6 text-sm text-[var(--muted)]">
-          Already have an account?{" "}
+    <AuthFrame
+      screen="signup"
+      kicker={`${brand.regionShort} workspace`}
+      title="Create your workspace"
+      lede={`This is the ${brand.regionShort} book at ${brand.domain}. Payments are in ${money}. Social accounts already connected stay on the workspace they belong to.`}
+      asideTitle={uk ? "A separate book for the UK." : "A separate book for the US."}
+      asideBody={
+        uk
+          ? "Your workspace bills in pounds and speaks viewings, vendors, and lettings."
+          : "Your workspace bills in dollars and speaks showings, sellers, and close."
+      }
+      points={
+        uk
+          ? ["Solo £49, Team £199, Enterprise on request", "Lettings desk on Team and Enterprise", "One login on 0nestreet.co.uk"]
+          : ["Solo $59, Team $249, Enterprise on request", "MLS-ready stock on Team and Enterprise", "One login on 0nestreet.com"]
+      }
+      footer={
+        <>
+          Already have a workspace?{" "}
           <Link href="/app/login" className="font-semibold text-[var(--accent)]">
             Sign in
           </Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
+        <FormField label="Your name" error={fieldErrors.name} required>
+          <Input name="name" placeholder="Jane Smith" autoComplete="name" />
+        </FormField>
+        <FormField label="Work email" error={fieldErrors.email} required>
+          <Input name="email" type="email" placeholder="jane@brokerage.com" autoComplete="email" />
+        </FormField>
+        <FormField label="Password" error={fieldErrors.password} required>
+          <Input
+            name="password"
+            type="password"
+            placeholder="At least 6 characters"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </FormField>
+        <PasswordStrengthBar password={password} className="-mt-2" />
+        <FormField label="Brokerage name" error={fieldErrors.orgName} required>
+          <Input name="orgName" placeholder={uk ? "Smith & Co" : "Smith Realty"} />
+        </FormField>
+
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-[var(--foreground)]">
+            Plan
+            <span className="ml-0.5 text-[var(--danger)]" aria-hidden>
+              *
+            </span>
+          </legend>
+          <div className="grid gap-2">
+            {PLAN_ORDER.map((id) => {
+              const item = PLANS[id];
+              const price = formatPlanPrice(market, id);
+              const selected = plan === id;
+              return (
+                <label
+                  key={id}
+                  className={cn(
+                    "flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-3 transition",
+                    selected
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                      : "border-[var(--border)] bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="plan"
+                    value={id}
+                    checked={selected}
+                    onChange={() => setPlan(id)}
+                    className="sr-only"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold">{item.name}</span>
+                    <span className="mt-0.5 block text-xs text-[var(--muted)]">{item.seats}</span>
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold">
+                    {id === "enterprise" ? price : `${price}/mo`}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          {fieldErrors.plan ? (
+            <p className="text-xs font-medium text-[var(--danger)]" role="alert">
+              {fieldErrors.plan}
+            </p>
+          ) : null}
+        </fieldset>
+
+        {formError ? <Alert tone="danger">{formError}</Alert> : null}
+        {formInfo ? <Alert tone="success">{formInfo}</Alert> : null}
+
+        <Button type="submit" className="w-full rounded-full" size="lg" disabled={loading}>
+          {loading ? "Creating…" : "Create workspace"}
+        </Button>
+      </form>
+    </AuthFrame>
   );
 }

@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BrandMark } from "@/components/brand/brand-mark";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { FormField } from "@/components/ui/form-field";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
+import { AuthFrame } from "@/components/auth/auth-frame";
+import { useBrand } from "@/components/brand/brand-provider";
 import {
   createBrowserSupabaseClient,
   isSupabaseConfigured,
@@ -19,6 +19,7 @@ type Mode = "request" | "reset";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const brand = useBrand();
   const configured = isSupabaseConfigured();
 
   const [mode, setMode] = useState<Mode>("request");
@@ -32,8 +33,6 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     if (!configured) return;
     const supabase = createBrowserSupabaseClient();
-    // Supabase recovery links land back here with a recovery session; when
-    // that happens we switch to the "choose a new password" form.
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setMode("reset");
     });
@@ -59,18 +58,14 @@ export default function ResetPasswordPage() {
     setBusy(true);
     try {
       const supabase = createBrowserSupabaseClient();
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        trimmed,
-        { redirectTo: `${window.location.origin}/app/reset-password` },
-      );
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(trimmed, {
+        redirectTo: `${window.location.origin}/app/reset-password`,
+      });
       if (resetError) throw resetError;
-      setInfo(
-        "If an account exists for that email, a password reset link is on its way.",
-      );
-      toast.success("Reset link sent — check your inbox.");
+      setInfo("If an account exists for that email, a reset link is on its way.");
+      toast.success("Reset link sent. Check your inbox.");
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Could not send the reset email.";
+      const msg = err instanceof Error ? err.message : "Could not send the reset email.";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -94,12 +89,11 @@ export default function ResetPasswordPage() {
       const supabase = createBrowserSupabaseClient();
       const { error: updateError } = await supabase.auth.updateUser({ password });
       if (updateError) throw updateError;
-      toast.success("Password updated — sign in with your new password.");
+      toast.success("Password updated. Sign in with the new one.");
       await supabase.auth.signOut();
       router.replace("/app/login");
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Could not update the password.";
+      const msg = err instanceof Error ? err.message : "Could not update the password.";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -108,74 +102,78 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center p-4">
-      <ThemeToggle className="absolute right-4 top-4" />
-      <div className="surface-panel relative w-full max-w-lg p-8 sm:p-10">
-        <BrandMark className="text-3xl" accentClassName="text-[var(--accent)]" />
-        <h1 className="mt-5 text-xl font-semibold tracking-tight">
-          {mode === "reset" ? "Choose a new password" : "Reset your password"}
-        </h1>
-
-        {!configured ? (
-          <Alert tone="warning" className="mt-4">
-            Password reset requires a hosted workspace. In local dev mode, use a
-            seed account from the login page.
-          </Alert>
-        ) : mode === "reset" ? (
-          <form onSubmit={onReset} className="mt-7 space-y-3">
-            <FormField label="New password" required>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
-                autoComplete="new-password"
-              />
-            </FormField>
-            <FormField label="Confirm new password" required>
-              <Input
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder="Repeat the password"
-                autoComplete="new-password"
-              />
-            </FormField>
-            {error ? <Alert tone="danger">{error}</Alert> : null}
-            <Button type="submit" className="w-full rounded-full" size="lg" disabled={busy}>
-              {busy ? "Updating…" : "Update password"}
-            </Button>
-          </form>
-        ) : (
-          <form onSubmit={onRequest} className="mt-7 space-y-3">
-            <p className="text-sm text-[var(--muted)]">
-              Enter the email you sign in with and we&apos;ll send you a link to
-              choose a new password.
-            </p>
-            <FormField label="Email" required>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@brokerage.com"
-                autoComplete="email"
-              />
-            </FormField>
-            {error ? <Alert tone="danger">{error}</Alert> : null}
-            {info ? <Alert tone="success">{info}</Alert> : null}
-            <Button type="submit" className="w-full rounded-full" size="lg" disabled={busy}>
-              {busy ? "Sending…" : "Send reset link"}
-            </Button>
-          </form>
-        )}
-
-        <p className="mt-6 text-sm text-[var(--muted)]">
+    <AuthFrame
+      screen="reset"
+      kicker={brand.domain}
+      title={mode === "reset" ? "Choose a new password" : "Reset your password"}
+      lede={
+        mode === "reset"
+          ? "This replaces the password on the account that opened the reset link."
+          : "Enter the email you sign in with. We'll send a link to choose a new password."
+      }
+      asideTitle="The workspace stays where it is."
+      asideBody="A reset only changes the password. Leads, listings, and billing stay on the same account."
+      points={[
+        "The link expires with the email",
+        "Signing in afterwards uses the new password",
+        `You return to ${brand.domain}`,
+      ]}
+      footer={
+        <>
           Remembered it?{" "}
           <Link href="/app/login" className="font-semibold text-[var(--accent)]">
             Back to sign in
           </Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {!configured ? (
+        <Alert tone="warning">
+          Password reset needs a hosted workspace. On this browser, use a local account from the sign-in page.
+        </Alert>
+      ) : mode === "reset" ? (
+        <form onSubmit={onReset} className="space-y-4">
+          <FormField label="New password" required>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+            />
+          </FormField>
+          <FormField label="Confirm new password" required>
+            <Input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Repeat the password"
+              autoComplete="new-password"
+            />
+          </FormField>
+          {error ? <Alert tone="danger">{error}</Alert> : null}
+          <Button type="submit" className="w-full rounded-full" size="lg" disabled={busy}>
+            {busy ? "Updating…" : "Update password"}
+          </Button>
+        </form>
+      ) : (
+        <form onSubmit={onRequest} className="space-y-4">
+          <FormField label="Email" required>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@brokerage.com"
+              autoComplete="email"
+            />
+          </FormField>
+          {error ? <Alert tone="danger">{error}</Alert> : null}
+          {info ? <Alert tone="success">{info}</Alert> : null}
+          <Button type="submit" className="w-full rounded-full" size="lg" disabled={busy}>
+            {busy ? "Sending…" : "Send reset link"}
+          </Button>
+        </form>
+      )}
+    </AuthFrame>
   );
 }

@@ -1,46 +1,14 @@
 "use client";
 
-/**
- * Login Page
- *
- * HOW THIS WORKS (for learning):
- *
- * This page lets users sign in to their workspace. It supports two modes:
- *
- * 1. "local" mode (default): Uses dev seed accounts stored in the browser.
- *    Good for development — no external services needed.
- *
- * 2. "supabase" mode: Uses Supabase Auth (email magic links or password).
- *    Used in production with a real database.
- *
- * WHAT'S `useState`?
- * A React "hook" that lets a component remember values between renders.
- * `const [email, setEmail] = useState("")` creates:
- *   - `email`: the current value (starts as "")
- *   - `setEmail`: a function to update it (triggers a re-render)
- *
- * WHAT'S `async/await`?
- * When we call `signIn()`, it might take time (network request). `async/await`
- * lets us write this asynchronous code in a readable, top-to-bottom way:
- *   await signIn(...)  ← waits for this to finish before continuing
- *
- * FORM VALIDATION FLOW:
- * 1. User clicks "Continue"
- * 2. We validate the form data with Zod (our validation library)
- * 3. If validation fails → show field-level errors, DON'T submit
- * 4. If validation passes → call signIn() and handle success/failure
- */
-
 import { useState } from "react";
 import Link from "next/link";
 import { useAppSession } from "@/lib/app/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BrandMark } from "@/components/brand/brand-mark";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { FormField } from "@/components/ui/form-field";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
+import { AuthFrame } from "@/components/auth/auth-frame";
 import { loginSchema, validateForm } from "@/lib/auth/validation";
 import {
   DEV_SEED_ACCOUNTS,
@@ -51,16 +19,11 @@ import { ROLE_LABELS } from "@/lib/rbac/matrix";
 
 export default function AppLoginPage() {
   const { signIn, authMode, brand } = useAppSession();
+  const uk = brand.market === "uk";
 
-  // ── Form state ──
-  // Each `useState` hook tracks one piece of state.
   const [email, setEmail] = useState(authMode === "local" ? "owner@certified.local" : "");
   const [password, setPassword] = useState(authMode === "local" ? DEV_SEED_PASSWORD : "");
   const [loading, setLoading] = useState(false);
-
-  // ── Validation state ──
-  // `fieldErrors` stores per-field error messages like { email: "Invalid email" }
-  // `formError` stores a general form-level error (e.g., "Invalid credentials")
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [formInfo, setFormInfo] = useState("");
@@ -68,39 +31,29 @@ export default function AppLoginPage() {
   const showSeedAccounts = authMode === "local" && isDevSeedEnabled();
 
   async function onSubmit(e: React.FormEvent) {
-    // Prevent the browser's default form submission (which would reload the page)
     e.preventDefault();
-
-    // Clear previous errors
     setFieldErrors({});
     setFormError("");
     setFormInfo("");
 
-    // Step 1: Validate the form data with our Zod schema
     const result = validateForm(loginSchema, { email, password });
-
     if (!result.success) {
-      // Validation failed — show field-level errors and stop
       setFieldErrors(result.errors);
       return;
     }
 
-    // Step 2: Validation passed — try to sign in
     setLoading(true);
     try {
       await signIn(email, undefined, password);
-
       if (authMode === "supabase" && !password) {
         setFormInfo("Check your email for a magic link.");
-        toast.success("Magic link sent! Check your inbox.");
+        toast.success("Magic link sent. Check your inbox.");
       } else {
-        toast.success("Signed in successfully!");
-        // Guard in layout.tsx reads ?redirectTo= and sends the user on.
+        toast.success("Signed in.");
       }
     } catch (err) {
       console.error("[login] Full error:", err);
-      const message =
-        err instanceof Error ? err.message : "Sign in failed. Please try again.";
+      const message = err instanceof Error ? err.message : "Sign in failed. Please try again.";
       setFormError(message);
       toast.error(message);
     } finally {
@@ -109,135 +62,122 @@ export default function AppLoginPage() {
   }
 
   return (
-    <div
-      className="relative flex min-h-screen items-center justify-center p-4"
-      data-auth-screen="login"
-    >
-      <ThemeToggle className="absolute right-4 top-4" />
-      <div className="surface-panel relative w-full max-w-lg p-8 sm:p-10">
-        <BrandMark
-          className="text-3xl"
-          accentClassName="text-[var(--accent)]"
-        />
-        <h1 className="mt-5 text-xl font-semibold tracking-tight">
-          Sign in to {brand.name}
-        </h1>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-          {brand.domain}
-        </p>
-        <p className="mt-2 text-sm text-[var(--muted)]">
-          {authMode === "supabase"
-            ? "Sign in with the email for this workspace. Creating a new account starts a separate brokerage."
-            : "Use a seed account below, or any email to create a workspace."}
-        </p>
-
-        <form onSubmit={onSubmit} className="mt-7 space-y-3">
-          {/* Email field with validation error display */}
-          <FormField label="Email" error={fieldErrors.email} required>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                // Clear the error for this field as the user types
-                if (fieldErrors.email) {
-                  setFieldErrors((prev) => ({ ...prev, email: "" }));
-                }
-              }}
-              placeholder="you@brokerage.com"
-              autoComplete="email"
-            />
-          </FormField>
-
-          {/* Password field */}
-          <FormField label="Password" error={fieldErrors.password} required>
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (fieldErrors.password) {
-                  setFieldErrors((prev) => ({ ...prev, password: "" }));
-                }
-              }}
-              placeholder="Password"
-              autoComplete="current-password"
-            />
-          </FormField>
-
-          {authMode === "supabase" ? (
-            <p className="text-right text-sm">
-              <Link
-                href="/app/reset-password"
-                className="font-medium text-[var(--accent)]"
-              >
-                Forgot password?
-              </Link>
-            </p>
-          ) : null}
-
-          {/* Form-level error alert */}
-          {formError && <Alert tone="danger">{formError}</Alert>}
-
-          {/* Success info alert */}
-          {formInfo && <Alert tone="success">{formInfo}</Alert>}
-
-          <Button
-            type="submit"
-            className="w-full rounded-full"
-            size="lg"
-            disabled={loading}
-          >
-            {loading ? "Signing in…" : "Continue"}
-          </Button>
-        </form>
-
-        {/* Dev seed accounts — quick login buttons for testing different roles */}
-        {showSeedAccounts ? (
-          <div className="mt-6 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-muted)] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-              Dev seed accounts — remove before deploy
-            </p>
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              Shared password: <code className="font-semibold">{DEV_SEED_PASSWORD}</code>
-            </p>
-            <ul className="mt-3 space-y-2">
-              {DEV_SEED_ACCOUNTS.map((account) => (
-                <li key={account.id}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-left text-sm transition hover:border-[var(--accent)]"
-                    onClick={() => {
-                      setEmail(account.email);
-                      setPassword(account.password);
-                      // Clear any validation errors when selecting a seed account
-                      setFieldErrors({});
-                      setFormError("");
-                    }}
-                  >
-                    <span>
-                      <span className="font-medium">{account.name}</span>
-                      <span className="mt-0.5 block text-xs text-[var(--muted)]">
-                        {account.email}
-                      </span>
-                    </span>
-                    <span className="text-xs text-[var(--muted)]">
-                      {ROLE_LABELS[account.role]}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        <p className="mt-6 text-sm text-[var(--muted)]">
+    <AuthFrame
+      screen="login"
+      kicker={brand.domain}
+      title={`Sign in to ${brand.name}`}
+      lede={
+        authMode === "supabase"
+          ? "Use the email for this workspace. A new brokerage starts as its own account."
+          : "Sign in to the workspace saved in this browser."
+      }
+      asideTitle={uk ? "Enquiries through to exchange." : "Enquiries through to close."}
+      asideBody={
+        uk
+          ? "Viewings, lettings, and payments in pounds, on one workspace."
+          : "Showings, progression, and payments in dollars, on one workspace."
+      }
+      points={
+        uk
+          ? [
+              "Rightmove, Zoopla, and OnTheMarket drafts",
+              "Diary for viewings and valuations",
+              "Vendor, buyer, landlord, and tenant links",
+            ]
+          : [
+              "Website and office leads on one list",
+              "Diary for showings and valuations",
+              "Seller, buyer, and landlord links",
+            ]
+      }
+      footer={
+        <>
           New brokerage?{" "}
           <Link href="/app/signup" className="font-semibold text-[var(--accent)]">
-            Create workspace
+            Create a workspace
           </Link>
-        </p>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
+        <FormField label="Email" error={fieldErrors.email} required>
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: "" }));
+            }}
+            placeholder="you@brokerage.com"
+            autoComplete="email"
+          />
+        </FormField>
+
+        <FormField label="Password" error={fieldErrors.password} required>
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: "" }));
+            }}
+            placeholder="Password"
+            autoComplete="current-password"
+          />
+        </FormField>
+
+        {authMode === "supabase" ? (
+          <p className="text-right text-sm">
+            <Link href="/app/reset-password" className="font-medium text-[var(--accent)]">
+              Forgot password?
+            </Link>
+          </p>
+        ) : null}
+
+        {formError ? <Alert tone="danger">{formError}</Alert> : null}
+        {formInfo ? <Alert tone="success">{formInfo}</Alert> : null}
+
+        <Button type="submit" className="w-full rounded-full" size="lg" disabled={loading}>
+          {loading ? "Signing in…" : "Continue"}
+        </Button>
+      </form>
+
+      {showSeedAccounts ? (
+        <div className="mt-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+            Local accounts
+          </p>
+          <ul className="mt-3 grid gap-2">
+            {DEV_SEED_ACCOUNTS.map((account) => (
+              <li key={account.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2.5 text-left text-sm transition hover:border-[var(--accent)]"
+                  onClick={() => {
+                    setEmail(account.email);
+                    setPassword(account.password);
+                    setFieldErrors({});
+                    setFormError("");
+                  }}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{account.name}</span>
+                    <span className="mt-0.5 block truncate text-xs text-[var(--muted)]">
+                      {account.email}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs text-[var(--muted)]">
+                    {ROLE_LABELS[account.role]}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs text-[var(--muted)]">
+            Shared local password: <code className="font-semibold">{DEV_SEED_PASSWORD}</code>
+          </p>
+        </div>
+      ) : null}
+    </AuthFrame>
   );
 }
