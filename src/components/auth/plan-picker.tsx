@@ -35,7 +35,7 @@ export function PlanPicker({
             <label
               key={id}
               className={cn(
-                "flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-3 transition",
+                "flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-[1rem] border px-4 py-3 transition",
                 selected
                   ? "border-[var(--accent)] bg-[var(--accent-soft)]"
                   : "border-[var(--border)] bg-[var(--surface-elevated)] hover:border-[var(--border-strong)]",

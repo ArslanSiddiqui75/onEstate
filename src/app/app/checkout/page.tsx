@@ -173,7 +173,7 @@ export default function CheckoutPage() {
         <LogoLoader layout="compact" label="Loading checkout…" />
       ) : (
         <div className="space-y-4" data-checkout-plan={plan} data-checkout-mode={mode || "pending"}>
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-4">
+          <div className="rounded-[1rem] border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-4">
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
               {mode === "live" ? "Billed monthly on Stripe" : "Selected plan"}
             </p>
@@ -231,7 +231,7 @@ export default function CheckoutPage() {
           {pending ? (
             <Button
               type="button"
-              className="w-full rounded-full"
+              className="w-full rounded-[1rem]"
               size="lg"
               disabled={mode !== "live" || working}
               onClick={confirm}
@@ -239,7 +239,7 @@ export default function CheckoutPage() {
               {working ? "Continuing…" : mode ? signupCheckoutActionLabel(mode) : "Checking checkout…"}
             </Button>
           ) : (
-            <Button asChild className="w-full rounded-full" size="lg">
+            <Button asChild className="w-full rounded-[1rem]" size="lg">
               <Link href={`/app/signup?plan=${plan}`}>Continue setup</Link>
             </Button>
           )}

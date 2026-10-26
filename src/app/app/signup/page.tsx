@@ -88,6 +88,7 @@ export default function AppSignupPage() {
             autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            className="h-12 rounded-[1rem] px-4 text-[15px]"
           />
         </FormField>
         <FormField label="Work email" error={fieldErrors.email} required>
@@ -98,6 +99,7 @@ export default function AppSignupPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="h-12 rounded-[1rem] px-4 text-[15px]"
           />
         </FormField>
         <FormField label="Password" error={fieldErrors.password} required>
@@ -108,6 +110,7 @@ export default function AppSignupPage() {
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            className="h-12 rounded-[1rem] px-4 text-[15px]"
           />
         </FormField>
         <PasswordStrengthBar password={password} className="-mt-2" />
@@ -117,12 +120,13 @@ export default function AppSignupPage() {
             placeholder={uk ? "Smith & Co" : "Smith Realty"}
             value={orgName}
             onChange={(e) => setOrgName(e.target.value)}
+            className="h-12 rounded-[1rem] px-4 text-[15px]"
           />
         </FormField>
 
         <PlanPicker plan={plan} market={market} onChange={setPlan} error={fieldErrors.plan} />
 
-        <Button type="submit" className="w-full rounded-full" size="lg">
+        <Button type="submit" className="w-full rounded-[1rem]" size="lg">
           Continue to checkout
         </Button>
         <p className="text-center text-xs leading-relaxed text-[var(--muted)]">
