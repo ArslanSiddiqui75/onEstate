@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { sanitizeRedirectTo } from "@/lib/auth/redirect";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { AdminOverlapBanner } from "@/components/admin/admin-overlap-banner";
+import { LogoLoader } from "@/components/brand/logo-loader";
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { user, org, loading, signOut } =
@@ -49,12 +50,7 @@ function Guard({ children }: { children: React.ReactNode }) {
   }
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center gap-3 text-sm text-[var(--muted)]">
-        <span className="h-2 w-2 animate-pulse-ring rounded-full bg-[var(--accent)]" />
-        Loading workspace…
-      </div>
-    );
+    return <LogoLoader label="Loading workspace…" />;
   }
 
   if (!user || !org) {

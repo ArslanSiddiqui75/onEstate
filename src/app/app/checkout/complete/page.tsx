@@ -7,6 +7,7 @@ import { useAppSession } from "@/lib/app/session";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { AuthFrame } from "@/components/auth/auth-frame";
+import { LogoLoader } from "@/components/brand/logo-loader";
 import { completePendingSignup, isPlanId, loadPendingSignup } from "@/lib/auth/pending-signup";
 import type { Market, PlanId } from "@/types";
 
@@ -123,7 +124,7 @@ export default function CheckoutCompletePage() {
         </Link>
       }
     >
-      {phase === "working" ? <p className="text-sm text-[var(--muted)]">Checking payment…</p> : null}
+      {phase === "working" ? <LogoLoader layout="compact" label="Checking payment…" /> : null}
       {phase === "missing" ? (
         <div className="space-y-4">
           <Alert tone="warning">

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
 import { AuthFrame } from "@/components/auth/auth-frame";
+import { LogoLoader } from "@/components/brand/logo-loader";
 import { PlanPicker } from "@/components/auth/plan-picker";
 import {
   isPlanId,
@@ -169,7 +170,7 @@ export default function CheckoutPage() {
       }
     >
       {!booted ? (
-        <p className="text-sm text-[var(--muted)]">Loading checkout…</p>
+        <LogoLoader layout="compact" label="Loading checkout…" />
       ) : (
         <div className="space-y-4" data-checkout-plan={plan} data-checkout-mode={mode || "pending"}>
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-4">

@@ -25,6 +25,7 @@ import {
   useAdminSession,
 } from "@/lib/admin/session";
 import { BrandMark } from "@/components/brand/brand-mark";
+import { LogoLoader } from "@/components/brand/logo-loader";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -210,12 +211,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
   }, [admin, loading, isLogin, router]);
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center gap-3 text-sm text-[var(--muted)]">
-        <span className="h-2 w-2 animate-pulse-ring rounded-full bg-[var(--accent)]" />
-        Loading admin console…
-      </div>
-    );
+    return <LogoLoader label="Loading admin console…" />;
   }
 
   if (isLogin) return <>{children}</>;
