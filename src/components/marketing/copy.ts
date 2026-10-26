@@ -25,8 +25,8 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
       ? "The desk that fills the diary."
       : "The desk that fills the diary.",
     heroBody: uk
-      ? "0neStreet is the desk the office actually works from. Leads, the diary, listings prepared for the portals, offers, progression, lettings, documents, and a private link for the vendor, buyer, landlord, and tenant."
-      : "0neStreet is the desk the office actually works from. Leads, the diary, listings prepared for the MLS, offers, progression, documents, and a private link for the seller, buyer, and landlord.",
+      ? `${brand.name} is the desk the office actually works from. Leads, the diary, listings prepared for the portals, offers, progression, lettings, documents, and a private link for the vendor, buyer, landlord, and tenant.`
+      : `${brand.name} is the desk the office actually works from. Leads, the diary, listings prepared for the MLS, offers, progression, documents, and a private link for the seller, buyer, and landlord.`,
     heroNotes: uk
       ? ["One login for the office", "England, Wales, and Scotland", "Client links, not another phone chase"]
       : ["One login for the office", "Sales on one record", "Client links, not another phone chase"],

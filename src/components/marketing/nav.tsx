@@ -44,7 +44,7 @@ export function MarketingNav({ market }: { market: Market }) {
         )}
       >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 sm:px-8">
-        <Link href={market === "uk" ? "/UK" : "/US"} className="flex items-center" aria-label="0neStreet">
+        <Link href={market === "uk" ? "/UK" : "/US"} className="flex items-center" aria-label={copy.brand.name}>
           <BrandMark className="text-[15px]" />
         </Link>
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Product">

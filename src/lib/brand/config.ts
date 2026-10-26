@@ -6,7 +6,7 @@ export interface BrandConfig {
   id: BrandId;
   /** Customer-facing product name. The mark is shared; the region is not. */
   name: string;
-  /** Accent suffix rendered after "0ne" */
+  /** Word after the leading character in the wordmark. */
   suffix: "Street";
   regionShort: "UK" | "US";
   domain: string;
@@ -42,7 +42,7 @@ export const BRANDS: Record<BrandId, BrandConfig> = {
   },
   "onestreet-us": {
     id: "onestreet-us",
-    name: "0neStreet",
+    name: "OneStreet",
     suffix: "Street",
     regionShort: "US",
     domain: "0nestreet.com",

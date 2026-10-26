@@ -187,7 +187,7 @@ export default function AppLoginPage() {
             </form>
 
             <p className="mt-6 text-sm text-[var(--muted)]">
-              Still not on 0neStreet?{" "}
+              Still not on OneStreet?{" "}
               <Link href="/app/signup" className="font-semibold text-[var(--accent)]">
                 Sign Up Now
               </Link>
