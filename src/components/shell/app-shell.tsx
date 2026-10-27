@@ -384,18 +384,18 @@ export function AppShell({
 
           <div
             className={cn(
-              "m-3 rounded-[1.35rem] border p-3",
+              "mx-2 mb-2 mt-1 rounded-xl border px-2 py-1.5",
               ink
                 ? "border-white/8 bg-white/5"
                 : "border-[var(--border)] bg-[var(--surface-muted)]",
             )}
           >
-            <div className="flex items-center gap-2.5">
-              <Avatar name={userName} size="md" />
+            <div className="flex items-center gap-2">
+              <Avatar name={userName} size="sm" />
               <div className="min-w-0">
                 <p
                   className={cn(
-                    "truncate text-sm font-semibold",
+                    "truncate text-[13px] font-semibold leading-tight",
                     ink ? "text-white" : "text-[var(--foreground)]",
                   )}
                 >
@@ -403,7 +403,7 @@ export function AppShell({
                 </p>
                 <p
                   className={cn(
-                    "truncate text-xs",
+                    "truncate text-[11px] leading-tight",
                     ink ? "text-white/50" : "text-[var(--muted)]",
                   )}
                 >
@@ -413,7 +413,7 @@ export function AppShell({
             </div>
             <div
               className={cn(
-                "mt-2.5 rounded-[1rem] border px-3 py-2",
+                "mt-1.5 rounded-lg border px-2 py-1",
                 ink
                   ? "border-white/10 bg-black/20"
                   : "border-[var(--border)] bg-[var(--surface-elevated)]",
@@ -421,7 +421,7 @@ export function AppShell({
             >
               <p
                 className={cn(
-                  "text-[10px] font-semibold uppercase tracking-wide",
+                  "text-[9px] font-semibold uppercase tracking-wide leading-none",
                   ink ? "text-white/40" : "text-[var(--muted)]",
                 )}
               >
@@ -429,7 +429,7 @@ export function AppShell({
               </p>
               <p
                 className={cn(
-                  "mt-0.5 truncate text-sm font-semibold",
+                  "mt-0.5 truncate text-[13px] font-semibold leading-tight",
                   ink ? "text-white" : "text-[var(--foreground)]",
                 )}
                 title={orgId ? `${orgName} (${orgId.slice(0, 8)})` : orgName}
@@ -437,8 +437,8 @@ export function AppShell({
                 {orgName}
               </p>
             </div>
-            <div className="mt-2.5 flex flex-col gap-1.5">
-              <p className={cn("text-[11px]", ink ? "text-white/45" : "text-[var(--muted)]")}>
+            <div className="mt-1.5 flex flex-col gap-1">
+              <p className={cn("text-[10px] leading-none", ink ? "text-white/45" : "text-[var(--muted)]")}>
                 {PLANS[plan].name}
               </p>
               {onSignOut ? (
@@ -446,7 +446,7 @@ export function AppShell({
                   type="button"
                   onClick={onSignOut}
                   className={cn(
-                    "inline-flex h-9 w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[1rem] border px-3 text-[13px] font-medium transition",
+                    "inline-flex h-7 w-full shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-2 text-xs font-medium transition",
                     ink
                       ? "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                       : "border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted)] hover:text-[var(--foreground)]",
