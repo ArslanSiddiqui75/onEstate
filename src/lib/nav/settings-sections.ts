@@ -23,7 +23,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     short: "Team",
     eyebrow: "People",
     title: "Team",
-    description: "Everyone in the workspace. The owner changes roles and removes people.",
+    description: "Everyone in the workspace. The owner changes roles. The owner and brokers turn modules on or off.",
   },
   {
     href: "/app/settings/phone-system",

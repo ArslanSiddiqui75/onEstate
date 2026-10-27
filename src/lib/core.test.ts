@@ -10,6 +10,7 @@ import { scoreLead } from "@/lib/crm/scoring";
 import { planAmount, seatLimit } from "@/lib/admin/registry";
 import { canInvite, canInviteRole } from "@/lib/rbac/invites";
 import { getRoleAccess } from "@/lib/rbac/matrix";
+import { hasModuleAccess, nextModuleGrants } from "@/lib/access";
 import { checkAdminRole } from "@/lib/admin/roles";
 import { sanitizeRedirectTo } from "@/lib/auth/redirect";
 import { validateOrgName } from "@/lib/auth/org-name";
@@ -162,6 +163,38 @@ describe("RBAC matrix", () => {
   it("removes social from assistants", () => {
     expect(getRoleAccess("assistant", "social")).toBe("none");
   });
+
+  it("keeps billing with the owner and the accountant", () => {
+    for (const role of ["broker", "team_lead", "agent", "assistant"] as const) {
+      expect(getRoleAccess(role, "billing")).toBe("none");
+      expect(hasModuleAccess(role, "team", "billing", "view")).toBe(false);
+    }
+    expect(hasModuleAccess("owner", "team", "billing", "view")).toBe(true);
+    expect(hasModuleAccess("accountant", "team", "billing", "full")).toBe(true);
+  });
+
+  it("lets a personal grant turn a module on or off", () => {
+    expect(
+      hasModuleAccess({ role: "broker", moduleAccess: { billing: true } }, "team", "billing"),
+    ).toBe(true);
+    expect(
+      hasModuleAccess({ role: "team_lead", moduleAccess: { crm: false } }, "team", "crm"),
+    ).toBe(false);
+    expect(
+      hasModuleAccess({ role: "agent", moduleAccess: { website: true } }, "team", "website", "view"),
+    ).toBe(true);
+    expect(
+      hasModuleAccess({ role: "agent", moduleAccess: { website: true } }, "team", "website", "edit"),
+    ).toBe(false);
+    expect(
+      hasModuleAccess({ role: "owner", moduleAccess: { billing: false } }, "team", "billing"),
+    ).toBe(true);
+    expect(nextModuleGrants("broker", { billing: true }, "billing", false)).toBeUndefined();
+    expect(nextModuleGrants("accountant", undefined, "billing", false)).toEqual({ billing: false });
+    expect(nextModuleGrants("broker", { billing: true, crm: false }, "billing", false)).toEqual({
+      crm: false,
+    });
+  });
 });
 
 describe("admin role guard", () => {
@@ -215,6 +248,22 @@ describe("API module guard", () => {
     expect(profileCanAccess(accountant, "crm", "view")).toBe(true);
     expect(profileCanAccess(assistant, "social", "edit")).toBe(false);
     expect(profileCanAccess({ role: "owner", plan: "team" }, "social", "edit")).toBe(true);
+    expect(profileCanAccess({ role: "team_lead", plan: "team" }, "billing", "view")).toBe(false);
+    expect(profileCanAccess({ role: "broker", plan: "team" }, "billing", "view")).toBe(false);
+    expect(
+      profileCanAccess(
+        { role: "team_lead", plan: "team", moduleAccess: { billing: true } },
+        "billing",
+        "view",
+      ),
+    ).toBe(true);
+    expect(
+      profileCanAccess(
+        { role: "accountant", plan: "team", moduleAccess: { billing: false } },
+        "billing",
+        "view",
+      ),
+    ).toBe(false);
   });
 });
 

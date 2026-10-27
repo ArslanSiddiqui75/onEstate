@@ -55,6 +55,7 @@ export interface WorkspaceRepository {
     role: Role;
   }): Promise<OrgMember>;
   updateMemberRole(id: string, role: Role): Promise<OrgMember>;
+  updateMemberAccess(id: string, moduleAccess: OrgMember["moduleAccess"]): Promise<OrgMember>;
   removeMember(id: string): Promise<void>;
   listLeads(): Promise<Lead[]>;
   createLead(lead: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead>;

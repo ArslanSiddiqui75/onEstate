@@ -60,7 +60,7 @@ export function NoticeBell() {
   const notices = useMemo(() => {
     if (!user || !org) return [];
     const allowed = (module: "crm" | "listings" | "transactions" | "social") =>
-      hasModuleAccess(user.role, org.plan, module, "view");
+      hasModuleAccess(user, org.plan, module, "view");
     return buildNotices({
       market,
       diaryLabel: market === "us" ? "Calendar" : "Diary",

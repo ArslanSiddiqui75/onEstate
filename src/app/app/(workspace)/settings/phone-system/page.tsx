@@ -14,7 +14,7 @@ type PhoneSection = (typeof SECTIONS)[number];
 
 function PhoneSystem() {
   const { user, org } = useAppSession();
-  const canRoute = Boolean(user && org && hasModuleAccess(user.role, org.plan, "crm", "view"));
+  const canRoute = Boolean(user && org && hasModuleAccess(user, org.plan, "crm", "view"));
   const [section, setSection] = useModuleSection("section", SECTIONS, "phone");
   const shown: PhoneSection = section === "routing" && !canRoute ? "phone" : section;
   const items: { id: PhoneSection; label: string }[] = [

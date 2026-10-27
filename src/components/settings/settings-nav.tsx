@@ -11,12 +11,12 @@ export function SettingsSectionNav() {
   const { user, org } = useAppSession();
   const items = SETTINGS_SECTIONS.filter((section) => {
     if (!user || !org) return true;
-    if (section.module && !hasModuleAccess(user.role, org.plan, section.module, "view")) {
+    if (section.module && !hasModuleAccess(user, org.plan, section.module, "view")) {
       return false;
     }
     if (
       section.anyOf &&
-      !section.anyOf.some((module) => hasModuleAccess(user.role, org.plan, module, "view"))
+      !section.anyOf.some((module) => hasModuleAccess(user, org.plan, module, "view"))
     ) {
       return false;
     }

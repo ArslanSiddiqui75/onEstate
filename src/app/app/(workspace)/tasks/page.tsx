@@ -32,18 +32,19 @@ function TasksDesk() {
   const overdue = open.filter((task) => dueState(task.dueAt) === "overdue").length;
 
   if (!user || !org) return null;
-  if (!hasModuleAccess(user.role, org.plan, "crm", "view")) {
+  if (!hasModuleAccess(user, org.plan, "crm", "view")) {
     return (
       <LockedModule
         title="Tasks locked"
         reason="Tasks follow CRM access."
         role={user.role}
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
       />
     );
   }
 
-  const canEdit = hasModuleAccess(user.role, org.plan, "crm", "edit");
+  const canEdit = hasModuleAccess(user, org.plan, "crm", "edit");
 
   return (
     <div className="space-y-5">

@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { hasModuleAccess } from "@/lib/access";
 import { ROLE_LABELS } from "@/lib/rbac/matrix";
 import { PLANS } from "@/lib/plans/catalog";
-import type { ModuleId, PlanId, Role } from "@/types";
+import type { ModuleGrants, ModuleId, PlanId, Role } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
@@ -252,6 +252,7 @@ function moduleOpen(pathname: string, href: string, basePath: string) {
 interface AppShellProps {
   children: React.ReactNode;
   role: Role;
+  moduleAccess?: ModuleGrants;
   plan: PlanId;
   userName: string;
   orgName?: string;
@@ -281,6 +282,7 @@ function ShellSearch(props: AppShellProps) {
 function ShellFrame({
   children,
   role,
+  moduleAccess,
   plan,
   userName,
   orgName = "Workspace",
@@ -306,7 +308,7 @@ function ShellFrame({
   const items = NAV.filter((item) => !item.markets || item.markets.includes(brand.market)).map((item) => {
     const href = item.id === "dashboard" ? basePath : item.href;
     const locked = item.module
-      ? !hasModuleAccess(role, plan, item.module, "view")
+      ? !hasModuleAccess({ role, moduleAccess }, plan, item.module, "view")
       : false;
     if (item.id === "diary" && brand.market === "us") {
       return {

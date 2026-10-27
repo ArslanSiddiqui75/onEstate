@@ -12,6 +12,7 @@ import type {
   MessageSequence,
   OrgMember,
   PlanId,
+  ModuleGrants,
   Role,
   SequenceEnrollment,
   SocialAccount,
@@ -53,6 +54,7 @@ export interface WorkspaceUser {
   phone?: string;
   role: Role;
   orgId: string;
+  moduleAccess?: ModuleGrants;
 }
 
 export interface WorkspaceSnapshot {

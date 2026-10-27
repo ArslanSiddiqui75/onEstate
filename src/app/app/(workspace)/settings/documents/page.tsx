@@ -41,23 +41,24 @@ export default function AppDocumentsPage() {
 
   if (!user || !org) return null;
   const canView =
-    hasModuleAccess(user.role, org.plan, "crm", "view") ||
-    hasModuleAccess(user.role, org.plan, "listings", "view") ||
-    hasModuleAccess(user.role, org.plan, "transactions", "view");
+    hasModuleAccess(user, org.plan, "crm", "view") ||
+    hasModuleAccess(user, org.plan, "listings", "view") ||
+    hasModuleAccess(user, org.plan, "transactions", "view");
   if (!canView) {
     return (
       <LockedModule
         title="Documents locked"
         reason="Documents follow CRM, listings, or deals access."
         role={user.role}
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
       />
     );
   }
   const canEdit =
-    hasModuleAccess(user.role, org.plan, "crm", "edit") ||
-    hasModuleAccess(user.role, org.plan, "listings", "edit") ||
-    hasModuleAccess(user.role, org.plan, "transactions", "edit");
+    hasModuleAccess(user, org.plan, "crm", "edit") ||
+    hasModuleAccess(user, org.plan, "listings", "edit") ||
+    hasModuleAccess(user, org.plan, "transactions", "edit");
 
   return (
     <div className="space-y-6">

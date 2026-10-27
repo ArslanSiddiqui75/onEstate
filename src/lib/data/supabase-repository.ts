@@ -18,6 +18,7 @@ import type {
   TransactionDeal,
   WebsiteSite,
 } from "@/types";
+import { readModuleGrants } from "@/lib/access";
 import type { WorkspaceRepository } from "@/lib/data/repository";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { WorkspaceOrg, WorkspaceSnapshot, WorkspaceUser } from "@/lib/data/workspace-store";
@@ -300,7 +301,7 @@ export function createSupabaseRepository(
     async listMembers() {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, role")
+        .select("id, full_name, role, module_access")
         .eq("org_id", ctx.org.id);
       if (error) throw error;
       const { data: invites } = await supabase
@@ -314,6 +315,7 @@ export function createSupabaseRepository(
           name: String(p.full_name),
           email: "",
           role: p.role as OrgMember["role"],
+          moduleAccess: readModuleGrants(p.module_access),
           avatarInitials: String(p.full_name)
             .split(" ")
             .map((x: string) => x[0])
@@ -346,6 +348,10 @@ export function createSupabaseRepository(
     },
 
     async updateMemberRole() {
+      throw new Error("Use the team API in hosted mode");
+    },
+
+    async updateMemberAccess() {
       throw new Error("Use the team API in hosted mode");
     },
 
@@ -1569,6 +1575,7 @@ export async function hydrateSupabaseSession(): Promise<{
       phone: String(profile.phone || auth.user.user_metadata?.phone || "") || undefined,
       role: profile.role,
       orgId: String(profile.org_id),
+      moduleAccess: readModuleGrants(profile.module_access),
     },
     org: {
       id: String(org.id),

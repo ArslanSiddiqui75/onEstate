@@ -1,3 +1,5 @@
+import { readModuleGrants } from "@/lib/access";
+import type { ModuleGrants } from "@/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 export interface RequestProfile {
@@ -6,6 +8,7 @@ export interface RequestProfile {
   orgId: string;
   role: string;
   plan: string;
+  moduleAccess?: ModuleGrants;
 }
 
 // Browser sessions live in the Supabase JS client's own storage, not an
@@ -28,7 +31,7 @@ export async function resolveProfileFromRequest(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, org_id, role, organizations(plan)")
+    .select("id, org_id, role, module_access, organizations(plan)")
     .eq("id", userData.user.id)
     .maybeSingle();
   if (!profile) return null;
@@ -42,5 +45,6 @@ export async function resolveProfileFromRequest(
     orgId: String(profile.org_id),
     role: String(profile.role),
     plan: String(plan || "solo"),
+    moduleAccess: readModuleGrants(profile.module_access),
   };
 }

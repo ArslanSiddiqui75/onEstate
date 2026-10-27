@@ -18,6 +18,7 @@ interface InviteModalProps {
   plan: PlanId;
   currentMemberCount: number;
   callerRole: Role;
+  canOpenBilling?: boolean;
   onInvite: (member: { name: string; email: string; role: Role }) => Promise<void>;
 }
 
@@ -25,6 +26,7 @@ export function InviteModal({
   plan,
   currentMemberCount,
   callerRole,
+  canOpenBilling = false,
   onInvite,
 }: InviteModalProps) {
   const [open, setOpen] = useState(false);
@@ -78,9 +80,13 @@ export function InviteModal({
               Your current <strong>{plan[0].toUpperCase() + plan.slice(1)}</strong> plan allows up to{" "}
               {seatCheck.maxSeats} seat{seatCheck.maxSeats === 1 ? "" : "s"}. Upgrade your plan to invite more team members.
             </p>
-            <Button asChild size="sm" className="mt-2 w-full">
-              <Link href="/app/settings/billing">Upgrade Plan</Link>
-            </Button>
+            {canOpenBilling ? (
+              <Button asChild size="sm" className="mt-2 w-full">
+                <Link href="/app/settings/billing">Upgrade Plan</Link>
+              </Button>
+            ) : (
+              <p className="text-xs text-[var(--muted)]">Ask the owner to upgrade the plan.</p>
+            )}
           </Alert>
         ) : (
           <form

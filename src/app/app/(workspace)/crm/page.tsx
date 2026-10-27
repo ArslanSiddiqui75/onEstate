@@ -298,8 +298,8 @@ export function CrmDesk({ view }: { view: CrmView }) {
 
   if (!user || !org) return null;
 
-  const allowed = hasModuleAccess(user.role, org.plan, "crm", "view");
-  const canEdit = hasModuleAccess(user.role, org.plan, "crm", "edit");
+  const allowed = hasModuleAccess(user, org.plan, "crm", "view");
+  const canEdit = hasModuleAccess(user, org.plan, "crm", "edit");
   const flags = PLAN_FEATURE_FLAGS[org.plan];
 
   if (!allowed) {
@@ -330,6 +330,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
         title={lockedCopy[view].title}
         reason={lockedCopy[view].reason}
         role={user.role}
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
       />
     );
@@ -1210,6 +1211,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
           <LeadRoutingPanel
             plan={org.plan}
             role={user.role}
+            moduleAccess={user.moduleAccess}
             settings={org.leadRouting}
             members={members}
             leads={leads}

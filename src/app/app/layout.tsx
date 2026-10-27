@@ -60,6 +60,7 @@ function Guard({ children }: { children: React.ReactNode }) {
     <AppShell
       basePath="/app"
       role={user.role}
+      moduleAccess={user.moduleAccess}
       plan={org.plan}
       userName={user.name}
       orgName={org.name}

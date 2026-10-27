@@ -319,12 +319,13 @@ export default function AppReportsPage() {
   ]);
 
   if (!user || !org || !report) return null;
-  if (!hasModuleAccess(user.role, org.plan, "crm", "view")) {
+  if (!hasModuleAccess(user, org.plan, "crm", "view")) {
     return (
       <LockedModule
         title="Reports locked"
         reason="Reports follow CRM access."
         role={user.role}
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
       />
     );

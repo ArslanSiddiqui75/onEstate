@@ -60,7 +60,14 @@ export default function AppBillingPage() {
   const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [invoicesMode, setInvoicesMode] = useState<"demo" | "live">("demo");
 
+  const canSeeBilling = Boolean(user && org && hasModuleAccess(user, org.plan, "billing", "view"));
+
   useEffect(() => {
+    if (!canSeeBilling) {
+      setInvoices([]);
+      setInvoicesLoading(false);
+      return;
+    }
     let cancelled = false;
     void (async () => {
       setInvoicesLoading(true);
@@ -87,17 +94,19 @@ export default function AppBillingPage() {
     return () => {
       cancelled = true;
     };
-  }, [getAuthToken]);
+  }, [canSeeBilling, getAuthToken]);
 
   if (!user || !org) return null;
 
-  const allowed = hasModuleAccess(user.role, org.plan, "billing", "view");
+  const allowed = hasModuleAccess(user, org.plan, "billing", "view");
   if (!allowed) {
     return (
       <LockedModule
         title="Billing locked"
-        reason="Billing is limited to Owner, Team Lead, and Accountant."
+        reason="Billing and invoice history are off for this account."
         role={user.role}
+        module="billing"
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
       />
     );

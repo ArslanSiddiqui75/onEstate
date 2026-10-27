@@ -18,6 +18,9 @@ export type ModuleId =
 
 export type AccessLevel = "full" | "edit" | "view" | "none";
 
+/** Explicit module on/off for one person. Missing keys follow the role. */
+export type ModuleGrants = Partial<Record<ModuleId, boolean>>;
+
 export type PlanId = "solo" | "team" | "enterprise";
 
 export type LeadType = "buyer" | "seller" | "landlord" | "tenant";
@@ -258,6 +261,8 @@ export interface OrgMember {
   email: string;
   role: Role;
   avatarInitials: string;
+  /** Overrides the role. True grants the module. False removes it. */
+  moduleAccess?: ModuleGrants;
 }
 
 export interface DemoSession {

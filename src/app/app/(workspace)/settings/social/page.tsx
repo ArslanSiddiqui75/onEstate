@@ -23,21 +23,22 @@ export default function SocialAccountsSettingsPage() {
 
   if (!user || !org) return null;
 
-  const canSocial = hasModuleAccess(user.role, org.plan, "social", "view");
-  const canWebsite = hasModuleAccess(user.role, org.plan, "website", "view");
+  const canSocial = hasModuleAccess(user, org.plan, "social", "view");
+  const canWebsite = hasModuleAccess(user, org.plan, "website", "view");
   if (!canSocial && !canWebsite) {
     return (
       <LockedModule
         title="Branding locked"
         reason="Social accounts and the website domain are limited for your role."
         role={user.role}
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
         module="social"
       />
     );
   }
 
-  const canEdit = hasModuleAccess(user.role, org.plan, "social", "edit");
+  const canEdit = hasModuleAccess(user, org.plan, "social", "edit");
 
   return (
     <div className="space-y-8">

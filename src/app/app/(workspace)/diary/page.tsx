@@ -47,18 +47,19 @@ function DiaryDesk() {
   if (!user || !org) return null;
   const us = market === "us";
   const bookName = us ? "calendar" : "diary";
-  if (!hasModuleAccess(user.role, org.plan, "crm", "view")) {
+  if (!hasModuleAccess(user, org.plan, "crm", "view")) {
     return (
       <LockedModule
         title={us ? "Calendar locked" : "Diary locked"}
         reason={`The ${bookName} follows CRM access.`}
         role={user.role}
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
       />
     );
   }
 
-  const canEdit = hasModuleAccess(user.role, org.plan, "crm", "edit");
+  const canEdit = hasModuleAccess(user, org.plan, "crm", "edit");
   const viewingWord = us ? "showing" : "viewing";
   const sorted = [...book.appointments].sort((a, b) => a.at.localeCompare(b.at));
   const days = [...new Set(sorted.map((item) => dayKey(item.at)))];

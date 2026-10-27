@@ -264,6 +264,17 @@ export function createLocalRepository(
       return member;
     },
 
+    async updateMemberAccess(id, moduleAccess) {
+      const snap = requireSnapshot();
+      const member = snap.members.find((item) => item.id === id);
+      if (!member) throw new Error("That person is not on the team");
+      if (member.id === snap.user.id) throw new Error("You can't change your own access");
+      if (member.role === "owner") throw new Error("The owner's access stays with the owner role");
+      member.moduleAccess = moduleAccess;
+      commit(snap);
+      return member;
+    },
+
     async removeMember(id) {
       const snap = requireSnapshot();
       const member = snap.members.find((item) => item.id === id);

@@ -5,17 +5,27 @@ import { MenuSelect } from "@/components/ui/select";
 import { useState } from "react";
 import Link from "next/link";
 import { useAppSession } from "@/lib/app/session";
-import { ROLE_LABELS } from "@/lib/rbac/matrix";
+import { MODULE_LABELS, ROLE_LABELS } from "@/lib/rbac/matrix";
 import { canInvite } from "@/lib/rbac/invites";
+import { canManageModuleAccess, hasModuleAccess, MODULE_IDS, nextModuleGrants } from "@/lib/access";
 import { InviteModal } from "@/components/team/invite-modal";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/components/ui/toast";
-import type { Role } from "@/types";
+import type { ModuleId, Role } from "@/types";
 
 const ASSIGNABLE: Role[] = ["broker", "team_lead", "agent", "assistant", "accountant"];
+
+const MODULE_TOGGLE_LABELS: Record<ModuleId, string> = {
+  crm: "CRM",
+  listings: "Listings",
+  transactions: "Transactions",
+  website: "Website",
+  social: "Social",
+  billing: "Billing",
+};
 
 const selectClass =
   "h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm sm:w-44";
@@ -27,6 +37,7 @@ export default function TeamSettingsPage() {
     members,
     inviteMember,
     updateMemberRole,
+    updateMemberAccess,
     removeMember,
   } = useAppSession();
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -34,12 +45,21 @@ export default function TeamSettingsPage() {
   if (!user || !org) return null;
 
   const isOwner = user.role === "owner";
+  const canEditAccess = canManageModuleAccess(user.role);
+
+  function toggleModule(memberId: string, role: Role, current: (typeof members)[number]["moduleAccess"], module: ModuleId, enabled: boolean) {
+    const next = nextModuleGrants(role, current, module, enabled);
+    void updateMemberAccess(memberId, next)
+      .then(() => toast.success(enabled ? `${MODULE_LABELS[module]} turned on` : `${MODULE_LABELS[module]} turned off`))
+      .catch((err) => toast.error(err instanceof Error ? err.message : "Could not change that access"));
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-xl text-sm text-[var(--muted)]">
           {members.length} {members.length === 1 ? "person" : "people"} in {org.name}. The owner changes roles and removes people.
+          {canEditAccess ? " The owner and brokers turn modules on or off for each person." : ""}
         </p>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="secondary">
@@ -50,6 +70,7 @@ export default function TeamSettingsPage() {
               plan={org.plan}
               currentMemberCount={members.length}
               callerRole={user.role}
+              canOpenBilling={hasModuleAccess(user, org.plan, "billing", "view")}
               onInvite={inviteMember}
             />
           ) : null}
@@ -59,8 +80,11 @@ export default function TeamSettingsPage() {
       <Card className="divide-y divide-[var(--border)] overflow-hidden p-0">
         {members.map((member) => {
           const manageable = isOwner && member.id !== user.id && member.role !== "owner";
+          const accessEditable =
+            canEditAccess && member.id !== user.id && member.role !== "owner" && !member.id.startsWith("invite_");
           return (
-            <div key={member.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div key={member.id} className="flex flex-col gap-3 px-4 py-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar name={member.name} size="sm" />
                 <div className="min-w-0">
@@ -121,6 +145,39 @@ export default function TeamSettingsPage() {
                   )
                 ) : null}
               </div>
+              </div>
+              {accessEditable ? (
+                <div className="space-y-2 sm:pl-11">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    Modules
+                  </p>
+                  <div className="flex flex-wrap gap-2" role="group" aria-label={`Modules for ${member.name}`}>
+                    {MODULE_IDS.map((module) => {
+                      const on = hasModuleAccess(
+                        { role: member.role, moduleAccess: member.moduleAccess },
+                        org.plan,
+                        module,
+                        "view",
+                      );
+                      return (
+                        <button
+                          key={module}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleModule(member.id, member.role, member.moduleAccess, module, !on)}
+                          className={
+                            on
+                              ? "rounded-full border border-[var(--accent)] bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold text-[var(--foreground)]"
+                              : "rounded-full border border-[var(--border)] px-3 py-1 text-xs font-semibold text-[var(--muted)]"
+                          }
+                        >
+                          {MODULE_TOGGLE_LABELS[module]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
             </div>
           );
         })}

@@ -13,7 +13,7 @@ import {
   hydrateLeadRouting,
   routeLead,
 } from "@/lib/crm/routing";
-import type { Lead, LeadRoutingMode, LeadRoutingSettings, OrgMember, PlanId, Role } from "@/types";
+import type { Lead, LeadRoutingMode, LeadRoutingSettings, ModuleGrants, OrgMember, PlanId, Role } from "@/types";
 import { PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 
 const MODES: { id: LeadRoutingMode; title: string; body: string }[] = [
@@ -47,6 +47,7 @@ const ROLE_OPTIONS: { id: Role; label: string }[] = [
 export function LeadRoutingPanel({
   plan,
   role,
+  moduleAccess,
   settings,
   members,
   leads,
@@ -55,6 +56,7 @@ export function LeadRoutingPanel({
 }: {
   plan: PlanId;
   role?: Role;
+  moduleAccess?: ModuleGrants;
   settings?: LeadRoutingSettings;
   members: OrgMember[];
   leads: Lead[];
@@ -73,6 +75,7 @@ export function LeadRoutingPanel({
         title="Lead routing is on Team and Enterprise"
         reason="Solo workspaces assign every lead to the person who adds it. Upgrade to rotate enquiries across the team."
         role={role}
+        moduleAccess={moduleAccess}
         plan={plan}
       />
     );

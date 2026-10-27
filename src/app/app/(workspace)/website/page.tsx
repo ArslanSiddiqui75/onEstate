@@ -52,12 +52,13 @@ function WebsiteEditor() {
   }, [website]);
 
   if (!user || !org) return null;
-  if (!hasModuleAccess(user.role, org.plan, "website", "view")) {
+  if (!hasModuleAccess(user, org.plan, "website", "view")) {
     return (
       <LockedModule
         title="Website locked"
         reason="Website builder is limited to Owner, Broker, and Team Lead."
         role={user.role}
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
         module="website"
       />
@@ -73,7 +74,7 @@ function WebsiteEditor() {
     );
   }
 
-  const canEdit = hasModuleAccess(user.role, org.plan, "website", "edit");
+  const canEdit = hasModuleAccess(user, org.plan, "website", "edit");
   const activeListings = listings.filter(
     (l) =>
       l.market === market &&

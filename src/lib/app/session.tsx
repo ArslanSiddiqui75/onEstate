@@ -96,13 +96,17 @@ function buildDevSeedWorkspace(
   market: "uk" | "us",
 ): WorkspaceSnapshot {
   const existing = loadWorkspace(DEV_SEED_ORG.id);
-  const members: OrgMember[] = DEV_SEED_ACCOUNTS.map((a) => ({
-    id: a.id,
-    name: a.name,
-    email: a.email,
-    role: a.role,
-    avatarInitials: a.avatarInitials,
-  }));
+  const members: OrgMember[] = DEV_SEED_ACCOUNTS.map((a) => {
+    const previous = existing?.members.find((member) => member.id === a.id);
+    return {
+      id: a.id,
+      name: a.name,
+      email: a.email,
+      role: a.role,
+      avatarInitials: a.avatarInitials,
+      moduleAccess: previous?.moduleAccess,
+    };
+  });
 
   const kept = existing?.user.id === account.id ? existing.user : undefined;
   const user: WorkspaceUser = {
@@ -139,6 +143,7 @@ export interface AppUser {
   email: string;
   phone?: string;
   role: Role;
+  moduleAccess?: OrgMember["moduleAccess"];
 }
 
 export interface AppOrg {
@@ -253,6 +258,7 @@ interface AppState {
     role: Role;
   }) => Promise<void>;
   updateMemberRole: (id: string, role: Role) => Promise<void>;
+  updateMemberAccess: (id: string, moduleAccess: OrgMember["moduleAccess"]) => Promise<void>;
   removeMember: (id: string) => Promise<void>;
   queuePortalSync: (listingId: string) => Promise<string>;
   listPortalConnections: () => PortalConnection[];
@@ -390,13 +396,15 @@ interface AppState {
 
 const AppContext = createContext<AppState | null>(null);
 
-function toAppUser(user: WorkspaceUser): AppUser {
+function toAppUser(user: WorkspaceUser, members?: OrgMember[]): AppUser {
+  const fromMember = members?.find((member) => member.id === user.id)?.moduleAccess;
   return {
     id: user.id,
     name: user.name,
     email: user.email,
     phone: user.phone,
     role: user.role,
+    moduleAccess: fromMember ?? user.moduleAccess,
   };
 }
 
@@ -467,7 +475,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       setSocialPosts([]);
       return;
     }
-    setUser(toAppUser(snap.user));
+    setUser(toAppUser(snap.user, snap.members));
     setOrg(toAppOrg(snap.org));
     setMembers(snap.members);
     setLeads(snap.leads);
@@ -836,7 +844,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   const updateProfile = useCallback(async (patch: { name: string; phone?: string }) => {
     if (!repoRef.current) throw new Error("Workspace is not loaded");
     const next = await repoRef.current.updateProfile(patch);
-    setUser(toAppUser(next));
+    setUser((current) => ({ ...toAppUser(next), moduleAccess: next.moduleAccess ?? current?.moduleAccess }));
   }, []);
 
   const getAuthToken = useCallback(async () => {
@@ -932,6 +940,32 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
     },
     [authMode, getAuthToken, refresh],
+  );
+
+  const updateMemberAccess = useCallback(
+    async (id: string, moduleAccess: OrgMember["moduleAccess"]) => {
+      if (!repoRef.current || !user) throw new Error("Workspace not ready");
+      if (user.role !== "owner" && user.role !== "broker") {
+        throw new Error("Only the owner and brokers can change module access");
+      }
+      if (authMode === "supabase") {
+        const token = await getAuthToken();
+        const res = await fetch(`/api/team/members/${id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ moduleAccess: moduleAccess || {} }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Could not change that access");
+      } else {
+        await repoRef.current.updateMemberAccess(id, moduleAccess);
+      }
+      await refresh();
+    },
+    [authMode, getAuthToken, refresh, user],
   );
 
   const removeMember = useCallback(
@@ -2383,6 +2417,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       archiveListing,
       inviteMember,
       updateMemberRole,
+      updateMemberAccess,
       removeMember,
       queuePortalSync,
       listPortalConnections,
@@ -2462,6 +2497,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       archiveListing,
       inviteMember,
       updateMemberRole,
+      updateMemberAccess,
       removeMember,
       queuePortalSync,
       listPortalConnections,

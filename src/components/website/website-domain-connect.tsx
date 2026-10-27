@@ -21,7 +21,7 @@ export function WebsiteDomainConnect() {
 
   if (!user || !org) return null;
 
-  const canEdit = hasModuleAccess(user.role, org.plan, "website", "edit");
+  const canEdit = hasModuleAccess(user, org.plan, "website", "edit");
   const site = draft || website || defaultWebsiteSite(org.id, org.name, user.email);
 
   function updateDraft(patch: Partial<WebsiteSite>) {

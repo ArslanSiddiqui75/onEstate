@@ -22,13 +22,18 @@ function asPlan(value: string | undefined): PlanId {
 }
 
 export function profileCanAccess(
-  profile: Pick<RequestProfile, "role" | "plan">,
+  profile: Pick<RequestProfile, "role" | "plan" | "moduleAccess">,
   module: ModuleId,
   required: AccessLevel,
 ): boolean {
   const role = asRole(profile.role);
   if (!role) return false;
-  return hasModuleAccess(role, asPlan(profile.plan), module, required);
+  return hasModuleAccess(
+    { role, moduleAccess: profile.moduleAccess },
+    asPlan(profile.plan),
+    module,
+    required,
+  );
 }
 
 export function forbiddenIfNoModule(

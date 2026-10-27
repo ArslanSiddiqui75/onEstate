@@ -83,7 +83,7 @@ export function DealsBoard() {
   const [busyDeal, setBusyDeal] = useState<string | null>(null);
   const [openDealId, setOpenDealId] = useState<string | null>(null);
 
-  const canEdit = user && org ? hasModuleAccess(user.role, org.plan, "transactions", "edit") : false;
+  const canEdit = user && org ? hasModuleAccess(user, org.plan, "transactions", "edit") : false;
 
   const refreshDocs = useCallback(
     async (dealId: string) => {
@@ -103,12 +103,13 @@ export function DealsBoard() {
   }, [deals, market, refreshDocs]);
 
   if (!user || !org) return null;
-  if (!hasModuleAccess(user.role, org.plan, "transactions", "view")) {
+  if (!hasModuleAccess(user, org.plan, "transactions", "view")) {
     return (
       <LockedModule
         title="Transactions locked"
         reason="Your role cannot view transactions."
         role={user.role}
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
       />
     );

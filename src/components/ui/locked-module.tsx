@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { hasModuleAccess } from "@/lib/access";
 import { planIncludesModule } from "@/lib/plans/catalog";
-import type { ModuleId, PlanId, Role } from "@/types";
+import type { ModuleGrants, ModuleId, PlanId, Role } from "@/types";
 
 export function LockedModule({
   title,
@@ -13,6 +13,7 @@ export function LockedModule({
   role,
   plan,
   module,
+  moduleAccess,
   className,
 }: {
   title: string;
@@ -22,16 +23,18 @@ export function LockedModule({
   plan?: PlanId;
   /** When set, a plan that includes this module is a role lock, not an upgrade. */
   module?: ModuleId;
+  moduleAccess?: ModuleGrants;
   className?: string;
 }) {
+  const actor = role ? { role, moduleAccess } : undefined;
   const roleGate =
-    role && plan && module
+    actor && plan && module
       ? planIncludesModule(plan, module) &&
-        !hasModuleAccess(role, plan, module, "view")
+        !hasModuleAccess(actor, plan, module, "view")
       : false;
   const canViewPlans =
-    !roleGate && role && plan
-      ? hasModuleAccess(role, plan, "billing", "view")
+    !roleGate && actor && plan
+      ? hasModuleAccess(actor, plan, "billing", "view")
       : false;
 
   return (
@@ -50,7 +53,7 @@ export function LockedModule({
       <p className="mt-2 max-w-md text-sm text-[var(--muted)]">{reason}</p>
       {roleGate ? (
         <p className="mt-7 max-w-sm text-sm text-[var(--muted)]">
-          Ask an Owner to grant this. Your plan already includes it — this is a role limit.
+          Ask the owner or a broker to turn this on. The plan already includes it.
         </p>
       ) : canViewPlans ? (
         <Button asChild className="mt-7 rounded-full">

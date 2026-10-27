@@ -24,7 +24,7 @@ export const RBAC_MATRIX: Record<Role, Record<ModuleId, AccessLevel>> = {
     transactions: "edit",
     website: "edit",
     social: "view",
-    billing: "view",
+    billing: "none",
   },
   agent: {
     crm: "full",

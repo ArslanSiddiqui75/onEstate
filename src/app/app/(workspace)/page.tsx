@@ -35,8 +35,8 @@ export default function AppDashboardPage() {
     marketLeads.length === 0 &&
     marketListings.length === 0 &&
     marketDeals.length === 0;
-  const canAddLead = hasModuleAccess(user.role, org.plan, "crm", "edit");
-  const canAddListing = hasModuleAccess(user.role, org.plan, "listings", "edit");
+  const canAddLead = hasModuleAccess(user, org.plan, "crm", "edit");
+  const canAddListing = hasModuleAccess(user, org.plan, "listings", "edit");
   const today = new Date().toISOString().slice(0, 10);
   const todaysDiary = book.appointments.filter(
     (item) => item.at.slice(0, 10) === today && item.status !== "cancelled",

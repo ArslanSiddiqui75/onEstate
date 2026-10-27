@@ -140,8 +140,8 @@ function ListingsDesk() {
 
   if (!user || !org) return null;
 
-  const allowed = hasModuleAccess(user.role, org.plan, "listings", "view");
-  const canEdit = hasModuleAccess(user.role, org.plan, "listings", "edit");
+  const allowed = hasModuleAccess(user, org.plan, "listings", "view");
+  const canEdit = hasModuleAccess(user, org.plan, "listings", "edit");
   const deliveryProviders = getIntegrationStack(market).filter(
     (provider) => provider.category === "portal" || provider.category === "mls",
   );
@@ -152,6 +152,7 @@ function ListingsDesk() {
         title="Listings locked"
         reason="Your role cannot access listings."
         role={user.role}
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
       />
     );

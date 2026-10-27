@@ -9,12 +9,13 @@ import { LettingsDesk } from "@/components/lettings/lettings-desk";
 export default function LettingsPage() {
   const { user, org, market } = useAppSession();
   if (!user || !org) return null;
-  if (!hasModuleAccess(user.role, org.plan, "crm", "view")) {
+  if (!hasModuleAccess(user, org.plan, "crm", "view")) {
     return (
       <LockedModule
         title="Lettings locked"
         reason="The landlord desk follows CRM access."
         role={user.role}
+        moduleAccess={user.moduleAccess}
         plan={org.plan}
       />
     );
@@ -34,7 +35,7 @@ export default function LettingsPage() {
   return (
     <div className="space-y-4">
       <Suspense fallback={null}>
-        <LettingsDesk orgId={org.id} canEdit={hasModuleAccess(user.role, org.plan, "crm", "edit")} />
+        <LettingsDesk orgId={org.id} canEdit={hasModuleAccess(user, org.plan, "crm", "edit")} />
       </Suspense>
     </div>
   );
