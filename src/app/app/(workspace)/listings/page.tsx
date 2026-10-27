@@ -135,9 +135,61 @@ export default function AppListingsPage() {
 
   return (
     <div className="space-y-6">
+      <Tabs defaultValue="listings">
+        <TabsBar>
+          <TabsList>
+            <TabsTrigger value="listings">
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Listings
+            </TabsTrigger>
+            <TabsTrigger value="portals">
+              <Building2 className="h-3.5 w-3.5" />
+              Portal connections
+            </TabsTrigger>
+          </TabsList>
+        </TabsBar>
+
+        <TabsContent value="portals" className="mt-4">
+          <Alert tone="warning" className="mb-4">
+            Rightmove, Zoopla, and OnTheMarket publishing is coming soon.
+            Live feeds need a commercial portal partnership.
+          </Alert>
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+          >
+            {portalConnections.map((connection) => {
+              const provider = deliveryProviders.find((p) => p.id === connection.portal);
+              return (
+                <motion.div key={connection.portal} variants={fadeUp}>
+                  <Card className="space-y-3 opacity-90">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {PORTAL_LABEL[connection.portal]}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">
+                          {provider?.summary || "Listing distribution feed"}
+                        </p>
+                      </div>
+                      <Badge tone="warning">Coming soon</Badge>
+                    </div>
+                    <p className="inline-flex items-center gap-1.5 text-xs text-[var(--muted)]">
+                      <Clock className="h-3.5 w-3.5" />
+                      Connect and live publish will unlock when partner access is live.
+                    </p>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </TabsContent>
+
+        <TabsContent value="listings" className="mt-4 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        {/* Search bar */}
-        <div className="relative flex-1 min-w-[180px]">
+        <div className="relative min-w-[180px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
           <input
             type="search"
@@ -241,59 +293,6 @@ export default function AppListingsPage() {
         </Card>
       ) : null}
 
-      <Tabs defaultValue="listings">
-        <TabsBar>
-          <TabsList>
-            <TabsTrigger value="listings">
-              <LayoutGrid className="h-3.5 w-3.5" />
-              Listings
-            </TabsTrigger>
-            <TabsTrigger value="portals">
-              <Building2 className="h-3.5 w-3.5" />
-              Portal connections
-            </TabsTrigger>
-          </TabsList>
-        </TabsBar>
-
-        <TabsContent value="portals" className="mt-4">
-          <Alert tone="warning" className="mb-4">
-            Rightmove, Zoopla, and OnTheMarket publishing is coming soon.
-            Live feeds need a commercial portal partnership.
-          </Alert>
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
-            className="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
-          >
-            {portalConnections.map((connection) => {
-              const provider = deliveryProviders.find((p) => p.id === connection.portal);
-              return (
-                <motion.div key={connection.portal} variants={fadeUp}>
-                  <Card className="space-y-3 opacity-90">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium">
-                          {PORTAL_LABEL[connection.portal]}
-                        </p>
-                        <p className="mt-1 text-xs text-[var(--muted)]">
-                          {provider?.summary || "Listing distribution feed"}
-                        </p>
-                      </div>
-                      <Badge tone="warning">Coming soon</Badge>
-                    </div>
-                    <p className="inline-flex items-center gap-1.5 text-xs text-[var(--muted)]">
-                      <Clock className="h-3.5 w-3.5" />
-                      Connect and live publish will unlock when partner access is live.
-                    </p>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        </TabsContent>
-
-        <TabsContent value="listings" className="mt-4">
       {marketListings.length === 0 ? (
         <EmptyState
           title="No listings yet"
