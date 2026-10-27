@@ -17,6 +17,7 @@ import {
 import { buildPhoneContactMethod, asErrorMessage, cn, formatDate } from "@/lib/utils";
 import { toTelHref } from "@/lib/phone/e164";
 import type {
+  Contact,
   ConversationMessage,
   Lead,
   Market,
@@ -95,8 +96,43 @@ function human(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function digits(value?: string) {
+  return (value || "").replace(/\D/g, "");
+}
+
+function phoneKeys(person: { phone?: string; phones?: { number: string }[] }) {
+  return new Set(
+    [person.phone, ...(person.phones || []).map((item) => item.number)]
+      .map(digits)
+      .filter((value) => value.length >= 7),
+  );
+}
+
+function samePerson(
+  left: { email?: string; phone?: string; phones?: { number: string }[] },
+  right: { email?: string; phone?: string; phones?: { number: string }[] },
+) {
+  const emailA = left.email?.trim().toLowerCase();
+  const emailB = right.email?.trim().toLowerCase();
+  if (emailA && emailB && emailA === emailB) return true;
+  const phones = phoneKeys(right);
+  for (const key of phoneKeys(left)) {
+    if (phones.has(key)) return true;
+  }
+  return false;
+}
+
+function leadForContact(contact: Contact, leads: Lead[]) {
+  if (contact.leadId) {
+    const linked = leads.find((lead) => lead.id === contact.leadId);
+    if (linked) return linked;
+  }
+  return leads.find((lead) => samePerson(contact, lead));
+}
+
 export function ConversationInbox({
   leads,
+  contacts,
   messages,
   members,
   market,
@@ -109,8 +145,10 @@ export function ConversationInbox({
   sendSms,
   sendEmail,
   addLead,
+  promoteContactToLead,
 }: {
   leads: Lead[];
+  contacts: Contact[];
   messages: ConversationMessage[];
   members: OrgMember[];
   market: Market;
@@ -123,6 +161,10 @@ export function ConversationInbox({
   sendSms: (input: { leadId: string; body: string }) => Promise<unknown>;
   sendEmail: (input: { leadId: string; subject: string; body: string }) => Promise<unknown>;
   addLead: (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  promoteContactToLead: (
+    contactId: string,
+    input: { type: Lead["type"]; source?: string },
+  ) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<InboxFilter>("all");
@@ -135,6 +177,8 @@ export function ConversationInbox({
   const [formKey, setFormKey] = useState(0);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [watchName, setWatchName] = useState<string | null>(null);
+  const [watchContactId, setWatchContactId] = useState<string | null>(null);
+  const [contactQuery, setContactQuery] = useState("");
   const knownIds = useRef<Set<string>>(new Set());
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -205,6 +249,30 @@ export function ConversationInbox({
   }, [leads, onSelect, watchName]);
 
   useEffect(() => {
+    if (!watchContactId) return;
+    const contact = contacts.find((item) => item.id === watchContactId);
+    if (!contact) return;
+    const lead = leadForContact(contact, leads);
+    if (!lead) return;
+    onSelect(lead.id);
+    setWatchContactId(null);
+  }, [contacts, leads, onSelect, watchContactId]);
+
+  const contactMatches = useMemo(() => {
+    const q = contactQuery.trim().toLowerCase();
+    return contacts
+      .filter((contact) => {
+        if (!q) return true;
+        return (
+          contact.name.toLowerCase().includes(q) ||
+          (contact.email || "").toLowerCase().includes(q) ||
+          (contact.phone || "").toLowerCase().includes(q)
+        );
+      })
+      .slice(0, q ? 8 : 5);
+  }, [contactQuery, contacts]);
+
+  useEffect(() => {
     setDraft("");
     setSubject("");
     setDetailsOpen(false);
@@ -262,6 +330,46 @@ export function ConversationInbox({
     }
   }
 
+  function continueWith(lead: Lead) {
+    setFilter("all");
+    setQuery("");
+    setContactQuery("");
+    setCreateOpen(false);
+    onSelect(lead.id);
+    toast.success(`Continuing with ${lead.name}`);
+  }
+
+  async function openContact(contact: Contact) {
+    const existing = leadForContact(contact, leads);
+    if (existing) {
+      continueWith(existing);
+      return;
+    }
+    const phone = contact.phone || contact.phones?.[0]?.number || "";
+    if (!phone && !contact.email?.trim()) {
+      toast.error("This contact needs a phone number or email first.");
+      return;
+    }
+    setCreating(true);
+    onError(null);
+    try {
+      setWatchContactId(contact.id);
+      await promoteContactToLead(contact.id, { type: "buyer", source: "Manual" });
+      setFilter("all");
+      setQuery("");
+      setContactQuery("");
+      setCreateOpen(false);
+      toast.success(`Conversation started with ${contact.name}`);
+    } catch (err) {
+      setWatchContactId(null);
+      const msg = asErrorMessage(err, "Could not start the conversation");
+      onError(msg);
+      toast.error(msg);
+    } finally {
+      setCreating(false);
+    }
+  }
+
   async function createConversation(form: FormData) {
     const name = String(form.get("name") || "").trim();
     const email = String(form.get("email") || "").trim();
@@ -269,6 +377,13 @@ export function ConversationInbox({
     if (!name) return;
     if (!email && !nextPhone) {
       toast.error("Add an email or a phone number.");
+      return;
+    }
+    const existing = leads.find((lead) =>
+      samePerson({ email, phone: nextPhone }, lead),
+    );
+    if (existing) {
+      continueWith(existing);
       return;
     }
     setCreating(true);
@@ -331,6 +446,7 @@ export function ConversationInbox({
               className="h-9 w-full rounded-full"
               onClick={() => {
                 setFormKey((key) => key + 1);
+                setContactQuery("");
                 setCreateOpen(true);
               }}
             >
@@ -637,13 +753,60 @@ export function ConversationInbox({
       ) : null}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>New conversation</DialogTitle>
             <DialogDescription>
-              Add someone with a phone number or email. You can write to them straight after.
+              Choose someone already in your contacts, or add a new person. An existing thread stays the same conversation.
             </DialogDescription>
           </DialogHeader>
+          {contacts.length > 0 ? (
+            <div className="mt-4">
+              <input
+                type="search"
+                value={contactQuery}
+                onChange={(event) => setContactQuery(event.target.value)}
+                placeholder="Search contacts"
+                aria-label="Search contacts"
+                className="h-9 w-full rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              />
+              <div className="mt-2 max-h-52 overflow-y-auto">
+                {contactMatches.length === 0 ? (
+                  <p className="px-2 py-3 text-sm text-[var(--muted)]">No contacts match.</p>
+                ) : (
+                  contactMatches.map((contact) => {
+                    const existing = leadForContact(contact, leads);
+                    const detail =
+                      contact.phone ||
+                      contact.phones?.[0]?.number ||
+                      contact.email ||
+                      "No phone or email";
+                    return (
+                      <button
+                        key={contact.id}
+                        type="button"
+                        disabled={creating}
+                        onClick={() => void openContact(contact)}
+                        className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-[var(--surface-muted)] disabled:opacity-50"
+                      >
+                        <Avatar name={contact.name} size="sm" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium">{contact.name}</span>
+                          <span className="block truncate text-xs text-[var(--muted)]">{detail}</span>
+                        </span>
+                        <span className="shrink-0 text-xs font-semibold text-[var(--muted)]">
+                          {existing ? "Continue" : "Start"}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                Or someone new
+              </p>
+            </div>
+          ) : null}
           <form
             key={formKey}
             className="mt-4 grid gap-3"

@@ -789,6 +789,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
         >
           <ConversationInbox
             leads={inboxLeads}
+            contacts={marketContacts}
             messages={messages}
             members={members}
             market={market}
@@ -801,6 +802,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
             sendSms={sendSms}
             sendEmail={sendEmail}
             addLead={addLead}
+            promoteContactToLead={promoteContactToLead}
           />
         </TabsContent>
 
