@@ -501,78 +501,64 @@ export function AppShell({
 
           <div
             className={cn(
-              "mx-2 mb-2 mt-1 rounded-xl border px-2 py-1.5",
-              ink
-                ? "border-white/8 bg-white/5"
-                : "border-[var(--border)] bg-[var(--surface-muted)]",
+              "mx-3 mb-3 mt-1 border-t px-1 pt-3",
+              ink ? "border-white/10" : "border-[var(--border)]",
             )}
           >
-            <div className="flex items-center gap-2">
-              <Avatar name={userName} size="sm" />
-              <div className="min-w-0">
+            <div className="flex items-start gap-2.5">
+              <Avatar name={userName} size="md" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p
+                    className={cn(
+                      "min-w-0 flex-1 truncate text-sm font-semibold leading-tight",
+                      ink ? "text-white" : "text-[var(--foreground)]",
+                    )}
+                  >
+                    {userName}
+                  </p>
+                  {onSignOut ? (
+                    <button
+                      type="button"
+                      onClick={onSignOut}
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium transition",
+                        ink
+                          ? "text-white/55 hover:bg-white/10 hover:text-white"
+                          : "text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]",
+                      )}
+                    >
+                      <LogOut className="h-3 w-3" aria-hidden />
+                      Sign out
+                    </button>
+                  ) : null}
+                </div>
                 <p
                   className={cn(
-                    "truncate text-[13px] font-semibold leading-tight",
-                    ink ? "text-white" : "text-[var(--foreground)]",
-                  )}
-                >
-                  {userName}
-                </p>
-                <p
-                  className={cn(
-                    "truncate text-[11px] leading-tight",
+                    "mt-0.5 truncate text-xs leading-tight",
                     ink ? "text-white/50" : "text-[var(--muted)]",
                   )}
                 >
                   {ROLE_LABELS[role]}
                 </p>
-              </div>
-            </div>
-            <div
-              className={cn(
-                "mt-1.5 rounded-lg border px-2 py-1",
-                ink
-                  ? "border-white/10 bg-black/20"
-                  : "border-[var(--border)] bg-[var(--surface-elevated)]",
-              )}
-            >
-              <p
-                className={cn(
-                  "text-[9px] font-semibold uppercase tracking-wide leading-none",
-                  ink ? "text-white/40" : "text-[var(--muted)]",
-                )}
-              >
-                Workspace
-              </p>
-              <p
-                className={cn(
-                  "mt-0.5 truncate text-[13px] font-semibold leading-tight",
-                  ink ? "text-white" : "text-[var(--foreground)]",
-                )}
-                title={orgId ? `${orgName} (${orgId.slice(0, 8)})` : orgName}
-              >
-                {orgName}
-              </p>
-            </div>
-            <div className="mt-1.5 flex flex-col gap-1">
-              <p className={cn("text-[10px] leading-none", ink ? "text-white/45" : "text-[var(--muted)]")}>
-                {PLANS[plan].name}
-              </p>
-              {onSignOut ? (
-                <button
-                  type="button"
-                  onClick={onSignOut}
+                <p
                   className={cn(
-                    "inline-flex h-7 w-full shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-2 text-xs font-medium transition",
-                    ink
-                      ? "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
-                      : "border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted)] hover:text-[var(--foreground)]",
+                    "mt-2 truncate text-[13px] font-medium leading-tight",
+                    ink ? "text-white/90" : "text-[var(--foreground)]",
+                  )}
+                  title={orgId ? `${orgName} (${orgId.slice(0, 8)})` : orgName}
+                >
+                  {orgName}
+                </p>
+                <p
+                  className={cn(
+                    "mt-0.5 truncate text-[11px] leading-tight",
+                    ink ? "text-white/40" : "text-[var(--muted)]",
                   )}
                 >
-                  <LogOut className="h-3 w-3 shrink-0" aria-hidden />
-                  Sign out
-                </button>
-              ) : null}
+                  {PLANS[plan].name}
+                </p>
+              </div>
             </div>
           </div>
         </aside>
