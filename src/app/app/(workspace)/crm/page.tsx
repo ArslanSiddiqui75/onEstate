@@ -12,6 +12,7 @@ import { LockedModule } from "@/components/ui/locked-module";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar } from "@/components/ui/avatar";
 import { buildPhoneContactMethod, formatDate, formatMoney, asErrorMessage } from "@/lib/utils";
 import { toTelHref } from "@/lib/phone/e164";
@@ -148,7 +149,6 @@ export function CrmDesk({ view }: { view: CrmView }) {
     promoteContactToLead,
     sendSms,
     sendEmail,
-    receiveInboundSms,
     logCall,
     setLeadWorkflow,
     advanceSequence,
@@ -177,7 +177,6 @@ export function CrmDesk({ view }: { view: CrmView }) {
   const [draftText, setDraftText] = useState("");
   const [draftSubject, setDraftSubject] = useState("");
   const [composeChannel, setComposeChannel] = useState<"sms" | "email">("sms");
-  const [simulateReplyText, setSimulateReplyText] = useState("");
   const [messagingMode, setMessagingMode] = useState<"live" | "simulated" | null>(null);
   const [emailMode, setEmailMode] = useState<"live" | "simulated" | null>(null);
   const [emailInboundWebhook, setEmailInboundWebhook] = useState(false);
@@ -811,51 +810,35 @@ export function CrmDesk({ view }: { view: CrmView }) {
           />
         </TabsContent>
 
-        <TabsContent value="inbox" className="mt-4">
-          <section className="hero-card overflow-hidden rounded-[2rem]">
-            <div className="border-b border-[var(--border)] px-4 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h2 className="font-semibold">Communications</h2>
-                  <p className="text-sm text-[var(--muted)]">
-                    Texts, email, and calls for the person you have open. Switch SMS or Email above the composer. Dial uses your phone, and the outcome is logged on this thread.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                {messagingMode ? (
-                  <Badge tone={messagingMode === "live" ? "neutral" : "warning"}>
-                    {messagingMode === "live"
-                      ? "SMS via Twilio"
-                      : "SMS not configured — simulated"}
-                  </Badge>
-                ) : null}
-                {emailMode ? (
-                  <Badge tone={emailMode === "live" ? "neutral" : "warning"}>
-                    {emailMode === "live"
-                      ? "Email via Resend"
-                      : "Email not configured — simulated"}
-                  </Badge>
-                ) : null}
-                {emailInboundWebhook ? (
-                  <Badge tone="success">Inbound email webhook</Badge>
-                ) : null}
-                </div>
-                {emailConfigError ? (
-                  <p className="mt-2 w-full text-[11px] text-[var(--warning)]">{emailConfigError}</p>
-                ) : null}
-              </div>
+        <TabsContent value="inbox" className="mt-0">
+          {messagingMode || emailMode || emailConfigError ? (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              {messagingMode ? (
+                <Badge tone={messagingMode === "live" ? "neutral" : "warning"}>
+                  {messagingMode === "live" ? "SMS via Twilio" : "SMS not configured — simulated"}
+                </Badge>
+              ) : null}
+              {emailMode ? (
+                <Badge tone={emailMode === "live" ? "neutral" : "warning"}>
+                  {emailMode === "live" ? "Email via Resend" : "Email not configured — simulated"}
+                </Badge>
+              ) : null}
+              {emailInboundWebhook ? <Badge tone="success">Inbound email webhook</Badge> : null}
+              {emailConfigError ? (
+                <p className="w-full text-[11px] text-[var(--warning)]">{emailConfigError}</p>
+              ) : null}
             </div>
+          ) : null}
 
-            {marketLeads.length === 0 ? (
-              <EmptyState
-                title="No conversations yet"
-                description="People appear here once a lead has a phone number or email. Calls, texts, and email stay on the same thread."
-              />
-            ) : null}
-            {marketLeads.length === 0 ? null : (
-            <div className="grid min-h-[30rem] lg:grid-cols-[18rem_1fr]">
-              <aside className="border-r border-[var(--border)] bg-[var(--surface-muted)] p-3">
-                <div className="space-y-2">
+          {marketLeads.length === 0 ? (
+            <EmptyState
+              title="No conversations yet"
+              description="People appear here once a lead has a phone number or email. Calls, texts, and email stay on the same thread."
+            />
+          ) : (
+            <div className="grid lg:grid-cols-[16rem_minmax(0,1fr)]">
+              <aside className="max-h-72 overflow-y-auto lg:max-h-[calc(100dvh-12rem)] lg:pr-4">
+                <div className="space-y-0.5">
                   {marketLeads.map((lead) => {
                     const phone = lead.phones?.find((item) => item.preferred) || lead.phones?.[0];
                     const isActive = activeLead?.id === lead.id;
@@ -864,41 +847,36 @@ export function CrmDesk({ view }: { view: CrmView }) {
                         key={lead.id}
                         type="button"
                         onClick={() => setSelectedLeadId(lead.id)}
-                        className={`w-full rounded-xl border px-3 py-3 text-left transition ${
+                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left ${
                           isActive
-                            ? "border-[var(--accent)] bg-[var(--surface)] shadow-[var(--shadow-soft)]"
-                            : "border-[var(--border)] bg-transparent hover:bg-[var(--surface)]"
+                            ? "bg-[var(--accent-soft)]"
+                            : "hover:bg-[var(--surface-muted)]"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-medium">{lead.name}</p>
-                          {lead.priority ? (
-                            <Badge className="capitalize">{lead.priority}</Badge>
-                          ) : null}
-                        </div>
-                        <p className="mt-1 text-xs text-[var(--muted)]">
-                          {phone?.number || lead.phone || lead.email || "No contact"}
-                        </p>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium">{lead.name}</span>
+                          <span className="block truncate text-xs text-[var(--muted)]">
+                            {phone?.number || lead.phone || lead.email || "No contact"}
+                          </span>
+                        </span>
+                        {lead.priority ? (
+                          <Badge className="shrink-0 capitalize">{lead.priority}</Badge>
+                        ) : null}
                       </button>
                     );
                   })}
                 </div>
               </aside>
 
-              <div className="flex flex-col">
+              <div className="mt-6 flex min-h-[28rem] flex-col border-t border-[var(--border)] pt-5 lg:mt-0 lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0">
                 {activeLead ? (
                   <>
-                    <div className="border-b border-[var(--border)] px-4 py-3">
-                      <h3 className="font-semibold">{activeLead.name}</h3>
+                    <div>
+                      <h2 className="font-semibold">{activeLead.name}</h2>
                       <p className="text-sm text-[var(--muted)]">
-                        {composeChannel === "email" ? "Email thread" : "SMS thread"}
+                        {composeChannel === "email" ? "Email" : "Text"}
                         {composeChannel === "email" && activeLead.email
-                          ? ` \u00b7 ${activeLead.email}`
-                          : ""}
-                        {composeChannel === "sms"
-                          ? ` \u00b7 ${(activeLead.phones || [])
-                              .map((phone) => `${phone.label}: ${phone.number}`)
-                              .join(" \u00b7 ") || activeLead.phone || "no number"}`
+                          ? ` · ${activeLead.email}`
                           : ""}
                       </p>
                       {view === "conversations" ? (
@@ -926,207 +904,148 @@ export function CrmDesk({ view }: { view: CrmView }) {
                       ) : null}
                     </div>
 
-                    <div className="flex-1 space-y-3 bg-[var(--surface-muted)] px-4 py-4">
+                    <div className="flex flex-1 flex-col justify-end gap-3 py-5">
                       {threadMessages.length === 0 ? (
-                        <p className="text-center text-sm text-[var(--muted)]">
-                          No {composeChannel === "email" ? "email" : "SMS"} yet on this thread.
+                        <p className="text-sm text-[var(--muted)]">
+                          No {composeChannel === "email" ? "email" : "texts"} yet.
                         </p>
                       ) : (
-                      threadMessages.map((message) => (
-                        <div
-                          key={message.id}
-                          className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
-                            message.direction === "outbound"
-                              ? "ml-auto bg-[var(--accent)] text-[var(--accent-foreground)]"
-                              : message.direction === "inbound"
-                                ? "bg-[var(--surface)] text-[var(--foreground)] border border-[var(--border)]"
-                                : "mx-auto bg-[var(--surface-muted)] text-[var(--muted)] text-center text-xs"
-                          }`}
-                        >
-                          <p>
-                            {message.subject ? (
-                              <span className="mb-1 block font-medium">{message.subject}</span>
-                            ) : null}
-                            {message.body}
-                          </p>
-                          <p className="mt-2 text-[11px] opacity-70">
-                            {message.direction === "system"
-                              ? formatDate(message.sentAt, market)
-                              : `${message.channel === "email" ? "email" : "sms"} · ${message.direction} · ${formatDate(message.sentAt, market)}`}
-                          </p>
-                        </div>
-                      ))
+                        threadMessages.map((message) => (
+                          <div
+                            key={message.id}
+                            className={`max-w-[85%] px-3.5 py-2.5 text-sm ${
+                              message.direction === "outbound"
+                                ? "ml-auto rounded-2xl rounded-br-md bg-[var(--accent)] text-[var(--accent-foreground)]"
+                                : message.direction === "inbound"
+                                  ? "rounded-2xl rounded-bl-md bg-[var(--surface-muted)] text-[var(--foreground)]"
+                                  : "mx-auto text-center text-xs text-[var(--muted)]"
+                            }`}
+                          >
+                            <p>
+                              {message.subject ? (
+                                <span className="mb-1 block font-medium">{message.subject}</span>
+                              ) : null}
+                              {message.body}
+                            </p>
+                            <p className="mt-1.5 text-[11px] opacity-70">
+                              {message.direction === "system"
+                                ? formatDate(message.sentAt, market)
+                                : `${message.channel === "email" ? "Email" : "Text"} · ${formatDate(message.sentAt, market)}`}
+                            </p>
+                          </div>
+                        ))
                       )}
                     </div>
 
-                    <div className="border-t border-[var(--border)] p-4 space-y-4">
-                      <div>
-                        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--muted)]">
-                          Agent outbound
-                        </p>
-                        <div className="mb-2 flex gap-1">
-                          <Button
+                    <div className="border-t border-[var(--border)] pt-4">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="segmented" role="group" aria-label="Message channel">
+                          <button
                             type="button"
-                            size="sm"
-                            variant={composeChannel === "sms" ? "secondary" : "ghost"}
+                            data-active={composeChannel === "sms"}
                             onClick={() => setComposeChannel("sms")}
                           >
                             SMS
-                          </Button>
-                          <Button
+                          </button>
+                          <button
                             type="button"
-                            size="sm"
-                            variant={composeChannel === "email" ? "secondary" : "ghost"}
+                            data-active={composeChannel === "email"}
                             onClick={() => setComposeChannel("email")}
                           >
-                            <Mail className="h-3.5 w-3.5" />
                             Email
-                          </Button>
+                          </button>
                         </div>
-                        {composeChannel === "email" ? (
-                          <Input
-                            className="mb-2"
-                            placeholder="Subject"
-                            value={draftSubject}
-                            onChange={(e) => setDraftSubject(e.target.value)}
-                          />
-                        ) : null}
-                        <textarea
-                          className="min-h-24 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                          placeholder={
-                            composeChannel === "email" ? "Write an email…" : "Write an SMS…"
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setDraftText(
+                              composeChannel === "email"
+                                ? `Hi ${activeLead.name.split(" ")[0]},\n\nJust checking whether you’re still available for the next step.\n\nThanks,\n${org.name}`
+                                : `Hi ${activeLead.name.split(" ")[0]}, just checking whether you’re still available for the next step.`,
+                            )
                           }
-                          value={draftText}
-                          onChange={(e) => setDraftText(e.target.value)}
+                        >
+                          Insert template
+                        </Button>
+                      </div>
+                      {composeChannel === "email" ? (
+                        <Input
+                          className="mb-2"
+                          placeholder="Subject"
+                          value={draftSubject}
+                          onChange={(e) => setDraftSubject(e.target.value)}
                         />
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant={draftText.trim() ? "default" : "secondary"}
-                            disabled={busy || !draftText.trim()}
-                            onClick={() => {
-                              void (async () => {
-                                setBusy(true);
-                                setError(null);
-                                try {
-                                  if (composeChannel === "email") {
-                                    const result = await sendEmail({
-                                      leadId: activeLead.id,
-                                      subject:
-                                        draftSubject.trim() ||
-                                        `Following up from ${org.name}`,
-                                      body: draftText.trim(),
-                                    });
-                                    setDraftText("");
-                                    setDraftSubject("");
-                                    if (result.mode === "live") {
-                                      toast.success("Email sent via Resend");
-                                    } else {
-                                      toast.warning(
-                                        "Logged in the thread only — Resend was not called. Inbox should show Simulated email.",
-                                      );
-                                    }
+                      ) : null}
+                      <Textarea
+                        className="min-h-20"
+                        placeholder={composeChannel === "email" ? "Write an email…" : "Write a text…"}
+                        value={draftText}
+                        onChange={(e) => setDraftText(e.target.value)}
+                      />
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          type="button"
+                          disabled={busy || !draftText.trim()}
+                          onClick={() => {
+                            void (async () => {
+                              setBusy(true);
+                              setError(null);
+                              try {
+                                if (composeChannel === "email") {
+                                  const result = await sendEmail({
+                                    leadId: activeLead.id,
+                                    subject:
+                                      draftSubject.trim() || `Following up from ${org.name}`,
+                                    body: draftText.trim(),
+                                  });
+                                  setDraftText("");
+                                  setDraftSubject("");
+                                  if (result.mode === "live") {
+                                    toast.success("Email sent via Resend");
                                   } else {
-                                    const result = await sendSms({
-                                      leadId: activeLead.id,
-                                      body: draftText.trim(),
-                                    });
-                                    setDraftText("");
-                                    toast.success(
-                                      result.mode === "live"
-                                        ? "Message sent via Twilio"
-                                        : "Message sent (simulated)",
+                                    toast.warning(
+                                      "Logged in the thread only — Resend was not called.",
                                     );
                                   }
-                                } catch (err) {
-                                  const msg = err instanceof Error ? err.message : "Send failed";
-                                  setError(msg);
-                                  toast.error(msg);
-                                } finally {
-                                  setBusy(false);
-                                }
-                              })();
-                            }}
-                          >
-                            {composeChannel === "email" ? "Send email" : "Send text"}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() =>
-                              setDraftText(
-                                composeChannel === "email"
-                                  ? `Hi ${activeLead.name.split(" ")[0]},\n\nJust checking whether you’re still available for the next step.\n\nThanks,\n${org.name}`
-                                  : `Hi ${activeLead.name.split(" ")[0]}, just checking whether you’re still available for the next step.`,
-                              )
-                            }
-                          >
-                            Insert template
-                          </Button>
-                        </div>
-                      </div>
-
-                      {canEdit ? (
-                        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-4">
-                          <p className="text-sm font-medium">Simulate lead reply</p>
-                          <p className="mt-1 text-xs text-[var(--muted)]">
-                            {composeChannel === "email"
-                              ? emailInboundWebhook
-                                ? "Live replies land here via Resend. Use this to test without waiting for a real reply."
-                                : "Live inbound needs Resend Receiving + a webhook at /api/email/webhook/inbound. Use this to test a reply now."
-                              : "Use this to log a test inbound SMS without waiting for a real reply."}
-                          </p>
-                          <textarea
-                            className="mt-3 min-h-20 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
-                            placeholder={`Reply as ${activeLead.name.split(" ")[0]}…`}
-                            value={simulateReplyText}
-                            onChange={(e) => setSimulateReplyText(e.target.value)}
-                          />
-                          <Button
-                            type="button"
-                            className="mt-3"
-                            variant="secondary"
-                            disabled={busy || !simulateReplyText.trim()}
-                            onClick={() => {
-                              void (async () => {
-                                setBusy(true);
-                                setError(null);
-                                try {
-                                  await receiveInboundSms({
+                                } else {
+                                  const result = await sendSms({
                                     leadId: activeLead.id,
-                                    body: simulateReplyText.trim(),
-                                    channel: composeChannel,
-                                    subject:
-                                      composeChannel === "email"
-                                        ? draftSubject.trim() || "Re: (simulated)"
-                                        : undefined,
+                                    body: draftText.trim(),
                                   });
-                                  setSimulateReplyText("");
-                                  toast.success("Inbound reply recorded");
-                                } catch (err) {
-                                  const msg =
-                                    err instanceof Error ? err.message : "Simulate failed";
-                                  setError(msg);
-                                  toast.error(msg);
-                                } finally {
-                                  setBusy(false);
+                                  setDraftText("");
+                                  toast.success(
+                                    result.mode === "live"
+                                      ? "Message sent via Twilio"
+                                      : "Message sent",
+                                  );
                                 }
-                              })();
-                            }}
-                          >
-                            Simulate inbound
-                          </Button>
-                        </div>
-                      ) : null}
+                              } catch (err) {
+                                const msg = err instanceof Error ? err.message : "Send failed";
+                                setError(msg);
+                                toast.error(msg);
+                              } finally {
+                                setBusy(false);
+                              }
+                            })();
+                          }}
+                        >
+                          {busy
+                            ? "Sending…"
+                            : composeChannel === "email"
+                              ? "Send email"
+                              : "Send text"}
+                        </Button>
+                      </div>
                     </div>
                   </>
                 ) : (
-                  <div className="p-4 text-sm text-[var(--muted)]">No lead selected.</div>
+                  <p className="text-sm text-[var(--muted)]">No one selected.</p>
                 )}
               </div>
             </div>
-            )}
-          </section>
+          )}
         </TabsContent>
 
         <TabsContent value="calls" className="mt-4">
