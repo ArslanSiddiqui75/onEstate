@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useAppSession } from "@/lib/app/session";
 import { ROLE_LABELS } from "@/lib/rbac/matrix";
 import { validateOrgName } from "@/lib/auth/org-name";
@@ -25,14 +24,9 @@ export default function AppSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-[var(--muted)]">
-          Workspace profile, brokerage details, reports, documents, and support.
-        </p>
-        <Button asChild size="sm" variant="secondary">
-          <Link href="/app/settings/team">Team</Link>
-        </Button>
-      </div>
+      <p className="text-sm text-[var(--muted)]">
+        Your name, and the brokerage name and market.
+      </p>
 
       <Card className="space-y-4 p-5">
         <div>
@@ -86,23 +80,8 @@ export default function AppSettingsPage() {
         <div>
           <h2 className="font-semibold">Workspace</h2>
           <p className="text-sm text-[var(--muted)]">
-            Workspace ID is used for support and billing. People and groups live in{" "}
-            <Link href="/app/settings/team" className="text-[var(--accent)] hover:underline">
-              Team
-            </Link>
-            . Lead assignment lives in{" "}
-            <Link href="/app/settings/routing" className="text-[var(--accent)] hover:underline">
-              Routing
-            </Link>
-            . Social networks live in{" "}
-            <Link href="/app/settings/social" className="text-[var(--accent)] hover:underline">
-              Accounts
-            </Link>
-            . The plan and card live in{" "}
-            <Link href="/app/settings/billing" className="text-[var(--accent)] hover:underline">
-              Billing
-            </Link>
-            .
+            Workspace ID is used for support and billing. Only the owner can rename
+            the brokerage or change market.
           </p>
         </div>
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
@@ -158,91 +137,6 @@ export default function AppSettingsPage() {
             Owner if this needs updating.
           </p>
         )}
-      </Card>
-
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-        <div>
-          <h2 className="font-semibold">Team</h2>
-          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
-            See everyone in the workspace. The owner changes roles and removes people.
-          </p>
-        </div>
-        <Button asChild variant="secondary">
-          <Link href="/app/settings/team">Manage team</Link>
-        </Button>
-      </Card>
-
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-        <div>
-          <h2 className="font-semibold">Lead routing</h2>
-          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
-            Choose who receives the next enquiry. This used to live inside CRM.
-          </p>
-        </div>
-        <Button asChild variant="secondary">
-          <Link href="/app/settings/routing">Open routing</Link>
-        </Button>
-      </Card>
-
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-        <div>
-          <h2 className="font-semibold">Social accounts</h2>
-          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
-            Connect Instagram, Facebook, LinkedIn, and X. Compose and the queue
-            stay on Social.
-          </p>
-        </div>
-        <Button asChild variant="secondary">
-          <Link href="/app/settings/social">Manage accounts</Link>
-        </Button>
-      </Card>
-
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-        <div>
-          <h2 className="font-semibold">Reports</h2>
-          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
-            The full book: pipeline, stock, deals, follow-ups, and the diary.
-          </p>
-        </div>
-        <Button asChild variant="secondary">
-          <Link href="/app/settings/reports">Open reports</Link>
-        </Button>
-      </Card>
-
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-        <div>
-          <h2 className="font-semibold">Documents</h2>
-          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
-            Uploads, e-sign, and listing media.
-          </p>
-        </div>
-        <Button asChild variant="secondary">
-          <Link href="/app/settings/documents">Open documents</Link>
-        </Button>
-      </Card>
-
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-        <div>
-          <h2 className="font-semibold">Support</h2>
-          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
-            Tickets with platform support, and how urgent each one is.
-          </p>
-        </div>
-        <Button asChild variant="secondary">
-          <Link href="/app/settings/support">Open support</Link>
-        </Button>
-      </Card>
-
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-        <div>
-          <h2 className="font-semibold">Billing</h2>
-          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
-            Plan, seats, invoices, and the card on file.
-          </p>
-        </div>
-        <Button asChild variant="secondary">
-          <Link href="/app/settings/billing">Open billing</Link>
-        </Button>
       </Card>
 
       {error ? <Alert tone="danger">{error}</Alert> : null}

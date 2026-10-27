@@ -3,17 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   Building2,
   CalendarDays,
+  CreditCard,
+  FolderOpen,
   Globe2,
   BookUser,
   Inbox,
   KeyRound,
   LayoutDashboard,
+  LifeBuoy,
   ListChecks,
   MessagesSquare,
+  Route,
   Share2,
   Target,
+  Users,
   Workflow,
   Menu,
   X,
@@ -134,7 +140,7 @@ const NAV: {
     short: "Settings",
     eyebrow: "Workspace",
     title: "Settings",
-    description: "Profile, brokerage, team, reports, documents, support, and billing.",
+    description: "Your profile, and the brokerage name and market.",
     icon: Settings,
   },
 ];
@@ -153,11 +159,157 @@ const WORKSPACE_NAV: {
   { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Pending follow-ups, with anything overdue first.", icon: ListChecks },
 ];
 
-const SETTINGS_PAGES: { href: string; eyebrow: string; title: string; description: string }[] = [
-  { href: "/app/settings/reports", eyebrow: "Book", title: "Reports", description: "Pipeline, stock, deals, tasks, conversations, and the rest of the book." },
-  { href: "/app/settings/documents", eyebrow: "Files", title: "Documents", description: "Uploads, e-sign, and listing media." },
-  { href: "/app/settings/support", eyebrow: "Help", title: "Support", description: "Tickets with platform support, and how urgent each one is." },
+const SETTINGS_NAV: {
+  href: string;
+  short: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  icon: typeof Inbox;
+  module?: ModuleId;
+  /** Locked unless the member can view at least one of these. */
+  anyOf?: readonly ModuleId[];
+}[] = [
+  {
+    href: "/app/settings/team",
+    short: "Team",
+    eyebrow: "People",
+    title: "Team",
+    description: "Everyone in the workspace. The owner changes roles and removes people.",
+    icon: Users,
+  },
+  {
+    href: "/app/settings/routing",
+    short: "Lead routing",
+    eyebrow: "Assignment",
+    title: "Lead routing",
+    description: "Choose who receives the next enquiry.",
+    icon: Route,
+    module: "crm",
+  },
+  {
+    href: "/app/settings/social",
+    short: "Social accounts",
+    eyebrow: "Social",
+    title: "Social accounts",
+    description: "Connect Instagram, Facebook, LinkedIn, and X. Compose and the queue stay on Social.",
+    icon: Share2,
+    module: "social",
+  },
+  {
+    href: "/app/settings/reports",
+    short: "Reports",
+    eyebrow: "Book",
+    title: "Reports",
+    description: "Pipeline, stock, deals, tasks, conversations, and the rest of the book.",
+    icon: BarChart3,
+    module: "crm",
+  },
+  {
+    href: "/app/settings/documents",
+    short: "Documents",
+    eyebrow: "Files",
+    title: "Documents",
+    description: "Uploads, e-sign, and listing media.",
+    icon: FolderOpen,
+    anyOf: ["crm", "listings", "transactions"],
+  },
+  {
+    href: "/app/settings/support",
+    short: "Support",
+    eyebrow: "Help",
+    title: "Support",
+    description: "Tickets with platform support, and how urgent each one is.",
+    icon: LifeBuoy,
+  },
+  {
+    href: "/app/settings/billing",
+    short: "Billing",
+    eyebrow: "Plan",
+    title: "Billing",
+    description: "Plan, seats, invoices, and the card on file.",
+    icon: CreditCard,
+    module: "billing",
+  },
 ];
+
+function SideLink({
+  href,
+  short,
+  icon: Icon,
+  active,
+  locked,
+  ink,
+  nested,
+  className,
+  onNavigate,
+}: {
+  href: string;
+  short: string;
+  icon: typeof Inbox;
+  active: boolean;
+  locked?: boolean;
+  ink: boolean;
+  nested?: boolean;
+  className?: string;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={cn(
+        "group relative flex items-center gap-3 rounded-2xl py-2.5 text-sm transition-colors",
+        nested ? "pr-3 pl-6" : "px-3",
+        className,
+        ink
+          ? active
+            ? "text-white"
+            : "text-white/60 hover:bg-white/6 hover:text-white"
+          : active
+            ? "text-[var(--foreground)]"
+            : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]",
+        locked && "opacity-45",
+      )}
+    >
+      {active ? (
+        <motion.span
+          layoutId="nav-active"
+          transition={{ type: "spring", stiffness: 420, damping: 34 }}
+          className={cn(
+            "absolute inset-0 rounded-2xl",
+            ink
+              ? "bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+              : "bg-[var(--accent-soft)]",
+          )}
+        />
+      ) : null}
+      <span
+        data-active={active ? "true" : undefined}
+        className="nav-icon-chip relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-[background,color,box-shadow] duration-150"
+      >
+        {locked ? (
+          <Lock className="h-3.5 w-3.5 overflow-visible" aria-hidden />
+        ) : (
+          <Icon className="h-4 w-4 overflow-visible" aria-hidden />
+        )}
+      </span>
+      <span className="relative z-10 min-w-0 flex-1 truncate font-medium">{short}</span>
+      {locked ? (
+        <Badge
+          className={cn(
+            "relative z-10 text-[10px]",
+            ink
+              ? "border-white/10 bg-white/5 text-white/55"
+              : "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--muted)]",
+          )}
+        >
+          Locked
+        </Badge>
+      ) : null}
+    </Link>
+  );
+}
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -218,20 +370,29 @@ export function AppShell({
       description: "Showings and valuations, including requests from the public booking link.",
     };
   });
+  const settingsNav = SETTINGS_NAV.map((item) => {
+    const locked = item.module
+      ? !hasModuleAccess(role, plan, item.module, "view")
+      : item.anyOf
+        ? !item.anyOf.some((module) => hasModuleAccess(role, plan, module, "view"))
+        : false;
+    return { ...item, locked };
+  });
   const workspaceActive = workspaceNav.find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
-  const settingsPage = SETTINGS_PAGES.find(
+  const settingsActive = settingsNav.find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
   const activePage =
     workspaceActive ||
-    settingsPage ||
+    settingsActive ||
     items
       .filter((item) => item.id !== "dashboard")
-      .find(
-        (item) =>
-          pathname === item.href || pathname.startsWith(`${item.href}/`),
+      .find((item) =>
+        item.id === "settings"
+          ? pathname === item.href
+          : pathname === item.href || pathname.startsWith(`${item.href}/`),
       ) ||
     items.find((item) => item.id === "dashboard") ||
     items[0];
@@ -273,113 +434,49 @@ export function AppShell({
             className="mt-6 flex-1 space-y-1 overflow-y-auto px-3"
             aria-label="Primary"
           >
-            {items.map((item) => {
-              const active =
-                pathname === item.href ||
-                (item.href !== basePath && pathname.startsWith(item.href));
-              const Icon = item.icon;
-              return (
-                <Link
+            {items.map((item) => (
+              <SideLink
+                key={item.href}
+                href={item.href}
+                short={item.short}
+                icon={item.icon}
+                ink={ink}
+                locked={item.locked}
+                active={
+                  item.id === "settings"
+                    ? pathname === item.href
+                    : pathname === item.href ||
+                      (item.href !== basePath && pathname.startsWith(item.href))
+                }
+                onNavigate={() => setOpen(false)}
+              />
+            ))}
+            {(pathname === "/app/settings" || pathname.startsWith("/app/settings/")) &&
+              settingsNav.map((item) => (
+                <SideLink
                   key={item.href}
                   href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
-                    ink
-                      ? active
-                        ? "text-white"
-                        : "text-white/60 hover:bg-white/6 hover:text-white"
-                      : active
-                        ? "text-[var(--foreground)]"
-                        : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]",
-                    item.locked && "opacity-45",
-                  )}
-                >
-                  {active ? (
-                    <motion.span
-                      layoutId="nav-active"
-                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                      className={cn(
-                        "absolute inset-0 rounded-2xl",
-                        ink
-                          ? "bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                          : "bg-[var(--accent-soft)]",
-                      )}
-                    />
-                  ) : null}
-                  <span
-                    data-active={active ? "true" : undefined}
-                    className="nav-icon-chip relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-[background,color,box-shadow] duration-150"
-                  >
-                    {item.locked ? (
-                      <Lock className="h-3.5 w-3.5 overflow-visible" aria-hidden />
-                    ) : (
-                      <Icon className="h-4 w-4 overflow-visible" aria-hidden />
-                    )}
-                  </span>
-                  <span className="relative z-10 min-w-0 flex-1 truncate font-medium">
-                    {item.short}
-                  </span>
-                  {item.locked ? (
-                    <Badge
-                      className={cn(
-                        "relative z-10 text-[10px]",
-                        ink
-                          ? "border-white/10 bg-white/5 text-white/55"
-                          : "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--muted)]",
-                      )}
-                    >
-                      Locked
-                    </Badge>
-                  ) : null}
-                </Link>
-              );
-            })}
-            {workspaceNav.map((item, index) => {
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={cn(
-                    "group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
-                    index === 0 && "mt-3",
-                    ink
-                      ? active
-                        ? "text-white"
-                        : "text-white/60 hover:bg-white/6 hover:text-white"
-                      : active
-                        ? "text-[var(--foreground)]"
-                        : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]",
-                  )}
-                >
-                  {active ? (
-                    <motion.span
-                      layoutId="nav-active"
-                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                      className={cn(
-                        "absolute inset-0 rounded-2xl",
-                        ink
-                          ? "bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
-                          : "bg-[var(--accent-soft)]",
-                      )}
-                    />
-                  ) : null}
-                  <span
-                    data-active={active ? "true" : undefined}
-                    className="nav-icon-chip relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-[background,color,box-shadow] duration-150"
-                  >
-                    <Icon className="h-4 w-4 overflow-visible" aria-hidden />
-                  </span>
-                  <span className="relative z-10 min-w-0 flex-1 truncate font-medium">
-                    {item.short}
-                  </span>
-                </Link>
-              );
-            })}
+                  short={item.short}
+                  icon={item.icon}
+                  ink={ink}
+                  locked={item.locked}
+                  nested
+                  active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+                  onNavigate={() => setOpen(false)}
+                />
+              ))}
+            {workspaceNav.map((item, index) => (
+              <SideLink
+                key={item.href}
+                href={item.href}
+                short={item.short}
+                icon={item.icon}
+                ink={ink}
+                className={index === 0 ? "mt-3" : undefined}
+                active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+                onNavigate={() => setOpen(false)}
+              />
+            ))}
           </nav>
 
           <div
