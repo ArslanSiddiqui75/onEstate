@@ -3,12 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   Building2,
+  CalendarDays,
   CreditCard,
+  FolderOpen,
   Globe2,
+  Inbox,
+  KeyRound,
   LayoutDashboard,
+  LifeBuoy,
+  ListChecks,
   Share2,
   Users,
+  UsersRound,
   FileText,
   Menu,
   X,
@@ -116,16 +124,24 @@ const NAV: {
   },
 ];
 
-const WORKSPACE_NAV = [
-  { href: "/app/enquiries", short: "Enquiries", eyebrow: "Pipeline", title: "Enquiry centre", description: "Every lead, with source, property interest, and the next step.", markets: ["uk", "us"] },
-  { href: "/app/diary", short: "Diary", eyebrow: "Diary", title: "Diary", description: "Viewings and valuations, including requests from the public booking link.", markets: ["uk", "us"] },
-  { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings desk", description: "Repairs, rent, compliance, inspections, and a dispute pack.", markets: ["uk"] },
-  { href: "/app/teams", short: "Teams", eyebrow: "Roster", title: "Teams", description: "Office groups. CRM stays shared." },
-  { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Open and done lead tasks." },
-  { href: "/app/reports", short: "Reports", eyebrow: "Snapshot", title: "Reports", description: "Live pipeline and inventory counts." },
-  { href: "/app/documents", short: "Documents", eyebrow: "Files", title: "Documents", description: "Uploads, e-sign, and listing media." },
-  { href: "/app/tickets", short: "Support", eyebrow: "Help", title: "Support", description: "File a ticket with platform support." },
-] as const;
+const WORKSPACE_NAV: {
+  href: string;
+  short: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  icon: typeof Users;
+  markets?: readonly string[];
+}[] = [
+  { href: "/app/enquiries", short: "Enquiries", eyebrow: "Pipeline", title: "Enquiry centre", description: "Every lead, with source, property interest, and the next step.", icon: Inbox, markets: ["uk", "us"] },
+  { href: "/app/diary", short: "Diary", eyebrow: "Diary", title: "Diary", description: "Viewings and valuations, including requests from the public booking link.", icon: CalendarDays, markets: ["uk", "us"] },
+  { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings desk", description: "Repairs, rent, compliance, inspections, and a dispute pack.", icon: KeyRound, markets: ["uk"] },
+  { href: "/app/teams", short: "Teams", eyebrow: "Roster", title: "Teams", description: "Office groups. CRM stays shared.", icon: UsersRound },
+  { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Open and done lead tasks.", icon: ListChecks },
+  { href: "/app/reports", short: "Reports", eyebrow: "Snapshot", title: "Reports", description: "Live pipeline and inventory counts.", icon: BarChart3 },
+  { href: "/app/documents", short: "Documents", eyebrow: "Files", title: "Documents", description: "Uploads, e-sign, and listing media.", icon: FolderOpen },
+  { href: "/app/tickets", short: "Support", eyebrow: "Help", title: "Support", description: "File a ticket with platform support.", icon: LifeBuoy },
+];
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -303,23 +319,44 @@ export function AppShell({
             {workspaceNav.map((item) => {
               const active =
                 pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
                   className={cn(
-                    "relative flex items-center gap-3 rounded-2xl px-3 py-2 text-sm transition-colors",
+                    "group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
                     ink
                       ? active
-                        ? "bg-white/12 text-white"
-                        : "text-white/55 hover:bg-white/6 hover:text-white"
+                        ? "text-white"
+                        : "text-white/60 hover:bg-white/6 hover:text-white"
                       : active
-                        ? "bg-[var(--accent-soft)] text-[var(--foreground)]"
-                        : "text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]",
+                        ? "text-[var(--foreground)]"
+                        : "text-[var(--muted)] hover:bg-[var(--accent-soft)] hover:text-[var(--foreground)]",
                   )}
                 >
-                  <span className="truncate font-medium">{item.short}</span>
+                  {active ? (
+                    <motion.span
+                      layoutId="nav-active"
+                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                      className={cn(
+                        "absolute inset-0 rounded-2xl",
+                        ink
+                          ? "bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                          : "bg-[var(--accent-soft)]",
+                      )}
+                    />
+                  ) : null}
+                  <span
+                    data-active={active ? "true" : undefined}
+                    className="nav-icon-chip relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-[background,color,box-shadow] duration-150"
+                  >
+                    <Icon className="h-4 w-4 overflow-visible" aria-hidden />
+                  </span>
+                  <span className="relative z-10 min-w-0 flex-1 truncate font-medium">
+                    {item.short}
+                  </span>
                 </Link>
               );
             })}
