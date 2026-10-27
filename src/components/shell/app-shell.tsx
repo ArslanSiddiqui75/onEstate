@@ -152,7 +152,7 @@ const WORKSPACE_NAV: {
   markets?: readonly string[];
 }[] = [
   { href: "/app/diary", short: "Diary", eyebrow: "Diary", title: "Diary", description: "Viewings and valuations, including requests from the public booking link.", icon: CalendarDays, markets: ["uk", "us"] },
-  { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings desk", description: "Repairs, rent, compliance, inspections, and a dispute pack.", icon: KeyRound, markets: ["uk"] },
+  { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings", description: "Open repairs, this month's rent, and the file for each let.", icon: KeyRound, markets: ["uk"] },
   { href: "/app/teams", short: "Teams", eyebrow: "Roster", title: "Teams", description: "Office groups. CRM stays shared.", icon: UsersRound },
   { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Open and done lead tasks.", icon: ListChecks },
   { href: "/app/reports", short: "Reports", eyebrow: "Snapshot", title: "Reports", description: "Live pipeline and inventory counts.", icon: BarChart3 },
