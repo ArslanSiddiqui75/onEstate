@@ -134,9 +134,9 @@ export default function AppDashboardPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold">Today’s diary</h2>
+            <h2 className="font-semibold">{market === "us" ? "Today’s calendar" : "Today’s diary"}</h2>
             <Link href="/app/diary" className="text-sm font-semibold text-[var(--accent)]">
-              Diary
+              {market === "us" ? "Calendar" : "Diary"}
             </Link>
           </div>
           <ul className="mt-3 space-y-2 text-sm">

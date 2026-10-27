@@ -20,13 +20,13 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
     heroLead: "The desk that",
     heroPhrases: uk
       ? ["fills the diary", "takes the offer", "writes the listing", "updates the vendor", "files the repair"]
-      : ["fills the diary", "takes the offer", "writes the listing", "updates the seller", "prepares the stock"],
+      : ["fills the calendar", "takes the offer", "writes the listing", "updates the seller", "prepares the stock"],
     heroTitle: uk
       ? "The desk that fills the diary."
-      : "The desk that fills the diary.",
+      : "The desk that fills the calendar.",
     heroBody: uk
       ? `${brand.name} is the desk the office actually works from. Leads, the diary, listings prepared for the portals, offers, progression, lettings, documents, and a private link for the vendor, buyer, landlord, and tenant.`
-      : `${brand.name} is the desk the office actually works from. Leads, the diary, listings prepared for the MLS, offers, progression, documents, and a private link for the seller, buyer, and landlord.`,
+      : `${brand.name} is the desk the office actually works from. Leads, the calendar, listings prepared for the MLS, offers, progression, documents, and a private link for the seller, buyer, and landlord.`,
     heroNotes: uk
       ? ["One login for the office", "England, Wales, and Scotland", "Client links, not another phone chase"]
       : ["One login for the office", "Sales on one record", "Client links, not another phone chase"],
@@ -67,7 +67,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
       : [
           {
             id: "diary",
-            title: "Fill the diary",
+            title: "Fill the calendar",
             body: "A showing or a valuation comes in on a link. The office confirms it. The appointment stays on the property.",
             frame: "diary" as const,
           },
@@ -173,7 +173,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
         title: "Runs without a second hire.",
         body: uk
           ? "One user. Enquiries, the diary, listing drafts, and the progression checklist. £49 a month, in pounds."
-          : "One user. Enquiries, the diary, listing drafts, and the progression checklist. $59 a month, in dollars.",
+          : "One user. Enquiries, the calendar, listing drafts, and the progression checklist. $59 a month, in dollars.",
         href: "/app/signup?plan=solo",
         cta: "Start solo",
       },
@@ -213,7 +213,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
           ["3", "Client links on a listing"],
           ["1", "Record from enquiry to close"],
           ["$59", "Solo, billed monthly"],
-          ["1", "Diary for the whole office"],
+          ["1", "Calendar for the whole office"],
         ],
     proof: uk
       ? [
@@ -226,7 +226,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
         ]
       : [
           "Enquiry centre",
-          "Diary and public booking",
+          "Calendar and public booking",
           "MLS-ready stock",
           "Sales progression",
           "Website and social",
@@ -343,8 +343,8 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
                 body: "Website and office enquiries land on one list. Each row keeps the property, the source, and the next step.",
               },
               {
-                title: "Diary",
-                body: "Showings and valuations sit on the office diary. A public booking link lets someone request a time. The office confirms it on the property.",
+                title: "Calendar",
+                body: "Showings and valuations sit on the office calendar. A public booking link lets someone request a time. The office confirms it on the property.",
               },
               {
                 title: "Offers and progression",
@@ -408,7 +408,9 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
       {
         n: "02",
         title: `The ${viewing} is booked`,
-        body: `They use a link, or the negotiator books it. It lands on the diary for the office to confirm.`,
+        body: uk
+          ? "They use a link, or the negotiator books it. It lands on the diary for the office to confirm."
+          : "They use a link, or the agent books it. It lands on the calendar for the office to confirm.",
       },
       {
         n: "03",
@@ -465,7 +467,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
       { title: "Owner", body: "The workspace, the plan, the seats, and the billing." },
       { title: "Broker", body: "The book of business across the office, not one negotiator’s private list." },
       { title: "Team lead", body: "The group’s pipeline, tasks, and who has the next step." },
-      { title: "Agent", body: "Their stock, their diary, and the client links on those instructions." },
+      { title: "Agent", body: uk ? "Their stock, their diary, and the client links on those instructions." : "Their stock, their calendar, and the client links on those instructions." },
       { title: "Assistant", body: "Enquiries, bookings, documents, and the chase list." },
       { title: "Accountant", body: "Fee requests, what was received, and the plan the office is on." },
     ],
@@ -495,7 +497,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
         ]
       : [
           "Enquiry centre with source and property",
-          "Diary for showings and valuations",
+          "Calendar for showings and valuations",
           "Public booking link",
           "Offers on the property",
           "Progression through to close",
@@ -558,7 +560,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
           },
           {
             q: "Can one agent start alone?",
-            a: "Solo Agent is one user at $59 a month: enquiries, the diary, listing drafts, the progression checklist, and payments in dollars. Team is the office, up to 25 people.",
+            a: "Solo Agent is one user at $59 a month: enquiries, the calendar, listing drafts, the progression checklist, and payments in dollars. Team is the office, up to 25 people.",
           },
         ],
     sampleTitle: "Harbour & Co, a sample office.",
@@ -584,11 +586,13 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
     supportTitle: uk
       ? "The negotiator and the client are looking at the same file."
       : "The agent and the client are looking at the same file.",
-    supportBody: `A booking, an offer, a document, and an approval land on the desk the team already uses. Sign in and open Enquiries, Diary, or the ${viewing}.`,
+    supportBody: uk
+      ? `A booking, an offer, a document, and an approval land on the desk the team already uses. Sign in and open Enquiries, Diary, or the ${viewing}.`
+      : `A booking, an offer, a document, and an approval land on the desk the team already uses. Sign in and open Enquiries, Calendar, or the ${viewing}.`,
     contactTitle: "See it on your own stock.",
     contactBody: uk
       ? "Tell us about the office. We’ll walk the enquiry list, the diary, progression, lettings, and the four client links."
-      : "Tell us about the office. We’ll walk the enquiry list, the diary, progression, and the client links.",
+      : "Tell us about the office. We’ll walk the enquiry list, the calendar, progression, and the client links.",
     footerLine: uk
       ? "Estate agency software for the UK. Payments in pounds."
       : "Real estate software for the United States. Payments in dollars.",

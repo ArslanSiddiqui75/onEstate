@@ -17,7 +17,7 @@ export function ProductFrame({
     desk: "Today",
     enquiry: "Enquiry centre",
     progression: uk ? "Progression" : "Progression",
-    diary: "Diary",
+    diary: uk ? "Diary" : "Calendar",
     vendor: uk ? "Vendor link" : "Seller link",
     buyer: "Buyer link",
     landlord: "Landlord link",
@@ -69,7 +69,7 @@ function Desk({ uk }: { uk: boolean }) {
       <aside className="border-r border-[var(--border)] bg-[var(--surface-muted)] px-3 py-4">
         <BrandMark className="w-full max-w-[7.5rem] text-[13px]" />
         <ul className="mt-5 space-y-1 text-xs font-medium">
-          {["Today", "Enquiries", "Diary", "Deals"].map((item, index) => (
+          {["Today", "Enquiries", uk ? "Diary" : "Calendar", "Deals"].map((item, index) => (
             <li
               key={item}
               className={cn(

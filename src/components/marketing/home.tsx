@@ -59,7 +59,7 @@ export function MarketingHome({
               <p className="mt-3 max-w-sm text-sm leading-relaxed text-[var(--muted)]">
                 {copy.uk
                   ? "The UK book: enquiries, the diary, progression, lettings, and four client links. Priced in pounds."
-                  : "The US book: enquiries, the diary, progression, and client links. Priced in dollars."}
+                  : "The US book: enquiries, the calendar, progression, and client links. Priced in dollars."}
               </p>
             </div>
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">

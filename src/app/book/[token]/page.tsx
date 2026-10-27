@@ -1,11 +1,20 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BOOKING_ADDRESSES, BOOKING_SLOTS } from "@/lib/agency/book";
 import { readAgencyInbox, serverRecognisesToken } from "@/lib/agency/server-inbox";
+import { defaultMarket, marketFromHost } from "@/lib/brand/host";
 import { formatWhen } from "@/lib/lettings/format";
+import type { Market } from "@/types";
+
+function marketFromHeaders(headerList: Headers): Market {
+  const explicit = headerList.get("x-onestreet-market");
+  if (explicit === "uk" || explicit === "us") return explicit;
+  return marketFromHost(headerList.get("x-forwarded-host") || headerList.get("host") || "") ?? defaultMarket();
+}
 
 export async function generateMetadata({
   params,
@@ -28,6 +37,7 @@ export default async function BookPage({
 }) {
   const { token } = await params;
   const { sent, error } = await searchParams;
+  const us = marketFromHeaders(await headers()) === "us";
   const recognised = serverRecognisesToken(token);
   const inbox = readAgencyInbox();
   const appointment = sent ? inbox.appointments.find((item) => item.id === sent) : null;
@@ -38,12 +48,12 @@ export default async function BookPage({
       <Link href="/" className="text-lg">
         <BrandMark />
       </Link>
-      <p className="eyebrow mt-8">Diary</p>
+      <p className="eyebrow mt-8">{us ? "Calendar" : "Diary"}</p>
       <h1 className="mt-2 font-display text-4xl leading-tight tracking-tight">
         {fixedAddress ? `View ${fixedAddress}` : "Request a time"}
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
-        The office confirms the slot on the diary. You don’t need an account.
+        The office confirms the slot on the {us ? "calendar" : "diary"}. You don’t need an account.
       </p>
 
       {!recognised ? (

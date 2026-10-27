@@ -24,8 +24,8 @@ function dayKey(iso: string) {
   return iso.slice(0, 10);
 }
 
-function dayLabel(iso: string) {
-  return new Intl.DateTimeFormat("en-GB", {
+function dayLabel(iso: string, us: boolean) {
+  return new Intl.DateTimeFormat(us ? "en-US" : "en-GB", {
     weekday: "long",
     day: "numeric",
     month: "short",
@@ -38,11 +38,13 @@ export default function DiaryPage() {
   const [busy, setBusy] = useState(false);
 
   if (!user || !org) return null;
+  const us = market === "us";
+  const bookName = us ? "calendar" : "diary";
   if (!hasModuleAccess(user.role, org.plan, "crm", "view")) {
     return (
       <LockedModule
-        title="Diary locked"
-        reason="The diary follows CRM access."
+        title={us ? "Calendar locked" : "Diary locked"}
+        reason={`The ${bookName} follows CRM access.`}
         role={user.role}
         plan={org.plan}
       />
@@ -50,7 +52,7 @@ export default function DiaryPage() {
   }
 
   const canEdit = hasModuleAccess(user.role, org.plan, "crm", "edit");
-  const viewingWord = market === "us" ? "showing" : "viewing";
+  const viewingWord = us ? "showing" : "viewing";
   const sorted = [...book.appointments].sort((a, b) => a.at.localeCompare(b.at));
   const days = [...new Set(sorted.map((item) => dayKey(item.at)))];
 
@@ -67,7 +69,7 @@ export default function DiaryPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="max-w-xl text-sm text-[var(--muted)]">
-          Viewings and valuations for the office. A client can request a slot from the public link, and confirming it keeps it on this board.
+          {us ? "Showings" : "Viewings"} and valuations for the office. A client can request a slot from the public link, and confirming it keeps it on this board.
         </p>
         <Button
           variant="secondary"
@@ -84,7 +86,7 @@ export default function DiaryPage() {
         <div className="space-y-4">
           {days.map((day) => (
             <Card key={day}>
-              <h2 className="font-semibold">{dayLabel(`${day}T12:00:00.000Z`)}</h2>
+              <h2 className="font-semibold">{dayLabel(`${day}T12:00:00.000Z`, us)}</h2>
               <ul className="mt-3 divide-y divide-[var(--border)]">
                 {sorted
                   .filter((item) => dayKey(item.at) === day)
@@ -129,7 +131,7 @@ export default function DiaryPage() {
         <div className="space-y-4">
           {canEdit ? (
             <Card>
-              <h2 className="font-semibold">Add to the diary</h2>
+              <h2 className="font-semibold">Add to the {bookName}</h2>
               <form
                 className="mt-3 grid gap-2"
                 onSubmit={(event) => {
@@ -146,7 +148,7 @@ export default function DiaryPage() {
                     });
                     commit(addAppointment(book, appointment));
                     event.currentTarget.reset();
-                    toast.success("Added to the diary");
+                    toast.success(us ? "Added to the calendar" : "Added to the diary");
                   } catch (err) {
                     toast.error(err instanceof Error ? err.message : "Could not add that.");
                   }

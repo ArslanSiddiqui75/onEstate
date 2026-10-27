@@ -49,7 +49,7 @@ export function BeforeAfter({ uk }: { uk: boolean }) {
         move(event.clientX);
       }}
     >
-      <Managed property={property} person={person} appointment={appointment} offer={offer} />
+      <Managed property={property} person={person} appointment={appointment} offer={offer} book={uk ? "Diary" : "Calendar"} />
       <div
         className="absolute inset-0"
         style={{ clipPath: `inset(0 ${100 - value}% 0 0)` }}
@@ -203,15 +203,17 @@ function Managed({
   person,
   appointment,
   offer,
+  book,
 }: {
   property: string;
   person: string;
   appointment: string;
   offer: string;
+  book: string;
 }) {
   const rows = [
     ["08:14", "Enquiry", "Website", "On the file"],
-    ["09:02", "Diary", `Thu 14:00`, `${appointment} confirmed`],
+    ["09:02", book, `Thu 14:00`, `${appointment} confirmed`],
     ["09:20", "Call", "2 min", `Noted for the ${person}`],
     ["10:05", "Offer", offer, "On progression"],
     ["10:18", "Link", `${person[0].toUpperCase()}${person.slice(1)} link`, "Sent"],

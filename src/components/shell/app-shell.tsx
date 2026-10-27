@@ -194,6 +194,15 @@ export function AppShell({
   const workspaceNav = WORKSPACE_NAV.filter((item) => {
     if (!("markets" in item)) return true;
     return (item.markets as readonly string[]).includes(brand.market);
+  }).map((item) => {
+    if (item.href !== "/app/diary" || brand.market !== "us") return item;
+    return {
+      ...item,
+      short: "Calendar",
+      eyebrow: "Calendar",
+      title: "Calendar",
+      description: "Showings and valuations, including requests from the public booking link.",
+    };
   });
   const workspaceActive = workspaceNav.find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),

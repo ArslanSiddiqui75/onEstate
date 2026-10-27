@@ -25,7 +25,7 @@ export function regionModules(market: Market) {
   }
   return [
     { name: "Enquiries", detail: "Website and office leads on one list." },
-    { name: "Diary", detail: "Showings and valuations, including the public booking link." },
+    { name: "Calendar", detail: "Showings and valuations, including the public booking link." },
     { name: "Progression", detail: "Listed, showing, offer, progressing, closed." },
     { name: "Client links", detail: "Seller, buyer, and landlord." },
     { name: "Payments", detail: "Subscriptions and fee requests in dollars." },
@@ -43,7 +43,7 @@ export function planLines(market: Market, plan: PlanId) {
     return ["Unlimited offices", "Cross-office routing", "Lettings desk", "Client links", "Payments in pounds"];
   }
   if (plan === "solo") {
-    return ["1 user", "Enquiries and diary", "Listing drafts", "Progression checklist", "Payments in dollars"];
+    return ["1 user", "Enquiries and calendar", "Listing drafts", "Progression checklist", "Payments in dollars"];
   }
   if (plan === "team") {
     return ["Up to 25 users", "Lead routing", "Client links", "MLS-ready stock", "Payments in dollars"];
