@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Building2,
@@ -39,6 +39,7 @@ import {
 import type { Listing, ListingStatus, Market } from "@/types";
 import { draftListing } from "@/lib/agency/book";
 import { fileToSocialMedia, uploadSocialMediaFile } from "@/lib/social/media";
+import { useModuleSection } from "@/lib/nav/module-section";
 
 function tidyAddress(value: string) {
   return value.replace(/\s+,/g, ",").replace(/,\s*/g, ", ").trim();
@@ -76,6 +77,14 @@ function sqftToArea(market: Market, sqft: number) {
 }
 
 export default function AppListingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ListingsDesk />
+    </Suspense>
+  );
+}
+
+function ListingsDesk() {
   const {
     user,
     org,
@@ -100,6 +109,7 @@ export default function AppListingsPage() {
   const [savingNewListing, setSavingNewListing] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [portalLogListing, setPortalLogListing] = useState<Listing | null>(null);
+  const [panel, setPanel] = useModuleSection("tab", ["listings", "portals"] as const, "listings");
 
   useEffect(() => {
     setCoverUrl(editingListing?.imageUrl || "");
@@ -147,7 +157,7 @@ export default function AppListingsPage() {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="listings">
+      <Tabs value={panel} onValueChange={(value) => setPanel(value === "portals" ? "portals" : "listings")}>
         <TabsBar>
           <TabsList>
             <TabsTrigger value="listings">

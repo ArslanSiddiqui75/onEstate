@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
@@ -24,8 +24,17 @@ import { DomainPanel } from "@/components/website/domain-panel";
 import { PublicContactForm } from "@/components/website/public-contact-form";
 import { fileToSocialMedia, uploadSocialMediaFile } from "@/lib/social/media";
 import type { WebsiteSectionKind, WebsiteSite, WebsiteTemplateId, DomainStatus, SslStatus } from "@/types";
+import { useModuleSection } from "@/lib/nav/module-section";
 
 export default function AppWebsitePage() {
+  return (
+    <Suspense fallback={null}>
+      <WebsiteEditor />
+    </Suspense>
+  );
+}
+
+function WebsiteEditor() {
   const { user, org, website, saveWebsite, listings, market, getAuthToken, persistence, addLead } =
     useAppSession();
   const [busy, setBusy] = useState(false);
@@ -33,6 +42,7 @@ export default function AppWebsitePage() {
   const [dirty, setDirty] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
+  const [panel] = useModuleSection("section", ["theme", "words", "page", "domain"] as const, "theme");
 
   useEffect(() => {
     if (website) {
@@ -255,6 +265,7 @@ export default function AppWebsitePage() {
           ) : null}
         </div>
 
+        {panel === "theme" ? (
         <section className="space-y-3 rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface)] p-4">
           <div>
             <h2 className="font-semibold">Theme</h2>
@@ -288,7 +299,9 @@ export default function AppWebsitePage() {
             })}
           </div>
         </section>
+        ) : null}
 
+        {panel === "words" ? (
         <section className="space-y-3 rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface)] p-4">
           <div>
             <h2 className="font-semibold">Words</h2>
@@ -336,7 +349,9 @@ export default function AppWebsitePage() {
             <span className="text-xs text-[var(--muted)]">{uploadingHero ? "Uploading…" : "Or keep the theme’s photograph."}</span>
           </label>
         </section>
+        ) : null}
 
+        {panel === "page" ? (
         <section className="space-y-3 rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface)] p-4">
           <div>
             <h2 className="font-semibold">On the page</h2>
@@ -358,7 +373,9 @@ export default function AppWebsitePage() {
             The enquiry form opens a new opportunity and saves the person as a contact.
           </p>
         </section>
+        ) : null}
 
+        {panel === "domain" ? (
         <section className="space-y-3 rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface)] p-4">
           <h2 className="font-semibold">Domain</h2>
           <DomainPanel
@@ -369,6 +386,7 @@ export default function AppWebsitePage() {
             onVerify={() => void handleVerifyDomain()}
           />
         </section>
+        ) : null}
       </div>
 
       <div className="overflow-hidden rounded-[1.35rem] border border-[var(--border)] xl:sticky xl:top-0 xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">

@@ -1,20 +1,13 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { CrmDesk } from "@/app/app/(workspace)/crm/page";
 import { DealsBoard } from "@/app/app/(workspace)/transactions/page";
-import { useAppSession } from "@/lib/app/session";
-import { hasModuleAccess } from "@/lib/access";
+import { useModuleSection } from "@/lib/nav/module-section";
 import { cn } from "@/lib/utils";
 
 function Opportunities() {
-  const params = useSearchParams();
-  const { user, org } = useAppSession();
-  const canDeals = user && org ? hasModuleAccess(user.role, org.plan, "transactions", "view") : false;
-  const [section, setSection] = useState<"pipeline" | "deals">(
-    params.get("view") === "deals" && canDeals ? "deals" : "pipeline",
-  );
+  const [section, setSection] = useModuleSection("view", ["pipeline", "deals"] as const, "pipeline");
 
   return (
     <div className="space-y-5">
@@ -34,20 +27,18 @@ function Opportunities() {
         >
           Pipeline
         </button>
-        {canDeals ? (
-          <button
-            type="button"
-            onClick={() => setSection("deals")}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-semibold",
-              section === "deals"
-                ? "bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(20,17,15,0.08)]"
-                : "text-[var(--muted)]",
-            )}
-          >
-            Deals
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={() => setSection("deals")}
+          className={cn(
+            "rounded-full px-4 py-1.5 text-sm font-semibold",
+            section === "deals"
+              ? "bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(20,17,15,0.08)]"
+              : "text-[var(--muted)]",
+          )}
+        >
+          Deals
+        </button>
       </div>
       {section === "deals" ? <DealsBoard /> : <CrmDesk view="pipeline" />}
     </div>

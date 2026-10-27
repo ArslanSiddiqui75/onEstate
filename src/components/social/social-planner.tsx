@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useModuleSection } from "@/lib/nav/module-section";
 import Link from "next/link";
 import {
   eachDayOfInterval,
@@ -256,7 +257,12 @@ export function SocialPlanner({
     () => accounts.filter((a) => a.status === "connected"),
     [accounts],
   );
-  const [tab, setTab] = useState(canEdit ? "compose" : "queue");
+  const [tab, setTab] = useModuleSection(
+    "tab",
+    ["compose", "queue", "calendar"] as const,
+    canEdit ? "compose" : "queue",
+  );
+  const shown = !canEdit && tab === "compose" ? "queue" : tab;
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -525,7 +531,12 @@ export function SocialPlanner({
         </div>
       ) : null}
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs
+        value={shown}
+        onValueChange={(value) => {
+          if (value === "compose" || value === "queue" || value === "calendar") setTab(value);
+        }}
+      >
         <TabsBar>
           <TabsList>
             <TabsTrigger value="compose" disabled={!canEdit}>

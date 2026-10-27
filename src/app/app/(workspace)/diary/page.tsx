@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { useAgencyBook } from "@/components/agency/use-agency-book";
@@ -19,6 +19,7 @@ import {
 import type { Appointment, PortalRole } from "@/lib/agency/types";
 import { PORTAL_ROLE_LABELS } from "@/lib/agency/types";
 import { formatWhen } from "@/lib/lettings/format";
+import { useModuleSection } from "@/lib/nav/module-section";
 
 function dayKey(iso: string) {
   return iso.slice(0, 10);
@@ -33,9 +34,18 @@ function dayLabel(iso: string, us: boolean) {
 }
 
 export default function DiaryPage() {
+  return (
+    <Suspense fallback={null}>
+      <DiaryDesk />
+    </Suspense>
+  );
+}
+
+function DiaryDesk() {
   const { user, org, market } = useAppSession();
   const { book, commit } = useAgencyBook(org?.id ?? "workspace");
   const [busy, setBusy] = useState(false);
+  const [section] = useModuleSection("section", ["board", "links"] as const, "board");
 
   if (!user || !org) return null;
   const us = market === "us";
@@ -69,20 +79,25 @@ export default function DiaryPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="max-w-xl text-sm text-[var(--muted)]">
-          {us ? "Showings" : "Viewings"} and valuations for the office. A client can request a slot from the public link, and confirming it keeps it on this board.
+          {section === "links"
+            ? "A private page for each client, covering their sale or let."
+            : `${us ? "Showings" : "Viewings"} and valuations for the office. A client can request a slot from the public link, and confirming it keeps it on this board.`}
         </p>
-        <Button
-          variant="secondary"
-          onClick={() => {
-            const url = `${window.location.origin}/book/${book.bookingToken}`;
-            void navigator.clipboard.writeText(url).then(() => toast.success("Booking link copied"));
-          }}
-        >
-          Copy booking link
-        </Button>
+        {section === "board" ? (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const url = `${window.location.origin}/book/${book.bookingToken}`;
+              void navigator.clipboard.writeText(url).then(() => toast.success("Booking link copied"));
+            }}
+          >
+            Copy booking link
+          </Button>
+        ) : null}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]">
+      <div className={section === "links" ? "max-w-xl" : "grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]"}>
+        {section === "board" ? (
         <div className="space-y-4">
           {days.map((day) => (
             <Card key={day}>
@@ -127,9 +142,11 @@ export default function DiaryPage() {
             </Card>
           ))}
         </div>
+        ) : null}
 
+        {section === "links" || canEdit ? (
         <div className="space-y-4">
-          {canEdit ? (
+          {section === "board" && canEdit ? (
             <Card>
               <h2 className="font-semibold">Add to the {bookName}</h2>
               <form
@@ -167,6 +184,7 @@ export default function DiaryPage() {
             </Card>
           ) : null}
 
+          {section === "links" ? (
           <Card>
             <h2 className="font-semibold">Client links</h2>
             <ul className="mt-3 space-y-2 text-sm">
@@ -232,7 +250,9 @@ export default function DiaryPage() {
               </form>
             ) : null}
           </Card>
+          ) : null}
         </div>
+        ) : null}
       </div>
     </div>
   );

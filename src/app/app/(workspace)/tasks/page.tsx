@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
@@ -13,16 +13,23 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { useModuleSection } from "@/lib/nav/module-section";
 import type { LeadTask } from "@/types";
 
 const selectClass =
   "h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm";
 
-type View = "open" | "done";
-
 export default function AppTasksPage() {
+  return (
+    <Suspense fallback={null}>
+      <TasksDesk />
+    </Suspense>
+  );
+}
+
+function TasksDesk() {
   const { user, org, leads, tasks, resolveTask, createLeadTask } = useAppSession();
-  const [view, setView] = useState<View>("open");
+  const [view, setView] = useModuleSection("view", ["open", "done"] as const, "open");
   const [addOpen, setAddOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 

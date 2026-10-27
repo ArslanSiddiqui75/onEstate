@@ -1,24 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   BarChart3,
+  Banknote,
   Building2,
   CalendarDays,
+  CircleCheck,
   CreditCard,
   FolderOpen,
   Globe2,
+  Handshake,
+  Home,
   BookUser,
   Inbox,
   KeyRound,
   LayoutDashboard,
+  LayoutTemplate,
   LifeBuoy,
+  Link2,
   ListChecks,
+  ListOrdered,
   MessagesSquare,
+  Plug,
   Route,
   Share2,
   Target,
+  Type,
   Users,
   Workflow,
   Menu,
@@ -28,7 +37,7 @@ import {
   Settings,
   Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { hasModuleAccess } from "@/lib/access";
@@ -43,6 +52,20 @@ import { NoticeBell } from "@/components/notices/notice-bell";
 import { useBrand } from "@/components/brand/brand-provider";
 import { useTheme } from "@/lib/theme/provider";
 
+type NavChild = {
+  href: string;
+  short: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  icon: typeof Inbox;
+  module?: ModuleId;
+  /** Locked unless the member can view at least one of these. */
+  anyOf?: readonly ModuleId[];
+  /** Active when the module path is open and this query value is set. */
+  query?: { key: string; value: string };
+};
+
 const NAV: {
   id: string;
   /** Plan lock. Dashboard and Settings are always available. */
@@ -54,6 +77,8 @@ const NAV: {
   description: string;
   icon: typeof Inbox;
   markets?: readonly string[];
+  /** Shown under this row only while the module is open. */
+  children?: NavChild[];
 }[] = [
   {
     id: "dashboard",
@@ -83,6 +108,18 @@ const NAV: {
     title: "Opportunities",
     description: "Website, portal, and office enquiries land here, then move toward a deal.",
     icon: Target,
+    children: [
+      {
+        href: "/app/opportunities?view=deals",
+        short: "Deals",
+        eyebrow: "Pipeline",
+        title: "Deals",
+        description: "Offers, progression, and the checklist for each sale.",
+        icon: Handshake,
+        module: "transactions",
+        query: { key: "view", value: "deals" },
+      },
+    ],
   },
   {
     id: "diary",
@@ -93,6 +130,17 @@ const NAV: {
     description: "Viewings and valuations, including requests from the public booking link.",
     icon: CalendarDays,
     markets: ["uk", "us"],
+    children: [
+      {
+        href: "/app/diary?section=links",
+        short: "Client links",
+        eyebrow: "Diary",
+        title: "Client links",
+        description: "Private links a client uses to follow their sale or let.",
+        icon: Link2,
+        query: { key: "section", value: "links" },
+      },
+    ],
   },
   {
     id: "tasks",
@@ -102,6 +150,17 @@ const NAV: {
     title: "Tasks",
     description: "Pending follow-ups, with anything overdue first.",
     icon: ListChecks,
+    children: [
+      {
+        href: "/app/tasks?view=done",
+        short: "Done",
+        eyebrow: "Follow-ups",
+        title: "Done",
+        description: "Follow-ups that are already finished.",
+        icon: CircleCheck,
+        query: { key: "view", value: "done" },
+      },
+    ],
   },
   {
     id: "contacts",
@@ -122,6 +181,17 @@ const NAV: {
     title: "Listings & Portals",
     description: "Listing packs, portal readiness, and sync status.",
     icon: Building2,
+    children: [
+      {
+        href: "/app/listings?tab=portals",
+        short: "Portals",
+        eyebrow: "Inventory",
+        title: "Portal connections",
+        description: "Rightmove, Zoopla, OnTheMarket, and MLS feed status.",
+        icon: Plug,
+        query: { key: "tab", value: "portals" },
+      },
+    ],
   },
   {
     id: "lettings",
@@ -132,6 +202,26 @@ const NAV: {
     description: "Open repairs, this month's rent, and the file for each let.",
     icon: KeyRound,
     markets: ["uk"],
+    children: [
+      {
+        href: "/app/lettings?section=rent",
+        short: "Rent",
+        eyebrow: "Landlords",
+        title: "Rent",
+        description: "What is due, late, or paid on each let this month.",
+        icon: Banknote,
+        query: { key: "section", value: "rent" },
+      },
+      {
+        href: "/app/lettings?section=properties",
+        short: "Properties",
+        eyebrow: "Landlords",
+        title: "Properties",
+        description: "Certificates, keys, and the file for each let.",
+        icon: Home,
+        query: { key: "section", value: "properties" },
+      },
+    ],
   },
   {
     id: "automations",
@@ -152,6 +242,35 @@ const NAV: {
     title: "Website",
     description: "Brokerage site headline, CTA, and publish state.",
     icon: Globe2,
+    children: [
+      {
+        href: "/app/website?section=words",
+        short: "Words",
+        eyebrow: "Public presence",
+        title: "Words",
+        description: "Headline, about, and the lines visitors read.",
+        icon: Type,
+        query: { key: "section", value: "words" },
+      },
+      {
+        href: "/app/website?section=page",
+        short: "Page",
+        eyebrow: "Public presence",
+        title: "On the page",
+        description: "Which blocks appear on the public site.",
+        icon: LayoutTemplate,
+        query: { key: "section", value: "page" },
+      },
+      {
+        href: "/app/website?section=domain",
+        short: "Domain",
+        eyebrow: "Public presence",
+        title: "Domain",
+        description: "The address visitors use to open the site.",
+        icon: Link2,
+        query: { key: "section", value: "domain" },
+      },
+    ],
   },
   {
     id: "social",
@@ -162,6 +281,26 @@ const NAV: {
     title: "Social",
     description: "Compose, queue, and schedule posts. Accounts live in Settings.",
     icon: Share2,
+    children: [
+      {
+        href: "/app/social?tab=queue",
+        short: "Queue",
+        eyebrow: "Distribution",
+        title: "Queue",
+        description: "Drafts, scheduled posts, and what has already gone out.",
+        icon: ListOrdered,
+        query: { key: "tab", value: "queue" },
+      },
+      {
+        href: "/app/social?tab=calendar",
+        short: "Calendar",
+        eyebrow: "Distribution",
+        title: "Calendar",
+        description: "The month of scheduled and published posts.",
+        icon: CalendarDays,
+        query: { key: "tab", value: "calendar" },
+      },
+    ],
   },
   {
     id: "settings",
@@ -171,80 +310,69 @@ const NAV: {
     title: "Settings",
     description: "Your profile, and the brokerage name and market.",
     icon: Settings,
-  },
-];
-
-const SETTINGS_NAV: {
-  href: string;
-  short: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  icon: typeof Inbox;
-  module?: ModuleId;
-  /** Locked unless the member can view at least one of these. */
-  anyOf?: readonly ModuleId[];
-}[] = [
-  {
-    href: "/app/settings/team",
-    short: "Team",
-    eyebrow: "People",
-    title: "Team",
-    description: "Everyone in the workspace. The owner changes roles and removes people.",
-    icon: Users,
-  },
-  {
-    href: "/app/settings/routing",
-    short: "Lead routing",
-    eyebrow: "Assignment",
-    title: "Lead routing",
-    description: "Choose who receives the next enquiry.",
-    icon: Route,
-    module: "crm",
-  },
-  {
-    href: "/app/settings/social",
-    short: "Social accounts",
-    eyebrow: "Social",
-    title: "Social accounts",
-    description: "Connect Instagram, Facebook, LinkedIn, and X. Compose and the queue stay on Social.",
-    icon: Share2,
-    module: "social",
-  },
-  {
-    href: "/app/settings/reports",
-    short: "Reports",
-    eyebrow: "Book",
-    title: "Reports",
-    description: "Pipeline, stock, deals, tasks, conversations, and the rest of the book.",
-    icon: BarChart3,
-    module: "crm",
-  },
-  {
-    href: "/app/settings/documents",
-    short: "Documents",
-    eyebrow: "Files",
-    title: "Documents",
-    description: "Uploads, e-sign, and listing media.",
-    icon: FolderOpen,
-    anyOf: ["crm", "listings", "transactions"],
-  },
-  {
-    href: "/app/settings/support",
-    short: "Support",
-    eyebrow: "Help",
-    title: "Support",
-    description: "Tickets with platform support, and how urgent each one is.",
-    icon: LifeBuoy,
-  },
-  {
-    href: "/app/settings/billing",
-    short: "Billing",
-    eyebrow: "Plan",
-    title: "Billing",
-    description: "Plan, seats, invoices, and the card on file.",
-    icon: CreditCard,
-    module: "billing",
+    children: [
+      {
+        href: "/app/settings/team",
+        short: "Team",
+        eyebrow: "People",
+        title: "Team",
+        description: "Everyone in the workspace. The owner changes roles and removes people.",
+        icon: Users,
+      },
+      {
+        href: "/app/settings/routing",
+        short: "Lead routing",
+        eyebrow: "Assignment",
+        title: "Lead routing",
+        description: "Choose who receives the next enquiry.",
+        icon: Route,
+        module: "crm",
+      },
+      {
+        href: "/app/settings/social",
+        short: "Social accounts",
+        eyebrow: "Social",
+        title: "Social accounts",
+        description: "Connect Instagram, Facebook, LinkedIn, and X. Compose and the queue stay on Social.",
+        icon: Share2,
+        module: "social",
+      },
+      {
+        href: "/app/settings/reports",
+        short: "Reports",
+        eyebrow: "Book",
+        title: "Reports",
+        description: "Pipeline, stock, deals, tasks, conversations, and the rest of the book.",
+        icon: BarChart3,
+        module: "crm",
+      },
+      {
+        href: "/app/settings/documents",
+        short: "Documents",
+        eyebrow: "Files",
+        title: "Documents",
+        description: "Uploads, e-sign, and listing media.",
+        icon: FolderOpen,
+        anyOf: ["crm", "listings", "transactions"],
+      },
+      {
+        href: "/app/settings/support",
+        short: "Support",
+        eyebrow: "Help",
+        title: "Support",
+        description: "Tickets with platform support, and how urgent each one is.",
+        icon: LifeBuoy,
+      },
+      {
+        href: "/app/settings/billing",
+        short: "Billing",
+        eyebrow: "Plan",
+        title: "Billing",
+        description: "Plan, seats, invoices, and the card on file.",
+        icon: CreditCard,
+        module: "billing",
+      },
+    ],
   },
 ];
 
@@ -326,6 +454,30 @@ function SideLink({
   );
 }
 
+function childIsLocked(child: NavChild, parentLocked: boolean, role: Role, plan: PlanId) {
+  if (parentLocked) return true;
+  if (child.module) return !hasModuleAccess(role, plan, child.module, "view");
+  if (child.anyOf) return !child.anyOf.some((module) => hasModuleAccess(role, plan, module, "view"));
+  return false;
+}
+
+function moduleOpen(pathname: string, href: string, basePath: string) {
+  if (href === basePath) return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function childIsActive(
+  child: NavChild,
+  pathname: string,
+  searchParams: { get(name: string): string | null },
+) {
+  if (child.query) {
+    const path = child.href.split("?")[0];
+    return pathname === path && searchParams.get(child.query.key) === child.query.value;
+  }
+  return pathname === child.href || pathname.startsWith(`${child.href}/`);
+}
+
 interface AppShellProps {
   children: React.ReactNode;
   role: Role;
@@ -340,7 +492,22 @@ interface AppShellProps {
   headerMeta?: string;
 }
 
-export function AppShell({
+const EMPTY_SEARCH = { get: () => null as string | null };
+
+export function AppShell(props: AppShellProps) {
+  return (
+    <Suspense fallback={<ShellFrame {...props} searchParams={EMPTY_SEARCH} />}>
+      <ShellSearch {...props} />
+    </Suspense>
+  );
+}
+
+function ShellSearch(props: AppShellProps) {
+  const searchParams = useSearchParams();
+  return <ShellFrame {...props} searchParams={searchParams} />;
+}
+
+function ShellFrame({
   children,
   role,
   plan,
@@ -350,7 +517,8 @@ export function AppShell({
   basePath = "/app",
   onSignOut,
   headerMeta,
-}: AppShellProps) {
+  searchParams,
+}: AppShellProps & { searchParams: { get(name: string): string | null } }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const brand = useBrand();
@@ -369,40 +537,38 @@ export function AppShell({
     const locked = item.module
       ? !hasModuleAccess(role, plan, item.module, "view")
       : false;
+    const children = item.children?.map((child) => ({
+      ...child,
+      eyebrow: item.id === "diary" && brand.market === "us" ? "Calendar" : child.eyebrow,
+      locked: childIsLocked(child, locked, role, plan),
+    }));
     if (item.id === "diary" && brand.market === "us") {
       return {
         ...item,
         href,
         locked,
+        children,
         short: "Calendar",
         eyebrow: "Calendar",
         title: "Calendar",
         description: "Showings and valuations, including requests from the public booking link.",
       };
     }
-    return { ...item, href, locked };
+    return { ...item, href, locked, children };
   });
 
-  const settingsNav = SETTINGS_NAV.map((item) => {
-    const locked = item.module
-      ? !hasModuleAccess(role, plan, item.module, "view")
-      : item.anyOf
-        ? !item.anyOf.some((module) => hasModuleAccess(role, plan, module, "view"))
-        : false;
-    return { ...item, locked };
-  });
-  const settingsActive = settingsNav.find(
-    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
-  );
+  const activeChild = items
+    .flatMap((item) => item.children ?? [])
+    .find((child) => childIsActive(child, pathname, searchParams));
+  const activeParent = items
+    .filter((item) => item.id !== "dashboard")
+    .find((item) => {
+      if (!moduleOpen(pathname, item.href, basePath)) return false;
+      return !(item.children ?? []).some((child) => childIsActive(child, pathname, searchParams));
+    });
   const activePage =
-    settingsActive ||
-    items
-      .filter((item) => item.id !== "dashboard")
-      .find((item) =>
-        item.id === "settings"
-          ? pathname === item.href
-          : pathname === item.href || pathname.startsWith(`${item.href}/`),
-      ) ||
+    activeChild ||
+    activeParent ||
     items.find((item) => item.id === "dashboard") ||
     items[0];
 
@@ -459,6 +625,10 @@ export function AppShell({
             aria-label="Primary"
           >
             {items.flatMap((item) => {
+              const open = moduleOpen(pathname, item.href, basePath) && item.href !== basePath;
+              const childHit = (item.children ?? []).some((child) =>
+                childIsActive(child, pathname, searchParams),
+              );
               const link = (
                 <SideLink
                   key={item.href}
@@ -468,21 +638,14 @@ export function AppShell({
                   ink={ink}
                   locked={item.locked}
                   className={item.id === "settings" ? "mt-3" : undefined}
-                  active={
-                    item.id === "settings"
-                      ? pathname === item.href
-                      : pathname === item.href ||
-                        (item.href !== basePath && pathname.startsWith(item.href))
-                  }
+                  active={moduleOpen(pathname, item.href, basePath) && !childHit}
                   onNavigate={() => setOpen(false)}
                 />
               );
-              if (item.id !== "settings" || (pathname !== "/app/settings" && !pathname.startsWith("/app/settings/"))) {
-                return [link];
-              }
+              if (!open || !item.children?.length) return [link];
               return [
                 link,
-                ...settingsNav.map((child) => (
+                ...item.children.map((child) => (
                   <SideLink
                     key={child.href}
                     href={child.href}
@@ -491,7 +654,7 @@ export function AppShell({
                     ink={ink}
                     locked={child.locked}
                     nested
-                    active={pathname === child.href || pathname.startsWith(`${child.href}/`)}
+                    active={childIsActive(child, pathname, searchParams)}
                     onNavigate={() => setOpen(false)}
                   />
                 )),

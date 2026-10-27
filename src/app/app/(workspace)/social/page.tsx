@@ -82,6 +82,7 @@ export default function AppSocialPage() {
       <Suspense fallback={null}>
         <OAuthReturnBanner />
       </Suspense>
+      <Suspense fallback={null}>
       <SocialPlanner
         posts={socialPosts}
         accounts={socialAccounts}
@@ -100,6 +101,7 @@ export default function AppSocialPage() {
         onUpdate={updateSocialPost}
         onDelete={deleteSocialPost}
       />
+      </Suspense>
     </div>
   );
 }

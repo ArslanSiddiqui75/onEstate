@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useModuleSection } from "@/lib/nav/module-section";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -258,7 +259,7 @@ function Panel({ children }: { children: ReactNode }) {
 
 export function LettingsDesk({ orgId, canEdit }: { orgId: string; canEdit: boolean }) {
   const { book, commit } = useLettingsBook(orgId);
-  const [section, setSection] = useState<Section>("repairs");
+  const [section, setSection] = useModuleSection("section", ["repairs", "rent", "properties"] as const, "repairs");
   const [addLet, setAddLet] = useState(false);
 
   return (

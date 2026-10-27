@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
@@ -32,7 +33,9 @@ export default function LettingsPage() {
 
   return (
     <div className="space-y-4">
-      <LettingsDesk orgId={org.id} canEdit={hasModuleAccess(user.role, org.plan, "crm", "edit")} />
+      <Suspense fallback={null}>
+        <LettingsDesk orgId={org.id} canEdit={hasModuleAccess(user.role, org.plan, "crm", "edit")} />
+      </Suspense>
     </div>
   );
 }
