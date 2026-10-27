@@ -40,7 +40,6 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { TaskNotice } from "@/components/tasks/task-notice";
-import { BrandMark } from "@/components/brand/brand-mark";
 import { useBrand } from "@/components/brand/brand-provider";
 import { useTheme } from "@/lib/theme/provider";
 
@@ -414,13 +413,28 @@ export function AppShell({
               : "border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[var(--shadow-soft)]",
           )}
         >
-          <div className="flex items-center justify-between px-5 pt-5">
-            <Link href={basePath}>
-              <BrandMark className="text-xl" tone={ink ? "dark" : "auto"} />
+          <div className="relative flex items-center justify-center px-5 pt-4">
+            <Link href={basePath} aria-label="OneStreet" className="flex justify-center">
+              <img
+                src="/brand/loader-mark-light.webp"
+                alt=""
+                width={512}
+                height={601}
+                draggable={false}
+                className="h-[4.75rem] w-auto dark:hidden"
+              />
+              <img
+                src="/brand/loader-mark-dark.webp"
+                alt=""
+                width={524}
+                height={706}
+                draggable={false}
+                className="hidden h-[4.75rem] w-auto dark:block"
+              />
             </Link>
             <button
               className={cn(
-                "rounded-full p-2 lg:hidden",
+                "absolute top-3 right-3 rounded-full p-2 lg:hidden",
                 ink ? "hover:bg-white/8" : "hover:bg-[var(--surface-muted)]",
               )}
               onClick={() => setOpen(false)}
