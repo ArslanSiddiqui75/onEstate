@@ -77,6 +77,7 @@ describe("auth validation", () => {
       name: "Ava North",
       email: "ava@brokerage.com",
       password: "longenough",
+      phone: "+447700900111",
       orgName: "Northbridge",
       plan: "team",
     });

@@ -41,6 +41,8 @@ export interface WorkspaceUser {
   id: string;
   name: string;
   email: string;
+  /** E.164 number captured on sign-up. */
+  phone?: string;
   role: Role;
   orgId: string;
 }

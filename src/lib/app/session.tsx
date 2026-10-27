@@ -102,10 +102,12 @@ function buildDevSeedWorkspace(
     avatarInitials: a.avatarInitials,
   }));
 
+  const kept = existing?.user.id === account.id ? existing.user : undefined;
   const user: WorkspaceUser = {
     id: account.id,
-    name: account.name,
+    name: kept?.name || account.name,
     email: account.email,
+    phone: kept?.phone,
     role: account.role,
     orgId: DEV_SEED_ORG.id,
   };
@@ -133,6 +135,7 @@ export interface AppUser {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: Role;
 }
 
@@ -177,6 +180,7 @@ interface AppState {
     name: string;
     email: string;
     password?: string;
+    phone?: string;
     orgName: string;
     plan: PlanId;
     stripeCustomerId?: string;
@@ -193,7 +197,7 @@ interface AppState {
     market?: Market;
     onboardingCompleted?: boolean;
   }) => Promise<void>;
-  updateProfile: (patch: { name: string }) => Promise<void>;
+  updateProfile: (patch: { name: string; phone?: string }) => Promise<void>;
   refresh: () => Promise<void>;
   addLead: (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   assignLead: (id: string, assignedTo: string) => Promise<void>;
@@ -383,6 +387,7 @@ function toAppUser(user: WorkspaceUser): AppUser {
     id: user.id,
     name: user.name,
     email: user.email,
+    phone: user.phone,
     role: user.role,
   };
 }
@@ -662,6 +667,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       name: string;
       email: string;
       password?: string;
+      phone?: string;
       orgName: string;
       plan: PlanId;
       stripeCustomerId?: string;
@@ -682,6 +688,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
               data: {
                 name: input.name,
                 org_name: input.orgName,
+                phone: input.phone,
                 brand: brand.id,
                 market: brand.market,
                 plan: input.plan,
@@ -712,6 +719,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
               data: {
                 name: input.name,
                 org_name: input.orgName,
+                phone: input.phone,
                 brand: brand.id,
                 market: brand.market,
                 plan: input.plan,
@@ -726,6 +734,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       const identity = createLocalIdentity({
         email: input.email,
         name: input.name,
+        phone: input.phone,
         orgName: input.orgName,
         plan: input.plan,
         market: brand.market,
@@ -810,15 +819,10 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const updateProfile = useCallback(async (patch: { name: string }) => {
+  const updateProfile = useCallback(async (patch: { name: string; phone?: string }) => {
     if (!repoRef.current) throw new Error("Workspace is not loaded");
     const next = await repoRef.current.updateProfile(patch);
-    setUser({
-      id: next.id,
-      name: next.name,
-      email: next.email,
-      role: next.role,
-    });
+    setUser(toAppUser(next));
   }, []);
 
   const getAuthToken = useCallback(async () => {

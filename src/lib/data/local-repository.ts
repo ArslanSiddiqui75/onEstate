@@ -210,6 +210,13 @@ export function createLocalRepository(
       const name = patch.name.trim();
       if (name.length < 2) throw new Error("Name must be at least 2 characters");
       snap.user.name = name;
+      if (patch.phone !== undefined) {
+        const phone = patch.phone.trim();
+        if (phone && !/^\+[1-9]\d{7,14}$/.test(phone)) {
+          throw new Error("Add a phone number with the country code.");
+        }
+        snap.user.phone = phone || undefined;
+      }
       commit(snap);
       writeAuth(snap.user, snap.org);
       return snap.user;

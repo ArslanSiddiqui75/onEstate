@@ -174,6 +174,7 @@ export function createEmptyWorkspace(input: {
 export function createLocalIdentity(input: {
   email: string;
   name?: string;
+  phone?: string;
   orgName?: string;
   plan?: PlanId;
   role?: Role;
@@ -191,6 +192,7 @@ export function createLocalIdentity(input: {
     id: userId,
     name: input.name || input.email.split("@")[0],
     email: input.email,
+    phone: input.phone?.trim() || undefined,
     role: input.role || "owner",
     orgId,
   };

@@ -12,6 +12,7 @@ import { PlanPicker } from "@/components/auth/plan-picker";
 import { signupSchema, validateForm } from "@/lib/auth/validation";
 import { isPlanId, loadPendingSignup, savePendingSignup } from "@/lib/auth/pending-signup";
 import { PasswordStrengthBar } from "@/components/ui/password-strength";
+import { PhoneField } from "@/components/crm/phone-field";
 import type { PlanId } from "@/types";
 
 export default function AppSignupPage() {
@@ -21,6 +22,7 @@ export default function AppSignupPage() {
   const [plan, setPlan] = useState<PlanId>("team");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [orgName, setOrgName] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -30,6 +32,7 @@ export default function AppSignupPage() {
     if (pending) {
       setName(pending.name);
       setEmail(pending.email);
+      setPhone(pending.phone);
       setPassword(pending.password);
       setOrgName(pending.orgName);
       setPlan(pending.plan);
@@ -42,7 +45,8 @@ export default function AppSignupPage() {
     e.preventDefault();
     setFieldErrors({});
 
-    const result = validateForm(signupSchema, { name, email, password, orgName, plan });
+    const phoneNumber = String(new FormData(e.currentTarget).get("phone") || "");
+    const result = validateForm(signupSchema, { name, email, password, phone: phoneNumber, orgName, plan });
     if (!result.success) {
       setFieldErrors(result.errors);
       return;
@@ -101,6 +105,9 @@ export default function AppSignupPage() {
             onChange={(e) => setEmail(e.target.value)}
             className="h-12 rounded-[1rem] px-4 text-[15px]"
           />
+        </FormField>
+        <FormField label="Phone" error={fieldErrors.phone} required>
+          <PhoneField key={phone || "phone"} name="phone" market={market} defaultValue={phone} required />
         </FormField>
         <FormField label="Password" error={fieldErrors.password} required>
           <Input

@@ -12,6 +12,7 @@ const pending = {
   name: "Jane Smith",
   email: "jane@brokerage.com",
   password: "secret1",
+  phone: "+447700900111",
   orgName: "Northbridge Realty",
   plan: "team" as const,
 };

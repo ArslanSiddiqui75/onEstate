@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
+import { PhoneField } from "@/components/crm/phone-field";
 
 export default function AppSettingsPage() {
   const { user, org, market, updateWorkspace, updateProfile } = useAppSession();
@@ -27,14 +28,14 @@ export default function AppSettingsPage() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-[var(--muted)]">
-        Your name, and the brokerage name and market.
+        Contact information from sign-up, and the brokerage name and market.
       </p>
 
       <Card className="space-y-4 p-5">
         <div>
-          <h2 className="font-semibold">Your profile</h2>
+          <h2 className="font-semibold">Contact information</h2>
           <p className="text-sm text-[var(--muted)]">
-            {user.email} · {ROLE_LABELS[user.role]}
+            {ROLE_LABELS[user.role]}. Your name, work email, phone, and brokerage from sign-up.
           </p>
         </div>
         <form
@@ -42,16 +43,21 @@ export default function AppSettingsPage() {
           onSubmit={(e) => {
             e.preventDefault();
             const name = profileName.trim();
+            const phone = String(new FormData(e.currentTarget).get("phone") || "").trim();
             if (name.length < 2) {
               setError("Name must be at least 2 characters");
               return;
             }
+            if (phone && !/^\+[1-9]\d{7,14}$/.test(phone)) {
+              setError("Add a phone number with the country code.");
+              return;
+            }
             setBusy("profile");
             setError(null);
-            void updateProfile({ name })
-              .then(() => toast.success("Profile updated"))
+            void updateProfile({ name, phone })
+              .then(() => toast.success("Contact information saved"))
               .catch((err) => {
-                const msg = err instanceof Error ? err.message : "Could not update profile";
+                const msg = err instanceof Error ? err.message : "Could not update contact information";
                 setError(msg);
                 toast.error(msg);
               })
@@ -59,21 +65,29 @@ export default function AppSettingsPage() {
           }}
         >
           <label className="block space-y-1 text-sm">
-            <span className="text-xs font-medium text-[var(--muted)]">Name</span>
+            <span className="text-xs font-medium text-[var(--muted)]">Your name</span>
             <Input
               id="profile-name"
               value={profileName}
               onChange={(e) => setProfileName(e.target.value)}
-              placeholder="Your name"
+              autoComplete="name"
               required
             />
           </label>
           <label className="block space-y-1 text-sm">
-            <span className="text-xs font-medium text-[var(--muted)]">Email</span>
-            <Input value={user.email} disabled aria-label="Email" />
+            <span className="text-xs font-medium text-[var(--muted)]">Work email</span>
+            <Input value={user.email} disabled aria-label="Work email" autoComplete="email" />
+          </label>
+          <label className="block space-y-1 text-sm sm:col-span-2">
+            <span className="text-xs font-medium text-[var(--muted)]">Phone</span>
+            <PhoneField key={user.phone || "phone"} name="phone" market={market} defaultValue={user.phone} className="mt-1" />
+          </label>
+          <label className="block space-y-1 text-sm sm:col-span-2">
+            <span className="text-xs font-medium text-[var(--muted)]">Brokerage name</span>
+            <Input value={org.name} disabled aria-label="Brokerage name" />
           </label>
           <Button type="submit" className="w-fit" disabled={busy === "profile"}>
-            {busy === "profile" ? "Saving…" : "Save profile"}
+            {busy === "profile" ? "Saving…" : "Save contact information"}
           </Button>
         </form>
       </Card>

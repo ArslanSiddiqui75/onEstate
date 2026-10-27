@@ -41,7 +41,7 @@ export interface WorkspaceRepository {
     market?: Market;
     onboardingCompleted?: boolean;
   }): Promise<WorkspaceOrg>;
-  updateProfile(patch: { name: string }): Promise<WorkspaceUser>;
+  updateProfile(patch: { name: string; phone?: string }): Promise<WorkspaceUser>;
   saveLeadRouting(settings: LeadRoutingSettings): Promise<WorkspaceOrg>;
   listMembers(): Promise<OrgMember[]>;
   inviteMember(input: {

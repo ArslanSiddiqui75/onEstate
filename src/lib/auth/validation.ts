@@ -56,6 +56,9 @@ export const signupSchema = z.object({
   password: z
     .string()
     .min(6, "Password must be at least 6 characters"),
+  phone: z
+    .string()
+    .regex(/^\+[1-9]\d{7,14}$/, "Add a phone number"),
   orgName: z.string().superRefine((val, ctx) => {
     const checked = validateOrgName(val);
     if (!checked.ok) {

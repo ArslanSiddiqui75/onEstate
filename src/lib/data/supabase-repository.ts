@@ -276,12 +276,16 @@ export function createSupabaseRepository(
     async updateProfile(patch) {
       const name = patch.name.trim();
       if (name.length < 2) throw new Error("Name must be at least 2 characters");
-      const { error } = await supabase
-        .from("profiles")
-        .update({ full_name: name })
-        .eq("id", ctx.user.id);
+      const phone = patch.phone?.trim() || "";
+      if (patch.phone !== undefined && phone && !/^\+[1-9]\d{7,14}$/.test(phone)) {
+        throw new Error("Add a phone number with the country code.");
+      }
+      const row: { full_name: string; phone?: string | null } = { full_name: name };
+      if (patch.phone !== undefined) row.phone = phone || null;
+      const { error } = await supabase.from("profiles").update(row).eq("id", ctx.user.id);
       if (error) throw error;
       ctx.user.name = name;
+      if (patch.phone !== undefined) ctx.user.phone = phone || undefined;
       return ctx.user;
     },
 
@@ -1554,6 +1558,7 @@ export async function hydrateSupabaseSession(): Promise<{
       id: auth.user.id,
       name: String(profile.full_name),
       email: auth.user.email || "",
+      phone: String(profile.phone || auth.user.user_metadata?.phone || "") || undefined,
       role: profile.role,
       orgId: String(profile.org_id),
     },
