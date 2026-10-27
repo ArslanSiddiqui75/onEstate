@@ -33,7 +33,7 @@ export function buildRedirectUri(origin: string, platform: SocialPlatform) {
 
 export function safeReturnTo(path: unknown) {
   if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//")) {
-    return "/app/social";
+    return "/app/settings/social";
   }
   return path;
 }

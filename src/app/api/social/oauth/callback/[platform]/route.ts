@@ -18,7 +18,7 @@ export async function GET(
   const providerError = url.searchParams.get("error_description") || url.searchParams.get("error");
 
   const stateRecord = state ? await consumeOAuthState(state) : null;
-  const returnTo = stateRecord?.returnTo || "/app/social";
+  const returnTo = stateRecord?.returnTo || "/app/settings/social";
   const origin = getRequestOrigin(request);
 
   function redirectTo(extra: Record<string, string>) {

@@ -129,7 +129,7 @@ const NAV: {
     short: "Social",
     eyebrow: "Distribution",
     title: "Social",
-    description: "Connect accounts, upload media, and schedule posts.",
+    description: "Compose, queue, and schedule posts. Accounts live in Settings.",
     icon: Share2,
   },
   {
@@ -148,7 +148,7 @@ const NAV: {
     short: "Settings",
     eyebrow: "Workspace",
     title: "Settings",
-    description: "Profile, brokerage, team access, and how new leads are assigned.",
+    description: "Profile, brokerage, team access, lead routing, and social accounts.",
     icon: Settings,
   },
 ];

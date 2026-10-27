@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   eachDayOfInterval,
   endOfMonth,
@@ -163,7 +164,6 @@ export type SocialPlannerProps = {
   posts: SocialPost[];
   accounts: SocialAccount[];
   listings: PlannerListing[];
-  orgName: string;
   market: Market;
   canEdit: boolean;
   planHint?: string;
@@ -176,10 +176,6 @@ export type SocialPlannerProps = {
    */
   getAuthToken?: () => Promise<string | null>;
   onPublishNow?: (postId: string) => Promise<{ ok: boolean; message: string }>;
-  onUpsertAccount: (
-    account: Omit<SocialAccount, "id" | "orgId"> & { id?: string },
-  ) => Promise<void>;
-  onDeleteAccount: (id: string) => Promise<void>;
   onCreate: (
     post: Omit<SocialPost, "id" | "createdAt" | "orgId">,
   ) => Promise<string | undefined | void>;
@@ -245,15 +241,12 @@ export function SocialPlanner({
   posts,
   accounts,
   listings,
-  orgName,
   market,
   canEdit,
   planHint,
   live = false,
   getAuthToken,
   onPublishNow,
-  onUpsertAccount,
-  onDeleteAccount,
   onCreate,
   onUpdate,
   onDelete,
@@ -263,9 +256,7 @@ export function SocialPlanner({
     () => accounts.filter((a) => a.status === "connected"),
     [accounts],
   );
-  const [tab, setTab] = useState(
-    connected.length === 0 && canEdit ? "accounts" : "calendar",
-  );
+  const [tab, setTab] = useState(canEdit ? "compose" : "queue");
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -423,8 +414,7 @@ export function SocialPlanner({
   async function createPosts(status: SocialPost["status"]) {
     if (!caption.trim()) return;
     if (accountIds.length === 0) {
-      setError("Connect and select at least one social account.");
-      setTab("accounts");
+      setError("Select at least one account. Connect networks in Settings.");
       return;
     }
     const hasInstagram = connected.some(
@@ -505,8 +495,14 @@ export function SocialPlanner({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-sm text-[var(--muted)]">
-            Connect accounts, upload media, then schedule posts to go out on
-            time.
+            Upload media, then schedule posts to go out on time.{" "}
+            <Link
+              href="/app/settings/social"
+              className="font-medium text-[var(--foreground)] underline-offset-2 hover:underline"
+            >
+              Accounts
+            </Link>{" "}
+            live in Settings.
           </p>
           {planHint ? (
             <p className="mt-1 text-xs text-[var(--muted)]">{planHint}</p>
@@ -532,21 +528,17 @@ export function SocialPlanner({
       <Tabs value={tab} onValueChange={setTab}>
         <TabsBar>
           <TabsList>
-            <TabsTrigger value="calendar">
-              <CalendarDays className="size-3.5" />
-              Calendar
+            <TabsTrigger value="compose" disabled={!canEdit}>
+              <PenLine className="size-3.5" />
+              Compose
             </TabsTrigger>
             <TabsTrigger value="queue">
               <ListOrdered className="size-3.5" />
               Queue
             </TabsTrigger>
-            <TabsTrigger value="compose" disabled={!canEdit}>
-              <PenLine className="size-3.5" />
-              Compose
-            </TabsTrigger>
-            <TabsTrigger value="accounts">
-              <PlugZap className="size-3.5" />
-              Accounts
+            <TabsTrigger value="calendar">
+              <CalendarDays className="size-3.5" />
+              Calendar
             </TabsTrigger>
           </TabsList>
         </TabsBar>
@@ -662,7 +654,7 @@ export function SocialPlanner({
               {queue.length === 0 ? (
                 <EmptyState
                   title="Nothing in the queue"
-                  description="Compose a post with media and pick connected accounts to fill the calendar."
+                  description="Compose a post with media and pick connected accounts. Networks are connected in Settings."
                 />
               ) : (
                 queue.map((post) => {
@@ -791,9 +783,11 @@ export function SocialPlanner({
                 title="Connect an account first"
                 description="Posts need at least one connected Instagram, Facebook, LinkedIn, or X account."
                 action={
-                  <Button type="button" onClick={() => setTab("accounts")}>
-                    <Plug className="size-4" />
-                    Connect accounts
+                  <Button asChild>
+                    <Link href="/app/settings/social">
+                      <Plug className="size-4" />
+                      Connect accounts
+                    </Link>
                   </Button>
                 }
               />
@@ -1047,49 +1041,6 @@ DM us or click the link to schedule a private tour today! ✨
             />
           )}
         </TabsContent>
-
-        <TabsContent value="accounts">
-          <AccountsPanel
-            accounts={accounts}
-            orgName={orgName}
-            canEdit={canEdit}
-            busy={busy}
-            live={live}
-            getAuthToken={getAuthToken}
-            onConnect={async (input) => {
-              setBusy(true);
-              setError(null);
-              try {
-                await onUpsertAccount({
-                  ...input,
-                  status: "connected",
-                  connectedAt: new Date().toISOString(),
-                });
-              } finally {
-                setBusy(false);
-              }
-            }}
-            onDisconnect={async (account) => {
-              setBusy(true);
-              try {
-                await onUpsertAccount({
-                  ...account,
-                  status: "disconnected",
-                });
-              } finally {
-                setBusy(false);
-              }
-            }}
-            onRemove={async (id) => {
-              setBusy(true);
-              try {
-                await onDeleteAccount(id);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
-        </TabsContent>
       </Tabs>
     </div>
   );
@@ -1100,7 +1051,7 @@ type SocialStatus = {
   platforms: Record<SocialPlatform, { configured: boolean; hint: string }>;
 };
 
-function AccountsPanel({
+export function AccountsPanel({
   accounts,
   orgName,
   canEdit,

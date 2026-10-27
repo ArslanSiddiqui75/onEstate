@@ -94,6 +94,10 @@ export default function AppSettingsPage() {
             <Link href="/app/settings/routing" className="text-[var(--accent)] hover:underline">
               Routing
             </Link>
+            . Social networks live in{" "}
+            <Link href="/app/settings/social" className="text-[var(--accent)] hover:underline">
+              Accounts
+            </Link>
             .
           </p>
         </div>
@@ -161,6 +165,19 @@ export default function AppSettingsPage() {
         </div>
         <Button asChild variant="secondary">
           <Link href="/app/settings/routing">Open routing</Link>
+        </Button>
+      </Card>
+
+      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="font-semibold">Social accounts</h2>
+          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
+            Connect Instagram, Facebook, LinkedIn, and X. Compose and the queue
+            stay on Social.
+          </p>
+        </div>
+        <Button asChild variant="secondary">
+          <Link href="/app/settings/social">Manage accounts</Link>
         </Button>
       </Card>
 
