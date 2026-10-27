@@ -26,12 +26,12 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin;
   const successUrl = sameOriginUrl(
     parsed.data.successUrl,
-    `${origin}/app/billing?checkout=success`,
+    `${origin}/app/settings/billing?checkout=success`,
     origin,
   );
   const cancelUrl = sameOriginUrl(
     parsed.data.cancelUrl,
-    `${origin}/app/billing?checkout=cancel`,
+    `${origin}/app/settings/billing?checkout=cancel`,
     origin,
   );
 

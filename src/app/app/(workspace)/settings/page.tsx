@@ -98,6 +98,10 @@ export default function AppSettingsPage() {
             <Link href="/app/settings/social" className="text-[var(--accent)] hover:underline">
               Accounts
             </Link>
+            . The plan and card live in{" "}
+            <Link href="/app/settings/billing" className="text-[var(--accent)] hover:underline">
+              Billing
+            </Link>
             .
           </p>
         </div>
@@ -178,6 +182,18 @@ export default function AppSettingsPage() {
         </div>
         <Button asChild variant="secondary">
           <Link href="/app/settings/social">Manage accounts</Link>
+        </Button>
+      </Card>
+
+      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="font-semibold">Billing</h2>
+          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
+            Plan, seats, invoices, and the card on file.
+          </p>
+        </div>
+        <Button asChild variant="secondary">
+          <Link href="/app/settings/billing">Open billing</Link>
         </Button>
       </Card>
 

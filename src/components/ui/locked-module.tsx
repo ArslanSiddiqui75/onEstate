@@ -9,7 +9,7 @@ import type { ModuleId, PlanId, Role } from "@/types";
 export function LockedModule({
   title,
   reason,
-  href = "/app/billing",
+  href = "/app/settings/billing",
   role,
   plan,
   module,

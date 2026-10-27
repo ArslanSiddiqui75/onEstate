@@ -77,7 +77,7 @@ export const MODULE_HREF: Record<ModuleId, string> = {
   transactions: "/app/transactions",
   website: "/app/website",
   social: "/app/social",
-  billing: "/app/billing",
+  billing: "/app/settings/billing",
 };
 
 export const APP_MODULE_HREF: Record<ModuleId, string> = {
@@ -86,7 +86,7 @@ export const APP_MODULE_HREF: Record<ModuleId, string> = {
   transactions: "/app/transactions",
   website: "/app/website",
   social: "/app/social",
-  billing: "/app/billing",
+  billing: "/app/settings/billing",
 };
 
 export function getRoleAccess(role: Role, module: ModuleId): AccessLevel {

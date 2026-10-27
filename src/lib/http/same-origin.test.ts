@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { sameOriginUrl } from "@/lib/http/same-origin";
 
 const origin = "https://0nestreet.co.uk";
-const fallback = `${origin}/app/billing`;
+const fallback = `${origin}/app/settings/billing`;
 
 describe("sameOriginUrl", () => {
   it("keeps a same-origin return path", () => {
-    expect(sameOriginUrl(`${origin}/app/billing?checkout=success`, fallback, origin)).toBe(
-      `${origin}/app/billing?checkout=success`,
+    expect(sameOriginUrl(`${origin}/app/settings/billing?checkout=success`, fallback, origin)).toBe(
+      `${origin}/app/settings/billing?checkout=success`,
     );
   });
 

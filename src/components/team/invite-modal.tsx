@@ -77,7 +77,7 @@ export function InviteModal({
               {seatCheck.maxSeats} seat{seatCheck.maxSeats === 1 ? "" : "s"}. Upgrade your plan to invite more team members.
             </p>
             <Button asChild size="sm" className="mt-2 w-full">
-              <Link href="/app/billing">Upgrade Plan</Link>
+              <Link href="/app/settings/billing">Upgrade Plan</Link>
             </Button>
           </Alert>
         ) : (

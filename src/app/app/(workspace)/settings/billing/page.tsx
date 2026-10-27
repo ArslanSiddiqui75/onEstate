@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { CreditCard, ShieldCheck, ListChecks, ChevronDown, ChevronUp, Download, FileText } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
@@ -190,7 +191,11 @@ export default function AppBillingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Button asChild size="sm" variant="secondary">
+          <Link href="/app/settings">Back to settings</Link>
+        </Button>
+        <div className="flex flex-wrap items-center justify-end gap-3">
         {status ? (
           <Badge tone={STATUS_TONE[status] || "neutral"} className="capitalize">
             {status.replace(/_/g, " ")}
@@ -217,6 +222,7 @@ export default function AppBillingPage() {
             Payment portal available after first checkout
           </Button>
         )}
+        </div>
       </div>
 
       {paymentFailed ? (

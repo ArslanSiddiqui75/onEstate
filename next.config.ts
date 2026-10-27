@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
       { source: "/app/deals", destination: "/app/opportunities?view=deals", permanent: false },
       { source: "/app/transactions", destination: "/app/opportunities?view=deals", permanent: false },
       { source: "/app/crm", destination: "/app/conversations", permanent: false },
+      { source: "/app/billing", destination: "/app/settings/billing", permanent: false },
       { source: "/app/support", destination: "/app/tickets", permanent: false },
     ];
   },

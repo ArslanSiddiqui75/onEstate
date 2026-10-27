@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   }
 
   const origin = new URL(request.url).origin;
-  const returnUrl = sameOriginUrl(parsed.data.returnUrl, `${origin}/app/billing`, origin);
+  const returnUrl = sameOriginUrl(parsed.data.returnUrl, `${origin}/app/settings/billing`, origin);
 
   // Never trust a client-supplied Stripe customer id — that would let anyone
   // open someone else's billing portal. Resolve the caller's own org instead.
