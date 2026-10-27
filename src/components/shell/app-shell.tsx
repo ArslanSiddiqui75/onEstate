@@ -373,14 +373,14 @@ export function AppShell({
 
           <div
             className={cn(
-              "m-3 rounded-[1.35rem] border p-4",
+              "m-3 rounded-[1.35rem] border p-3",
               ink
                 ? "border-white/8 bg-white/5"
                 : "border-[var(--border)] bg-[var(--surface-muted)]",
             )}
           >
-            <div className="flex items-center gap-3">
-              <Avatar name={userName} size="lg" />
+            <div className="flex items-center gap-2.5">
+              <Avatar name={userName} size="md" />
               <div className="min-w-0">
                 <p
                   className={cn(
@@ -402,7 +402,7 @@ export function AppShell({
             </div>
             <div
               className={cn(
-                "mt-3 rounded-[1rem] border px-4 py-3",
+                "mt-2.5 rounded-[1rem] border px-3 py-2",
                 ink
                   ? "border-white/10 bg-black/20"
                   : "border-[var(--border)] bg-[var(--surface-elevated)]",
@@ -426,7 +426,7 @@ export function AppShell({
                 {orgName}
               </p>
             </div>
-            <div className="mt-3 flex flex-col gap-2">
+            <div className="mt-2.5 flex flex-col gap-1.5">
               <p className={cn("text-[11px]", ink ? "text-white/45" : "text-[var(--muted)]")}>
                 {PLANS[plan].name}
               </p>
@@ -435,7 +435,7 @@ export function AppShell({
                   type="button"
                   onClick={onSignOut}
                   className={cn(
-                    "inline-flex h-12 w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[1rem] border px-4 text-sm font-medium transition",
+                    "inline-flex h-9 w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[1rem] border px-3 text-[13px] font-medium transition",
                     ink
                       ? "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                       : "border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted)] hover:text-[var(--foreground)]",
