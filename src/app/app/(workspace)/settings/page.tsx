@@ -3,6 +3,7 @@
 import { MenuSelect } from "@/components/ui/select";
 
 import { useState } from "react";
+import { Check, Copy } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { ROLE_LABELS } from "@/lib/rbac/matrix";
 import { validateOrgName } from "@/lib/auth/org-name";
@@ -36,6 +37,7 @@ export default function AppSettingsPage() {
   });
   const [busy, setBusy] = useState<"profile" | "org" | "business" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [idCopied, setIdCopied] = useState(false);
 
   if (!user || !org) return null;
 
@@ -116,11 +118,32 @@ export default function AppSettingsPage() {
             the brokerage or change market.
           </p>
         </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">
-            Workspace ID
-          </p>
-          <p className="mt-1 break-all font-mono text-sm">{org.id}</p>
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-[var(--muted)]">Workspace ID</p>
+          <div className="flex items-center gap-2">
+            <Input
+              readOnly
+              value={org.id}
+              aria-label="Workspace ID"
+              className="font-mono"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              className="shrink-0"
+              onClick={() => {
+                void navigator.clipboard.writeText(org.id).then(() => {
+                  setIdCopied(true);
+                  toast.success("Workspace ID copied");
+                  window.setTimeout(() => setIdCopied(false), 2000);
+                });
+              }}
+            >
+              {idCopied ? <Check /> : <Copy />}
+              {idCopied ? "Copied" : "Copy"}
+            </Button>
+          </div>
         </div>
         {isOwner ? (
           <form
