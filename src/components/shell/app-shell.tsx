@@ -39,7 +39,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { TaskNotice } from "@/components/tasks/task-notice";
+import { NoticeBell } from "@/components/notices/notice-bell";
 import { useBrand } from "@/components/brand/brand-provider";
 import { useTheme } from "@/lib/theme/provider";
 
@@ -614,7 +614,7 @@ export function AppShell({
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
-              <TaskNotice />
+              <NoticeBell />
               <ThemeToggle />
             </div>
           </header>
