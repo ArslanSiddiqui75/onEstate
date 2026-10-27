@@ -1,7 +1,6 @@
 "use client";
 
-import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Building2,
@@ -10,6 +9,7 @@ import {
   Trash2,
   Edit,
   Eye,
+  ImagePlus,
   LayoutGrid,
   Search,
   ShieldAlert,
@@ -38,6 +38,7 @@ import {
 } from "@/lib/portals/payload";
 import type { Listing, ListingStatus, Market } from "@/types";
 import { draftListing } from "@/lib/agency/book";
+import { fileToSocialMedia, uploadSocialMediaFile } from "@/lib/social/media";
 
 function tidyAddress(value: string) {
   return value.replace(/\s+,/g, ",").replace(/,\s*/g, ", ").trim();
@@ -85,14 +86,25 @@ export default function AppListingsPage() {
     archiveListing,
     listPortalConnections,
     market,
+    persistence,
+    getAuthToken,
   } = useAppSession();
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingListing, setEditingListing] = useState<Listing | null>(null);
+  const [coverUrl, setCoverUrl] = useState("");
+  const [coverName, setCoverName] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [savingListing, setSavingListing] = useState(false);
   const [savingNewListing, setSavingNewListing] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [portalLogListing, setPortalLogListing] = useState<Listing | null>(null);
+
+  useEffect(() => {
+    setCoverUrl(editingListing?.imageUrl || "");
+    setCoverName("");
+  }, [editingListing?.id]);
 
   const marketListings = useMemo(
     () => {
@@ -327,12 +339,13 @@ export default function AppListingsPage() {
               title={listing.imageUrl ? "Open listing" : undefined}
             >
               {listing.imageUrl ? (
-                <Image
+                // User photos are arbitrary URLs or local uploads, so a plain
+                // image tag is used instead of the remote-only optimizer.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   src={listing.imageUrl}
                   alt={listing.title}
-                  fill
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  sizes="(max-width:768px) 100vw, 50vw"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-[var(--surface-muted)] text-[var(--muted)]">
@@ -541,8 +554,9 @@ export default function AppListingsPage() {
       {/* Image Lightbox Modal */}
       {previewImage ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setPreviewImage(null)}>
-          <div className="relative max-w-4xl w-full max-h-[85vh] h-[500px]" onClick={(e) => e.stopPropagation()}>
-            <Image src={previewImage} alt="Listing preview" fill className="object-contain" />
+          <div className="relative h-[500px] w-full max-h-[85vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewImage} alt="Listing preview" className="h-full w-full object-contain" />
             <button
               type="button"
               onClick={() => setPreviewImage(null)}
@@ -673,9 +687,7 @@ export default function AppListingsPage() {
                       baths: Number(form.get("baths")),
                       sqft: areaToSqft(market, String(form.get("sqft") || 0)),
                       description: String(form.get("description")),
-                      imageUrl: form.get("imageUrl")
-                        ? String(form.get("imageUrl"))
-                        : editingListing.imageUrl,
+                      imageUrl: coverUrl.trim(),
                     });
                     toast.success(`Updated "${title}"`);
                     setEditingListing(null);
@@ -711,7 +723,68 @@ export default function AppListingsPage() {
                 placeholder={market === "uk" ? "Floor area (sq m)" : "Floor area (sq ft)"}
                 defaultValue={sqftToArea(market, editingListing.sqft)}
               />
-              <Input name="imageUrl" placeholder="Image URL" defaultValue={editingListing.imageUrl} className="sm:col-span-2" />
+              <div className="space-y-2 sm:col-span-2">
+                {coverUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={coverUrl}
+                    alt=""
+                    className="h-36 w-full rounded-[1rem] object-cover"
+                  />
+                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    name="imageUrl"
+                    placeholder={coverName ? coverName : "Image URL"}
+                    value={coverUrl.startsWith("data:") ? "" : coverUrl}
+                    onChange={(e) => {
+                      setCoverUrl(e.target.value);
+                      setCoverName("");
+                    }}
+                    className="min-w-[12rem] flex-1"
+                  />
+                  {canEdit ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={uploadingImage || savingListing}
+                      onClick={() => imageInputRef.current?.click()}
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                      {uploadingImage ? "Uploading…" : "Upload image"}
+                    </Button>
+                  ) : null}
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.currentTarget.value = "";
+                      if (!file) return;
+                      void (async () => {
+                        setUploadingImage(true);
+                        try {
+                          const item =
+                            persistence === "supabase"
+                              ? await uploadSocialMediaFile(file, getAuthToken)
+                              : await fileToSocialMedia(file);
+                          setCoverUrl(item.dataUrl);
+                          setCoverName(file.name);
+                          toast.success("Image added. Save the listing to keep it.");
+                        } catch (err) {
+                          toast.error(
+                            err instanceof Error ? err.message : "Could not upload image",
+                          );
+                        } finally {
+                          setUploadingImage(false);
+                        }
+                      })();
+                    }}
+                  />
+                </div>
+              </div>
               <Input name="description" placeholder="Description" defaultValue={editingListing.description} className="sm:col-span-2" />
               <div className="flex gap-2 sm:col-span-2 pt-2">
                 <Button type="button" variant="secondary" onClick={() => setEditingListing(null)} className="flex-1">
