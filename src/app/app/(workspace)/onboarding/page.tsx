@@ -81,7 +81,7 @@ export default function OnboardingPage() {
               <p className="text-xs text-[var(--muted)]">Step {step} of 2</p>
             </div>
           </div>
-          <Badge tone="accent">Tenant Onboarding</Badge>
+          <Badge tone="accent">Setup</Badge>
         </div>
 
         {step === 1 ? (

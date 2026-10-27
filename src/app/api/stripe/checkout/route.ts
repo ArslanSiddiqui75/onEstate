@@ -73,16 +73,14 @@ export async function POST(request: Request) {
       : null;
   }
 
-  const regionLabel = market === "uk" ? "UK" : "US";
-
   if (!isStripeConfigured(market)) {
     // Each region has its own Stripe account. Keys stay with the operator.
     return NextResponse.json({
       mode: "demo",
       market,
       message: supabase
-        ? `The ${regionLabel} Stripe account isn't connected, so this plan can't be billed. Add that region's secret key and webhook secret.`
-        : `Subscription preview applied. Live mode collects the card on the ${regionLabel} Stripe account.`,
+        ? "Billing isn’t available for this plan yet."
+        : "Plan updated.",
       preview: { plan: parsed.data.plan, market, successUrl, cancelUrl },
     });
   }
@@ -99,7 +97,7 @@ export async function POST(request: Request) {
   const priceId = getStripePriceId(parsed.data.plan, market);
   if (!stripe || !priceId) {
     return NextResponse.json(
-      { error: `Missing ${regionLabel} Stripe price ID for ${parsed.data.plan}` },
+      { error: "This plan can’t be billed yet." },
       { status: 500 },
     );
   }

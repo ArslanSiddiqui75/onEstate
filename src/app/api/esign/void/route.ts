@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+    return NextResponse.json({ error: "That document can’t be voided yet." }, { status: 503 });
   }
 
   const result = await voidEsignDocument(supabase, {

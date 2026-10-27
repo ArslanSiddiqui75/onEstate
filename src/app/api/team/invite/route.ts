@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
     return NextResponse.json(
-      { error: "Team invites require Supabase" },
+      { error: "Invites can’t be sent yet." },
       { status: 503 },
     );
   }

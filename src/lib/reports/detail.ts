@@ -1079,7 +1079,7 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
     return section(
       "portals",
       "Listing portals",
-      `${connected} of ${input.portals.length} portal feed${input.portals.length === 1 ? "" : "s"} connected. This is live setup.`,
+      `${connected} of ${input.portals.length} portal feed${input.portals.length === 1 ? "" : "s"} connected.`,
       [],
       [
         group(
@@ -1095,7 +1095,7 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
             ]),
             note: snippet(portal.notes) || undefined,
           })),
-          "No portal feeds for this book.",
+          "No portal feeds yet.",
         ),
       ],
     );

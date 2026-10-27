@@ -50,11 +50,6 @@ export async function POST(request: Request) {
       if (vercel.attached && check.ssl !== "active") {
         check.ssl = "provisioning";
       }
-      if (!vercel.attached && vercel.detail) {
-        check.message = `${check.message} Vercel: ${vercel.detail}`;
-      }
-    } else if (check.ssl === "provisioning") {
-      check.message = `${check.message} HTTPS needs this hostname on the Vercel project — set VERCEL_TOKEN and VERCEL_PROJECT_ID to attach it automatically.`;
     }
   }
 

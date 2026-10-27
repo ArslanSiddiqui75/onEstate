@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
     return NextResponse.json(
-      { error: "Supabase not configured — use local workspace mode" },
+      { error: "That message can’t be recorded yet." },
       { status: 503 },
     );
   }

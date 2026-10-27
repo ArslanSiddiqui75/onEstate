@@ -629,7 +629,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
             (a) => a.email.toLowerCase() === email.trim().toLowerCase(),
           )
         ) {
-          throw new Error("Invalid password for seed account");
+          throw new Error("That email or password isn’t right.");
         }
       }
 
@@ -2259,7 +2259,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         await refresh();
         return {
           ok: true,
-          message: "Post published to simulated social media accounts (Dev Mode).",
+          message: "Post published.",
         };
       }
 

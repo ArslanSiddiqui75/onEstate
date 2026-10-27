@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
     return NextResponse.json(
-      { error: "Supabase not configured" },
+      { error: "That step can’t be sent yet." },
       { status: 503 },
     );
   }

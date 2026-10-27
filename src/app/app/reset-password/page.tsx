@@ -129,7 +129,7 @@ export default function ResetPasswordPage() {
     >
       {!configured ? (
         <Alert tone="warning">
-          Password reset needs a hosted workspace. On this browser, use a local account from the sign-in page.
+          Password reset isn’t available right now. Sign in with your current password, or contact support.
         </Alert>
       ) : mode === "reset" ? (
         <form onSubmit={onReset} className="space-y-4">

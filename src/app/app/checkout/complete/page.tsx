@@ -91,7 +91,7 @@ export default function CheckoutCompletePage() {
           });
           const linkedBody = await linked.json().catch(() => null);
           if (!linked.ok) {
-            throw new Error(linkedBody?.error || "The subscription exists on Stripe, but it could not be linked yet.");
+            throw new Error(linkedBody?.error || "Payment went through, but the workspace couldn’t be opened yet.");
           }
         }
         router.replace("/app/onboarding");
@@ -112,12 +112,12 @@ export default function CheckoutCompletePage() {
       title={phase === "working" ? "Finishing checkout" : "Checkout return"}
       lede={
         phase === "working"
-          ? "Checking the Stripe payment, then opening the workspace from the details in this browser."
-          : "The workspace opens after Stripe confirms the payment for the details saved here."
+          ? "Checking the payment, then opening the workspace."
+          : "The workspace opens after payment is confirmed."
       }
       asideTitle="Same browser, same plan."
-      asideBody="Stripe sends you back here. The workspace opens only after that payment checks out."
-      points={["Plan stays the one you reviewed", "Password never went to Stripe", "Setup continues in onboarding"]}
+      asideBody="You’ll land back here after payment. The workspace opens once that payment checks out."
+      points={["Plan stays the one you reviewed", "Your password opens the workspace", "Setup continues after payment"]}
       footer={
         <Link href={signupHref} className="font-semibold text-[var(--accent)]">
           Back to workspace details
@@ -128,7 +128,7 @@ export default function CheckoutCompletePage() {
       {phase === "missing" ? (
         <div className="space-y-4">
           <Alert tone="warning">
-            This return doesn't have a finished Stripe payment and the workspace details together. Go back to checkout, or start again. The plan you picked stays on the form.
+            This return doesn’t have a finished payment and the workspace details together. Go back to checkout, or start again. The plan you picked stays on the form.
           </Alert>
           <Button asChild className="w-full rounded-full" size="lg">
             <Link href={`/app/checkout?plan=${plan}`}>Back to checkout</Link>

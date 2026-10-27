@@ -89,8 +89,7 @@ export default function AppDashboardPage() {
               <div>
                 <h2 className="font-semibold">Your workspace is ready</h2>
                 <p className="mt-1.5 max-w-2xl text-sm text-[var(--muted)]">
-                  This is the live product, not a demo. Start by adding a lead or
-                  listing. Conversations, the pipeline, and deals build from those records.
+                  Start by adding a lead or listing. Conversations, the pipeline, and deals build from those records.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button asChild>

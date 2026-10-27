@@ -137,18 +137,14 @@ export default function CheckoutPage() {
       title="Review your plan"
       lede={
         pending
-          ? `Payment for ${pending.orgName} comes first. The ${item.name} workspace is created only after Stripe has the subscription.`
+          ? `Payment for ${pending.orgName} comes first. The ${item.name} workspace opens after payment.`
           : "Checkout needs the workspace details from the previous step."
       }
       asideTitle={plan === "enterprise" ? "Custom, with the team." : `${item.name}, ${priceLabel}.`}
       asideBody={
         mode === "live"
-          ? brand.market === "uk"
-            ? "You'll enter the card on the UK Stripe account. The workspace opens when you return."
-            : "You'll enter the card on the US Stripe account. The workspace opens when you return."
-          : brand.market === "uk"
-            ? "Pounds, on the UK Stripe account. Nothing is created until that account has the subscription."
-            : "Dollars, on the US Stripe account. Nothing is created until that account has the subscription."
+          ? "You’ll enter your card next. The workspace opens when you return."
+          : "Nothing is created until payment is complete."
       }
       points={planLines(market, plan)}
       footer={

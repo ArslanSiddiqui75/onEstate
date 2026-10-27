@@ -41,7 +41,7 @@ export async function GET(
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return redirectTo({ social_error: "Supabase is not configured on the server." });
+    return redirectTo({ social_error: "Couldn’t connect that account. Try again." });
   }
 
   try {

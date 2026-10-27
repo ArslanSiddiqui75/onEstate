@@ -32,7 +32,7 @@ export const BRANDS: Record<BrandId, BrandConfig> = {
     market: "uk",
     headline: "The estate agency platform for the UK.",
     supporting:
-      "Enquiries, viewings, progression, lettings, and payments in pounds. One login on 0nestreet.co.uk.",
+      "Enquiries, viewings, progression, lettings, and payments in pounds.",
     contactCta: "Book a UK demo",
     demandCta: "Talk to sales",
     portalsLabel: "Rightmove, Zoopla, OnTheMarket",
@@ -49,7 +49,7 @@ export const BRANDS: Record<BrandId, BrandConfig> = {
     market: "us",
     headline: "The real estate platform for the US.",
     supporting:
-      "Enquiries, showings, progression, and payments in dollars. One login on 0nestreet.com.",
+      "Enquiries, showings, progression, and payments in dollars.",
     contactCta: "Book a US demo",
     demandCta: "Talk to sales",
     portalsLabel: "MLS boards via brokerage credentials",

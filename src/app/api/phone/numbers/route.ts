@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       configured: false,
       numbers: [],
-      error: "Twilio is not connected on this server yet.",
+      error: "Number search isn’t available yet.",
     });
   }
   const url = new URL(request.url);

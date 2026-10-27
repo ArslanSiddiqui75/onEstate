@@ -11,7 +11,7 @@ export function Pricing({ market }: { market: Market }) {
   return (
     <section id="pricing" className="scroll-mt-28 border-t border-[var(--border)]">
       <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-24">
-        <p className="eyebrow">{market === "uk" ? "0nestreet.co.uk" : "0nestreet.com"}</p>
+        <p className="eyebrow">Pricing</p>
         <h2 className="mt-3 max-w-2xl font-display text-[clamp(2.1rem,4.2vw,3.5rem)] font-medium leading-[1.08]">
           {market === "uk" ? "UK pricing, in pounds." : "US pricing, in dollars."}
         </h2>

@@ -16,7 +16,7 @@ export type PublishSummary = {
 export async function publishSocialPost(postId: string, orgId: string): Promise<PublishSummary> {
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return { ok: false, message: "Supabase is not configured on the server.", results: [] };
+    return { ok: false, message: "Couldn’t publish that post.", results: [] };
   }
 
   const { data: post, error: postError } = await supabase

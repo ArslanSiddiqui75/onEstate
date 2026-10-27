@@ -56,15 +56,13 @@ export default function AppSignupPage() {
     router.push(`/app/checkout?plan=${result.data.plan}`);
   }
 
-  const money = brand.currency === "GBP" ? "pounds" : "dollars";
-
   return (
     <AuthFrame
       screen="signup"
       kicker={`${brand.regionShort} workspace`}
       title="Create your workspace"
-      lede={`This is the ${brand.regionShort} book at ${brand.domain}. Next you'll pay in ${money} on Stripe. The workspace is created only after Stripe has the subscription.`}
-      asideTitle={uk ? "A separate book for the UK." : "A separate book for the US."}
+      lede="Create the workspace, then pay. It opens after payment."
+      asideTitle={uk ? "Built for UK agencies." : "Built for US brokerages."}
       asideBody={
         uk
           ? "Your workspace bills in pounds and speaks viewings, vendors, and lettings."
@@ -72,8 +70,8 @@ export default function AppSignupPage() {
       }
       points={
         uk
-          ? ["Solo £49, Team £199, Enterprise on request", "Lettings desk on Team and Enterprise", "One login on 0nestreet.co.uk"]
-          : ["Solo $59, Team $249, Enterprise on request", "MLS-ready stock on Team and Enterprise", "One login on 0nestreet.com"]
+          ? ["Solo £49, Team £199, Enterprise on request", "Lettings desk on Team and Enterprise"]
+          : ["Solo $59, Team $249, Enterprise on request", "MLS-ready stock on Team and Enterprise"]
       }
       footer={
         <>
@@ -137,7 +135,7 @@ export default function AppSignupPage() {
           Continue to checkout
         </Button>
         <p className="text-center text-xs leading-relaxed text-[var(--muted)]">
-          Nothing is created on this step. Payment is next, and the workspace opens only after Stripe has the subscription.
+          Nothing is created on this step. The workspace opens after payment.
         </p>
       </form>
     </AuthFrame>

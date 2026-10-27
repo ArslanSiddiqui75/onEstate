@@ -7,7 +7,6 @@ import { AppShell } from "@/components/shell/app-shell";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { sanitizeRedirectTo } from "@/lib/auth/redirect";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
-import { AdminOverlapBanner } from "@/components/admin/admin-overlap-banner";
 import { LogoLoader } from "@/components/brand/logo-loader";
 
 function Guard({ children }: { children: React.ReactNode }) {
@@ -75,7 +74,6 @@ function Guard({ children }: { children: React.ReactNode }) {
         }
       >
         <ImpersonationBanner />
-        <AdminOverlapBanner />
         <ErrorBoundary>{children}</ErrorBoundary>
       </div>
     </AppShell>

@@ -280,7 +280,7 @@ export function MarketingHome({
           <div>
             <p className="text-sm font-semibold text-[var(--accent-on-ink)]">The book</p>
             <ul className="mt-3 space-y-2 text-sm text-white/80">
-              <li>{copy.uk ? "Pounds, on 0nestreet.co.uk" : "Dollars, on 0nestreet.com"}</li>
+              <li>{copy.uk ? "Billed in pounds" : "Billed in dollars"}</li>
               <li>{copy.uk ? "England, Wales, and Scotland" : "Sales through to close"}</li>
               <li><Link href="/app/signup?plan=solo">Start solo</Link></li>
             </ul>

@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Storage is not configured" }, { status: 503 });
+    return NextResponse.json({ error: "File storage isn’t available yet." }, { status: 503 });
   }
   const { data, error } = await supabase.storage
     .from("documents")

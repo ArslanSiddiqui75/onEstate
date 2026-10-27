@@ -46,7 +46,7 @@ export async function sendDomainEmail(input: {
   replyTo?: string;
 }) {
   if (!smtpConfigured()) {
-    throw new Error("Mail delivery is not connected on this server yet.");
+    throw new Error("Email can’t be sent yet. Check the sending domain in Settings.");
   }
   const nodemailer = await import("nodemailer");
   const port = Number(process.env.SMTP_PORT || 587);

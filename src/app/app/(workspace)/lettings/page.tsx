@@ -23,9 +23,9 @@ export default function LettingsPage() {
   if (market !== "uk") {
     return (
       <div className="max-w-xl space-y-3">
-        <h2 className="font-semibold">Lettings is a UK module</h2>
+        <h2 className="font-semibold">Lettings isn’t available here</h2>
         <p className="text-sm text-[var(--muted)]">
-          Repairs, rent, Right to Rent, keys, and contractor cover live on the UK setup at 0nestreet.co.uk. This US workspace keeps enquiries, showings, progression, and dollar payments.
+          Repairs, rent, and keys are part of a UK workspace.
         </p>
       </div>
     );

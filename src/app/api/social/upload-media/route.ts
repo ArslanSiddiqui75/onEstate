@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
     return NextResponse.json(
-      { error: "Storage is not configured on the server." },
+      { error: "Couldn’t upload that file." },
       { status: 503 },
     );
   }

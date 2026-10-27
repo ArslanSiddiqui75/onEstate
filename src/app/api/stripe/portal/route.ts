@@ -43,12 +43,11 @@ export async function POST(request: Request) {
     customerId = org?.stripe_customer_id ? String(org.stripe_customer_id) : null;
   }
 
-  const regionLabel = market === "uk" ? "UK" : "US";
   if (!isStripeConfigured(market) || !customerId) {
     return NextResponse.json({
       mode: "demo",
       market,
-      message: `The ${regionLabel} billing portal opens after the first successful card checkout on the ${regionLabel} Stripe account.`,
+      message: "Payment settings open after your first payment.",
       returnUrl,
     });
   }

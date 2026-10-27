@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Storage is not configured" }, { status: 503 });
+    return NextResponse.json({ error: "File storage isn’t available yet." }, { status: 503 });
   }
 
   const body = (await request.json().catch(() => null)) as {

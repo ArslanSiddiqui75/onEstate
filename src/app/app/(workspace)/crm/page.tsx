@@ -860,11 +860,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
             <p className="text-sm text-[var(--foreground)]">
               A workflow is a list of steps that starts when something happens, such as a new lead or a quiet thread.
             </p>
-            <p className="mt-1 text-sm text-[var(--muted)]">
-              {persistence === "supabase"
-                ? "Changes save to this workspace."
-                : "This workspace is local, so workflows can be drafted here and run once the workspace is hosted."}
-            </p>
+            <p className="mt-1 text-sm text-[var(--muted)]">Changes save to this workspace.</p>
           </section>
 
           <AutomationBuilder
@@ -971,12 +967,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
               </Button>
             </div>
 
-            {persistence !== "supabase" ? (
-              <Alert className="mt-4" tone="warning">
-                Automations execute on the server. Connect Supabase to run workflows —
-                local workspace mode only stores the configuration.
-              </Alert>
-            ) : automationRuns.length ? (
+            {automationRuns.length ? (
               <div className="mt-4 space-y-3">
                 {automationRuns.slice(0, 12).map((run) => {
                   const automation = automations.find((a) => a.id === run.automationId);

@@ -51,7 +51,7 @@ export async function searchNumbers(country: NumberCountry, contains?: string) {
 
 export async function buyNumber(phoneNumber: string) {
   if (!hasTwilioAccount()) {
-    throw new Error("Twilio is not connected on this server yet.");
+    throw new Error("Number search isn’t available yet.");
   }
   if (!isE164(phoneNumber)) throw new Error("Choose a number from the list.");
   const base = (

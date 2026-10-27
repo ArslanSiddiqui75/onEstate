@@ -81,7 +81,7 @@ describe("signup checkout decision", () => {
       planName: "Team / Brokerage",
       priceLabel: "£199/mo",
     });
-    expect(note).toContain("isn't connected");
+    expect(note).toContain("isn’t available");
     expect(note).toContain("workspace is not created");
     expect(note.toLowerCase()).not.toContain("pay £");
     expect(signupCheckoutActionLabel("preview")).toBe("Payment required");

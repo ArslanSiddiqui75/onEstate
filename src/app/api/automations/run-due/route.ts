@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+    return NextResponse.json({ error: "Due steps can’t be run yet." }, { status: 503 });
   }
 
   const summary = await processAutomationRuns(supabase, { orgId: profile.orgId });

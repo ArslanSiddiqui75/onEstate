@@ -1202,22 +1202,8 @@ export function AccountsPanel({
       <div>
         <h2 className="font-display text-xl">Connected accounts</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          {live
-            ? "Authorize each network so it can publish on your behalf — you'll sign in and grant access on the platform's own site."
-            : "Demo mode: connecting here simulates authorization so you can try the scheduler. Real publishing needs a Supabase-backed workspace with platform credentials configured (see .env.example)."}
+          Authorize each network so it can publish on your behalf. You’ll sign in and grant access on the platform’s own site.
         </p>
-        {live ? (
-          <p className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-muted)]/50 px-3 py-2 text-xs text-[var(--muted)]">
-            Workspace:{" "}
-            <span className="font-semibold text-[var(--foreground)]">{orgName}</span>
-            . Connected accounts belong to this workspace only. There can be
-            several workspaces with the same name — check the short workspace id
-            in the sidebar. Use{" "}
-            <span className="font-medium text-[var(--foreground)]">Sign in</span>{" "}
-            with the email that originally connected Instagram, or connect again
-            here.
-          </p>
-        ) : null}
       </div>
 
       {live && accounts.filter((a) => a.status === "connected").length === 0 ? (
@@ -1358,8 +1344,7 @@ export function AccountsPanel({
                       Opening {PLATFORM_LABEL[oauthPlatform]}…
                     </DialogTitle>
                     <DialogDescription>
-                      Simulated for this demo/local workspace — redirecting you
-                      to a mock {PLATFORM_LABEL[oauthPlatform]} consent screen.
+                      Continuing to {PLATFORM_LABEL[oauthPlatform]} so you can grant access.
                     </DialogDescription>
                   </DialogHeader>
                 </div>

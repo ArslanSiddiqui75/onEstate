@@ -30,7 +30,7 @@ export default function PhoneNumberSettingsPage() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-[var(--muted)]">
-        Buy a Twilio number for this brokerage. Texts from Conversations send from it.
+        Buy a phone number for this brokerage. Texts from Conversations send from it.
       </p>
 
       <Card className="space-y-2 p-5">

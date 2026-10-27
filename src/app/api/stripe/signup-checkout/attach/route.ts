@@ -45,11 +45,11 @@ export async function POST(request: Request) {
   }
   const { sessionId, plan, market } = parsed.data;
   if (!isStripeConfigured(market)) {
-    return NextResponse.json({ error: "Stripe isn't connected for this region." }, { status: 409 });
+    return NextResponse.json({ error: "Payment isn’t available yet." }, { status: 409 });
   }
   const stripe = getStripe(market);
   if (!stripe) {
-    return NextResponse.json({ error: "Stripe isn't connected for this region." }, { status: 409 });
+    return NextResponse.json({ error: "Payment isn’t available yet." }, { status: 409 });
   }
 
   try {

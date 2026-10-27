@@ -211,15 +211,15 @@ export default function AppBillingPage() {
           </Button>
         ) : status === "active" || status === "trialing" ? (
           <p className="text-xs text-[var(--muted)]">
-            This plan is already active. Card management appears after Stripe checkout.
+            This plan is already active. Card management appears after your first payment.
           </p>
         ) : (
           <Button
             variant="secondary"
             disabled
-            title="The payment portal unlocks after your first Stripe checkout."
+            title="Payment settings open after your first payment."
           >
-            Payment portal available after first checkout
+            Payment settings open after the first payment
           </Button>
         )}
         </div>
@@ -247,27 +247,18 @@ export default function AppBillingPage() {
         <Alert tone="neutral">Renews {renewsOn}.</Alert>
       ) : null}
 
-      <Card>
-        <h2 className="font-semibold">{market === "uk" ? "UK payments" : "US payments"}</h2>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--muted)]">
-          {market === "uk"
-            ? "This book is billed in pounds on 0nestreet.co.uk. Lettings, viewings, and the UK client links sit on this setup. The dollar book is on 0nestreet.com."
-            : "This book is billed in dollars on 0nestreet.com. Showings and the US client links sit on this setup. The pound book, including lettings, is on 0nestreet.co.uk."}
-        </p>
-      </Card>
-
       {message ? <Alert tone={tone === "danger" ? "danger" : "neutral"}>{message}</Alert> : null}
 
       <Card>
         <CardHeader
           title="How billing works"
-          description="Platform-owned Stripe — no merchant setup required from your brokerage"
+          description="Your card is billed each month. You can update it any time."
         />
         <ol className="mt-4 grid gap-3 sm:grid-cols-3">
           {[
-            { icon: ListChecks, text: "Pick a plan and continue to secure Stripe Checkout." },
-            { icon: CreditCard, text: "Enter your card details, saved as a customer on our Stripe." },
-            { icon: ShieldCheck, text: "We bill that card each cycle — manage it anytime from the portal." },
+            { icon: ListChecks, text: "Pick a plan and continue to checkout." },
+            { icon: CreditCard, text: "Enter your card. It’s saved for the next invoice." },
+            { icon: ShieldCheck, text: "That card is billed each cycle. Change it whenever you need to." },
           ].map((step, i) => (
             <li key={i} className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
               <span className="stat-icon-chip h-8 w-8 rounded-lg">
@@ -415,10 +406,8 @@ export default function AppBillingPage() {
           title="Billing & Invoice History"
           description={
             invoicesMode === "live"
-              ? "Receipts from your Stripe subscription"
-              : status === "active" || status === "trialing"
-                ? "This plan is active. Receipts appear here after Stripe checkout."
-                : "Preview receipts — connect Stripe for live invoice history"
+              ? "Receipts from your subscription"
+              : "Receipts appear here after your first payment."
           }
         />
         <TableShell>

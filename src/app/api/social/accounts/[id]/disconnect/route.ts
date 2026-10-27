@@ -15,7 +15,7 @@ export async function POST(
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Supabase is not configured" }, { status: 500 });
+    return NextResponse.json({ error: "Couldn’t update that account." }, { status: 500 });
   }
 
   const { data: account } = await supabase

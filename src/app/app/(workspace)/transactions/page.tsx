@@ -514,7 +514,7 @@ Generated on ${new Date().toLocaleString()} by ${brand.name}.
                                   );
                                 } else {
                                   toast.success(
-                                    "E-sign marked sent (local workspace — no public link)",
+                                    "Signature request saved",
                                   );
                                 }
                               } catch (err) {

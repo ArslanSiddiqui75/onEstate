@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
     return NextResponse.json(
-      { error: "Supabase not configured — e-sign needs a hosted workspace" },
+      { error: "A signing link isn’t available yet." },
       { status: 503 },
     );
   }

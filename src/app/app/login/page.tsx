@@ -2,7 +2,7 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,6 @@ import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { loginSchema, validateForm } from "@/lib/auth/validation";
-import {
-  DEV_SEED_ACCOUNTS,
-  isDevSeedEnabled,
-} from "@/lib/dev/seed-accounts";
-import { ROLE_LABELS } from "@/lib/rbac/matrix";
-import { cn } from "@/lib/utils";
 
 export default function AppLoginPage() {
   const { signIn, authMode, brand } = useAppSession();
@@ -31,8 +25,6 @@ export default function AppLoginPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState("");
   const [formInfo, setFormInfo] = useState("");
-
-  const showSeedAccounts = authMode === "local" && isDevSeedEnabled();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -215,54 +207,6 @@ export default function AppLoginPage() {
               </Link>
             </p>
 
-            {showSeedAccounts ? (
-              <details className="group mt-8 rounded-2xl border border-[var(--border)] bg-[var(--canvas)]">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-[var(--foreground)] [&::-webkit-details-marker]:hidden">
-                  <span className="inline-flex items-center gap-2">
-                    Try a role
-                    <ChevronDown className="h-4 w-4 text-[var(--muted)] transition group-open:rotate-180" />
-                  </span>
-                  <span className="text-xs font-normal text-[var(--muted)] group-open:hidden">Local only</span>
-                  <span className="hidden text-xs font-normal text-[var(--muted)] group-open:inline">
-                    Fills the form
-                  </span>
-                </summary>
-                <ul className="grid grid-cols-2 gap-1 px-2 pb-2">
-                  {DEV_SEED_ACCOUNTS.map((account) => {
-                    const selected = email === account.email;
-                    return (
-                      <li key={account.id}>
-                        <button
-                          type="button"
-                          className={cn(
-                            "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
-                            selected
-                              ? "bg-[var(--accent-soft)]"
-                              : "hover:bg-[var(--surface-muted)]",
-                          )}
-                          onClick={() => {
-                            setEmail(account.email);
-                            setPassword(account.password);
-                            setFieldErrors({});
-                            setFormError("");
-                          }}
-                        >
-                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--surface-elevated)] text-[11px] font-semibold text-[var(--foreground)]">
-                            {account.avatarInitials}
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-medium">{account.name}</span>
-                            <span className="block truncate text-xs text-[var(--muted)]">
-                              {ROLE_LABELS[account.role]}
-                            </span>
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </details>
-            ) : null}
           </div>
         </div>
       </main>

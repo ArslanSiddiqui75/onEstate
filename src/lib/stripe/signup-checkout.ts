@@ -49,12 +49,12 @@ export function signupCheckoutNote(input: {
     return `${input.planName} is scoped with sales at a custom price. No card is taken here, and the workspace is not created.`;
   }
   if (input.mode === "live") {
-    return `Card details are collected on Stripe for the ${input.region} account before the workspace exists. The workspace is created only after Stripe has the subscription.`;
+    return `You’ll enter your card next. The ${input.planName} workspace is created only after payment.`;
   }
   if (input.reason === "price") {
-    return `${input.planName} is ${input.priceLabel}. A Stripe price isn't connected for this plan yet, so a card can't be taken and the workspace is not created.`;
+    return `${input.planName} is ${input.priceLabel}. Payment isn’t available for this plan yet, so the workspace is not created.`;
   }
-  return `${input.planName} is ${input.priceLabel}. The ${input.region} Stripe account isn't connected yet, so a card can't be taken and the workspace is not created.`;
+  return `${input.planName} is ${input.priceLabel}. Payment isn’t available yet, so the workspace is not created.`;
 }
 
 export function signupCheckoutActionLabel(mode: "sales" | "preview" | "live") {
