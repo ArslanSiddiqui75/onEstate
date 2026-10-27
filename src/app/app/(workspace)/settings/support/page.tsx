@@ -110,7 +110,7 @@ export default function AppTicketsPage() {
       setOpen(false);
       setView("open");
       toast.success(`Ticket filed at ${ticketPriorityLabel(chosen)} priority`);
-      router.push(`/app/tickets/${id}`);
+      router.push(`/app/settings/support/${id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not file ticket");
     } finally {
@@ -195,7 +195,7 @@ export default function AppTicketsPage() {
           {visible.map((ticket) => (
             <li key={ticket.id}>
               <Link
-                href={`/app/tickets/${ticket.id}`}
+                href={`/app/settings/support/${ticket.id}`}
                 className="block rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-4 py-3.5 transition hover:border-[var(--border-strong)]"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">

@@ -27,7 +27,7 @@ export default function AppSettingsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-[var(--muted)]">
-          Workspace profile, brokerage details, and team access.
+          Workspace profile, brokerage details, reports, documents, and support.
         </p>
         <Button asChild size="sm" variant="secondary">
           <Link href="/app/settings/team">Team</Link>
@@ -194,6 +194,42 @@ export default function AppSettingsPage() {
         </div>
         <Button asChild variant="secondary">
           <Link href="/app/settings/social">Manage accounts</Link>
+        </Button>
+      </Card>
+
+      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="font-semibold">Reports</h2>
+          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
+            The full book: pipeline, stock, deals, follow-ups, and the diary.
+          </p>
+        </div>
+        <Button asChild variant="secondary">
+          <Link href="/app/settings/reports">Open reports</Link>
+        </Button>
+      </Card>
+
+      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="font-semibold">Documents</h2>
+          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
+            Uploads, e-sign, and listing media.
+          </p>
+        </div>
+        <Button asChild variant="secondary">
+          <Link href="/app/settings/documents">Open documents</Link>
+        </Button>
+      </Card>
+
+      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="font-semibold">Support</h2>
+          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
+            Tickets with platform support, and how urgent each one is.
+          </p>
+        </div>
+        <Button asChild variant="secondary">
+          <Link href="/app/settings/support">Open support</Link>
         </Button>
       </Card>
 

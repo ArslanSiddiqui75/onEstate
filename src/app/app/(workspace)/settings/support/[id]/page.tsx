@@ -76,7 +76,7 @@ export default function AppTicketDetailPage() {
         title="Ticket not found"
         description="It may belong to another office, or it has not been filed yet."
         action={
-          <Link href="/app/tickets" className="text-sm font-semibold text-[var(--accent)]">
+          <Link href="/app/settings/support" className="text-sm font-semibold text-[var(--accent)]">
             Back to support
           </Link>
         }
@@ -118,7 +118,7 @@ export default function AppTicketDetailPage() {
 
   return (
     <div className="space-y-5">
-      <Link href="/app/tickets" className="text-sm font-medium text-[var(--accent)] hover:underline">
+      <Link href="/app/settings/support" className="text-sm font-medium text-[var(--accent)] hover:underline">
         All tickets
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3">

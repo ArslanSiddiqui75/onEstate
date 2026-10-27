@@ -26,7 +26,11 @@ const nextConfig: NextConfig = {
       { source: "/app/billing", destination: "/app/settings/billing", permanent: false },
       { source: "/app/teams", destination: "/app/settings/team", permanent: false },
       { source: "/app/settings/members", destination: "/app/settings/team", permanent: false },
-      { source: "/app/support", destination: "/app/tickets", permanent: false },
+      { source: "/app/reports", destination: "/app/settings/reports", permanent: false },
+      { source: "/app/documents", destination: "/app/settings/documents", permanent: false },
+      { source: "/app/support", destination: "/app/settings/support", permanent: false },
+      { source: "/app/tickets", destination: "/app/settings/support", permanent: false },
+      { source: "/app/tickets/:id", destination: "/app/settings/support/:id", permanent: false },
     ];
   },
   images: {
