@@ -2,7 +2,7 @@
 
 import { MenuSelect } from "@/components/ui/select";
 
-import { Suspense, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
@@ -14,29 +14,21 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
-import { useModuleSection } from "@/lib/nav/module-section";
 import type { LeadTask } from "@/types";
 
 const selectClass =
   "h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm";
 
 export default function AppTasksPage() {
-  return (
-    <Suspense fallback={null}>
-      <TasksDesk />
-    </Suspense>
-  );
+  return <TasksDesk />;
 }
 
 function TasksDesk() {
   const { user, org, leads, tasks, resolveTask, createLeadTask } = useAppSession();
-  const [view, setView] = useModuleSection("view", ["open", "done"] as const, "open");
   const [addOpen, setAddOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const open = useMemo(() => pendingTasks(tasks), [tasks]);
-  const done = useMemo(() => tasks.filter((task) => task.status === "done"), [tasks]);
   const overdue = open.filter((task) => dueState(task.dueAt) === "overdue").length;
 
   if (!user || !org) return null;
@@ -52,7 +44,6 @@ function TasksDesk() {
   }
 
   const canEdit = hasModuleAccess(user.role, org.plan, "crm", "edit");
-  const visible = view === "open" ? open : done;
 
   return (
     <div className="space-y-5">
@@ -61,42 +52,19 @@ function TasksDesk() {
           {open.length === 0 ? "Nothing waiting." : open.length === 1 ? "1 pending task." : `${open.length} pending tasks.`}
           {overdue > 0 ? <span className="text-[var(--danger)]"> {overdue === 1 ? "1 is overdue." : `${overdue} are overdue.`}</span> : null}
         </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-muted)] p-1">
-            {(["open", "done"] as const).map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setView(item)}
-                className={cn(
-                  "rounded-full px-4 py-1.5 text-sm font-semibold",
-                  view === item
-                    ? "bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(20,17,15,0.08)]"
-                    : "text-[var(--muted)]",
-                )}
-              >
-                {item === "open" ? "Pending" : "Done"}
-              </button>
-            ))}
-          </div>
-          {canEdit ? (
-            <Button type="button" onClick={() => setAddOpen(true)}>
-              Add task
-            </Button>
-          ) : null}
-        </div>
+        {canEdit ? (
+          <Button type="button" onClick={() => setAddOpen(true)}>
+            Add task
+          </Button>
+        ) : null}
       </div>
 
-      {visible.length === 0 ? (
+      {open.length === 0 ? (
         <EmptyState
-          title={view === "open" ? "No pending tasks" : "Nothing finished yet"}
-          description={
-            view === "open"
-              ? "Follow-ups you add, and ones from a sequence, show up here."
-              : "Finished tasks land here."
-          }
+          title="No pending tasks"
+          description="Follow-ups you add, and ones from a sequence, show up here."
           action={
-            view === "open" && canEdit ? (
+            canEdit ? (
               <Button type="button" onClick={() => setAddOpen(true)}>
                 Add task
               </Button>
@@ -106,12 +74,12 @@ function TasksDesk() {
       ) : (
         <div className="overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)]">
           <ul>
-            {visible.map((task) => {
+            {open.map((task) => {
               const lead = leads.find((item) => item.id === task.leadId);
               const state = dueState(task.dueAt);
               return (
                 <li key={task.id} className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-3 last:border-b-0">
-                  {canEdit && view === "open" ? (
+                  {canEdit ? (
                     <button
                       type="button"
                       aria-label={`Mark ${task.title} done`}
@@ -119,16 +87,16 @@ function TasksDesk() {
                       onClick={() => void resolveTask(task.id).then(() => toast.success("Task done"))}
                     />
                   ) : (
-                    <span className="h-5 w-5 shrink-0 rounded-full bg-[var(--success-soft)]" aria-hidden />
+                    <span className="h-5 w-5 shrink-0 rounded-full border border-[var(--border-strong)]" aria-hidden />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className={cn("truncate font-medium", view === "done" && "text-[var(--muted)] line-through")}>{task.title}</p>
+                    <p className="truncate font-medium">{task.title}</p>
                     <p className="truncate text-xs text-[var(--muted)]">
                       {lead?.name || "Lead"} · {task.channel}
                     </p>
                   </div>
                   <Badge tone={state === "overdue" ? "danger" : state === "today" ? "warning" : "neutral"}>
-                    {view === "done" ? "Done" : dueLabel(task.dueAt)}
+                    {dueLabel(task.dueAt)}
                   </Badge>
                 </li>
               );
@@ -147,7 +115,6 @@ function TasksDesk() {
             try {
               await createLeadTask({ ...input, status: "open" });
               setAddOpen(false);
-              setView("open");
               toast.success("Task added");
             } catch (err) {
               toast.error(err instanceof Error ? err.message : "Could not add that task");

@@ -7,7 +7,6 @@ import {
   Banknote,
   Building2,
   CalendarDays,
-  CircleCheck,
   Columns3,
   CreditCard,
   FolderOpen,
@@ -162,17 +161,6 @@ const NAV: {
     title: "Tasks",
     description: "Pending follow-ups, with anything overdue first.",
     icon: ListChecks,
-    children: [
-      {
-        href: "/app/tasks?view=done",
-        short: "Done",
-        eyebrow: "Follow-ups",
-        title: "Done",
-        description: "Follow-ups that are already finished.",
-        icon: CircleCheck,
-        query: { key: "view", value: "done" },
-      },
-    ],
   },
   {
     id: "contacts",
