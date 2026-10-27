@@ -24,6 +24,7 @@ import type {
   TransactionDeal,
   WebsiteSite,
 } from "@/types";
+import type { EmailDomain } from "@/lib/email/domain-model";
 import type { BusinessProfile } from "@/lib/org/business-profile";
 import type {
   WorkspaceOrg,
@@ -42,6 +43,8 @@ export interface WorkspaceRepository {
     market?: Market;
     onboardingCompleted?: boolean;
     business?: BusinessProfile;
+    phoneNumber?: string;
+    emailDomain?: EmailDomain;
   }): Promise<WorkspaceOrg>;
   updateProfile(patch: { name: string; phone?: string }): Promise<WorkspaceUser>;
   saveLeadRouting(settings: LeadRoutingSettings): Promise<WorkspaceOrg>;

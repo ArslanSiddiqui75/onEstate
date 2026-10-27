@@ -11,8 +11,13 @@ export function isTwilioConfigured() {
 export async function sendTwilioSms(input: {
   to: string;
   body: string;
+  from?: string;
 }): Promise<{ sid: string; status: string; mode: "live" | "simulated" }> {
-  if (!shouldUseTwilioOutbound()) {
+  const from = (input.from || process.env.TWILIO_FROM_NUMBER || "").trim();
+  const accountReady = Boolean(
+    process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && from,
+  );
+  if (!accountReady || (!input.from && !shouldUseTwilioOutbound())) {
     return {
       sid: `sim_${Date.now()}`,
       status: "sent",
@@ -27,7 +32,7 @@ export async function sendTwilioSms(input: {
   );
   const message = await client.messages.create({
     to: input.to,
-    from: process.env.TWILIO_FROM_NUMBER!,
+    from,
     body: input.body,
   });
   return {

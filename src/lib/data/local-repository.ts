@@ -194,6 +194,8 @@ export function createLocalRepository(
         snap.org.onboardingCompleted = patch.onboardingCompleted;
       }
       if (patch.business !== undefined) snap.org.business = patch.business;
+      if (patch.phoneNumber !== undefined) snap.org.phoneNumber = patch.phoneNumber;
+      if (patch.emailDomain !== undefined) snap.org.emailDomain = patch.emailDomain;
       commit(snap);
       return snap.org;
     },

@@ -162,8 +162,8 @@ export function mapTwilioError(error: unknown): string {
     return "The SMS provider is rate-limiting sends. Try again in a minute.";
   }
   return raw
-    ? `SMS could not be sent: ${raw}`
-    : "SMS could not be sent. Check your Twilio configuration in Integrations.";
+    ? `Text could not be sent: ${raw}`
+    : "Text could not be sent. Buy a phone number in Settings.";
 }
 
 export interface OutboundMessageInput {
@@ -173,6 +173,7 @@ export interface OutboundMessageInput {
   body: string;
   consent?: "unknown" | "opted_in" | "opted_out";
   threadId?: string;
+  from?: string;
 }
 
 export interface OutboundMessageResult {
@@ -209,7 +210,7 @@ export async function sendOutboundSms(
 
   let result;
   try {
-    result = await sendTwilioSms({ to: input.to, body });
+    result = await sendTwilioSms({ to: input.to, body, from: input.from });
   } catch (error) {
     return {
       ok: false,

@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { sendResendEmail } from "@/lib/email/client";
+import {
+  checkDomainDns,
+  formatFromAddress,
+  readEmailDomain,
+  sendDomainEmail,
+} from "@/lib/email/domain";
 import { inboundReplyTo } from "@/lib/email/inbound";
 import { ensureThread } from "@/lib/messaging/service";
 
@@ -42,12 +47,30 @@ export async function sendOutboundEmail(
   if (!subject) return { ok: false, error: "Subject is required" };
   if (!body) return { ok: false, error: "Email body is required" };
 
+  const { data: orgRow } = await supabase
+    .from("organizations")
+    .select("email_domain")
+    .eq("id", input.orgId)
+    .maybeSingle();
+  const sending = readEmailDomain(orgRow?.email_domain);
+  if (!sending) {
+    return { ok: false, error: "Connect your domain in Settings before sending email." };
+  }
+  const dns = await checkDomainDns(sending.domain);
+  if (!dns.verified) {
+    return {
+      ok: false,
+      error: "The domain DNS is not in place yet. Check it in Settings.",
+    };
+  }
+
   let result;
   try {
-    result = await sendResendEmail({
+    result = await sendDomainEmail({
+      from: formatFromAddress(sending),
       to,
       subject,
-      body,
+      text: body,
       replyTo: inboundReplyTo(input.leadId),
     });
   } catch (error) {

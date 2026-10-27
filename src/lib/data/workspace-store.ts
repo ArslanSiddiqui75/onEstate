@@ -1,3 +1,4 @@
+import type { EmailDomain } from "@/lib/email/domain-model";
 import type { BusinessProfile } from "@/lib/org/business-profile";
 import type {
   CallLog,
@@ -38,6 +39,10 @@ export interface WorkspaceOrg {
   onboardingCompleted?: boolean;
   /** Public brokerage details filled in on Settings. */
   business?: BusinessProfile;
+  /** Number bought for this brokerage. Texts send from here. */
+  phoneNumber?: string;
+  /** Sending domain connected with DNS. */
+  emailDomain?: EmailDomain;
 }
 
 export interface WorkspaceUser {

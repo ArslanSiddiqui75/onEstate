@@ -29,6 +29,7 @@ import { asErrorMessage } from "@/lib/utils";
 import { ensureDefaultSequences } from "@/lib/sequences/ensure";
 import { mapSequenceRow } from "@/lib/sequences/catalog";
 import { readBusinessProfile } from "@/lib/org/business-profile";
+import { readEmailDomain } from "@/lib/email/domain-model";
 
 function mapLead(row: Record<string, unknown>, phones: Lead["phones"] = []): Lead {
   return {
@@ -251,6 +252,8 @@ export function createSupabaseRepository(
         row.onboarding_completed = patch.onboardingCompleted;
       }
       if (patch.business !== undefined) row.business = patch.business;
+      if (patch.phoneNumber !== undefined) row.phone_number = patch.phoneNumber || null;
+      if (patch.emailDomain !== undefined) row.email_domain = patch.emailDomain;
       if (Object.keys(row).length === 0) return ctx.org;
       const { error } = await supabase
         .from("organizations")
@@ -263,6 +266,8 @@ export function createSupabaseRepository(
         ctx.org.onboardingCompleted = patch.onboardingCompleted;
       }
       if (patch.business !== undefined) ctx.org.business = patch.business;
+      if (patch.phoneNumber !== undefined) ctx.org.phoneNumber = patch.phoneNumber;
+      if (patch.emailDomain !== undefined) ctx.org.emailDomain = patch.emailDomain;
       return ctx.org;
     },
 
@@ -1585,6 +1590,8 @@ export async function hydrateSupabaseSession(): Promise<{
       leadRouting: (org.lead_routing as WorkspaceOrg["leadRouting"]) || undefined,
       onboardingCompleted: Boolean(org.onboarding_completed),
       business: readBusinessProfile(org.business),
+      phoneNumber: org.phone_number ? String(org.phone_number) : undefined,
+      emailDomain: readEmailDomain(org.email_domain),
     },
   };
 }

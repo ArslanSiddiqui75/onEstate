@@ -87,6 +87,7 @@ import {
   type WorkspaceSnapshot,
   type WorkspaceUser,
 } from "@/lib/data/workspace-store";
+import type { EmailDomain } from "@/lib/email/domain-model";
 import type { BusinessProfile } from "@/lib/org/business-profile";
 import { defaultDealChecklist } from "@/lib/transactions/checklist";
 
@@ -155,6 +156,8 @@ export interface AppOrg {
   leadRouting?: LeadRoutingSettings;
   onboardingCompleted?: boolean;
   business?: BusinessProfile;
+  phoneNumber?: string;
+  emailDomain?: EmailDomain;
 }
 
 interface AppState {
@@ -199,6 +202,8 @@ interface AppState {
     market?: Market;
     onboardingCompleted?: boolean;
     business?: BusinessProfile;
+    phoneNumber?: string;
+    emailDomain?: EmailDomain;
   }) => Promise<void>;
   updateProfile: (patch: { name: string; phone?: string }) => Promise<void>;
   refresh: () => Promise<void>;
@@ -411,6 +416,8 @@ function toAppOrg(org: WorkspaceOrg): AppOrg {
     leadRouting: org.leadRouting,
     onboardingCompleted: org.onboardingCompleted,
     business: org.business,
+    phoneNumber: org.phoneNumber,
+    emailDomain: org.emailDomain,
   };
 }
 
@@ -816,6 +823,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       market?: Market;
       onboardingCompleted?: boolean;
       business?: BusinessProfile;
+      phoneNumber?: string;
+      emailDomain?: EmailDomain;
     }) => {
       if (!repoRef.current) return;
       const next = await repoRef.current.updateOrganization(patch);
@@ -1797,6 +1806,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           to,
           body: input.body,
           consent: phone?.consent || "unknown",
+          from: org.phoneNumber || undefined,
         }),
       });
       const json = (await res.json()) as {
@@ -1838,6 +1848,10 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       if (!lead) throw new Error("Lead not found");
       const to = (lead.email || "").trim();
       if (!to) throw new Error("Lead has no email address");
+      const sending = org.emailDomain;
+      if (!sending?.domain) {
+        throw new Error("Connect your domain in Settings before sending email.");
+      }
 
       const token = authMode === "supabase" ? await getAuthToken() : null;
       const res = await fetch("/api/email/send", {
@@ -1851,6 +1865,9 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           to,
           subject: input.subject,
           body: input.body,
+          domain: sending.domain,
+          fromLocal: sending.fromLocal,
+          fromName: sending.fromName,
         }),
       });
       const json = (await res.json()) as {

@@ -7,7 +7,7 @@ import { sendTwilioSms } from "@/lib/twilio/client";
 import { fireLeadContactedIfFirst } from "@/lib/automations/engine";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
-import { shouldUseTwilioOutbound } from "@/lib/messaging/capabilities";
+import { hasTwilioAccount } from "@/lib/twilio/numbers";
 
 const bodySchema = z.object({
   leadId: z.string().min(1),
@@ -15,6 +15,7 @@ const bodySchema = z.object({
   body: z.string().min(1).max(1600),
   consent: z.enum(["unknown", "opted_in", "opted_out"]).default("unknown"),
   threadId: z.string().optional(),
+  from: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -59,16 +60,30 @@ export async function POST(request: Request) {
   const orgId = profile?.orgId;
 
   // Local-workspace mode has no Supabase to persist to; the client stores the
-  // message itself, so just relay the send — never send live Twilio unauthenticated.
+  // message itself. Production still requires a signed-in profile.
   if (!supabase || !orgId) {
-    if (shouldUseTwilioOutbound() && !profile) {
+    if (process.env.NODE_ENV === "production" && !profile) {
       return NextResponse.json({ error: "Sign in to send SMS" }, { status: 401 });
+    }
+    const from = (parsed.data.from || process.env.TWILIO_FROM_NUMBER || "").trim();
+    if (!hasTwilioAccount() || !isE164(from)) {
+      return NextResponse.json(
+        { error: "Buy a phone number in Settings before sending texts." },
+        { status: 400 },
+      );
     }
     try {
       const result = await sendTwilioSms({
         to: parsed.data.to,
         body: parsed.data.body,
+        from,
       });
+      if (result.mode !== "live") {
+        return NextResponse.json(
+          { error: "Buy a phone number in Settings before sending texts." },
+          { status: 400 },
+        );
+      }
       return NextResponse.json({
         ok: true,
         sid: result.sid,
@@ -129,6 +144,19 @@ export async function POST(request: Request) {
     );
   }
 
+  const { data: orgRow } = await supabase
+    .from("organizations")
+    .select("phone_number")
+    .eq("id", orgId)
+    .maybeSingle();
+  const from = String(orgRow?.phone_number || process.env.TWILIO_FROM_NUMBER || "").trim();
+  if (!hasTwilioAccount() || !isE164(from)) {
+    return NextResponse.json(
+      { error: "Buy a phone number in Settings before sending texts." },
+      { status: 400 },
+    );
+  }
+
   const result = await sendOutboundSms(supabase, {
     orgId,
     leadId: parsed.data.leadId,
@@ -136,7 +164,14 @@ export async function POST(request: Request) {
     body: parsed.data.body,
     consent: parsed.data.consent,
     threadId: parsed.data.threadId,
+    from,
   });
+  if (result.ok && result.mode !== "live") {
+    return NextResponse.json(
+      { error: "Buy a phone number in Settings before sending texts." },
+      { status: 400 },
+    );
+  }
 
   if (!result.ok) {
     return NextResponse.json(

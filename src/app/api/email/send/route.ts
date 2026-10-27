@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendOutboundEmail } from "@/lib/email/service";
-import { sendResendEmail } from "@/lib/email/client";
-import { shouldUseResendOutbound } from "@/lib/email/capabilities";
+import {
+  checkDomainDns,
+  formatFromAddress,
+  normalizeDomain,
+  normalizeMailbox,
+  sendDomainEmail,
+} from "@/lib/email/domain";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
@@ -14,6 +19,9 @@ const bodySchema = z.object({
   subject: z.string().min(1).max(200),
   body: z.string().min(1).max(10000),
   threadId: z.string().optional(),
+  domain: z.string().optional(),
+  fromLocal: z.string().optional(),
+  fromName: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -37,17 +45,31 @@ export async function POST(request: Request) {
   if (process.env.NODE_ENV === "production" && !profile) {
     return NextResponse.json({ error: "Sign in to send email" }, { status: 401 });
   }
-  if (shouldUseResendOutbound() && !profile) {
-    return NextResponse.json({ error: "Sign in to send email" }, { status: 401 });
-  }
 
   const orgId = profile?.orgId;
   if (!supabase || !orgId) {
+    const domain = normalizeDomain(parsed.data.domain || "");
+    const fromLocal = normalizeMailbox(parsed.data.fromLocal || "hello");
+    const fromName = (parsed.data.fromName || "").trim().slice(0, 80);
+    if (!domain || !fromLocal || !fromName) {
+      return NextResponse.json(
+        { error: "Connect your domain in Settings before sending email." },
+        { status: 400 },
+      );
+    }
+    const dns = await checkDomainDns(domain);
+    if (!dns.verified) {
+      return NextResponse.json(
+        { error: "The domain DNS is not in place yet. Check it in Settings." },
+        { status: 400 },
+      );
+    }
     try {
-      const result = await sendResendEmail({
+      const result = await sendDomainEmail({
+        from: formatFromAddress({ domain, fromLocal, fromName }),
         to: parsed.data.to,
         subject: parsed.data.subject,
-        body: parsed.data.body,
+        text: parsed.data.body,
       });
       return NextResponse.json({
         ok: true,

@@ -132,7 +132,6 @@ export function CrmDesk({ view }: { view: CrmView }) {
     contacts,
     listings,
     messages,
-    callLogs,
     automations,
     sequences,
     enrollments,
@@ -149,7 +148,6 @@ export function CrmDesk({ view }: { view: CrmView }) {
     promoteContactToLead,
     sendSms,
     sendEmail,
-    logCall,
     setLeadWorkflow,
     advanceSequence,
     createAutomation,
@@ -177,39 +175,10 @@ export function CrmDesk({ view }: { view: CrmView }) {
   const [draftText, setDraftText] = useState("");
   const [draftSubject, setDraftSubject] = useState("");
   const [composeChannel, setComposeChannel] = useState<"sms" | "email">("sms");
-  const [messagingMode, setMessagingMode] = useState<"live" | "simulated" | null>(null);
-  const [emailMode, setEmailMode] = useState<"live" | "simulated" | null>(null);
-  const [emailInboundWebhook, setEmailInboundWebhook] = useState(false);
-  const [emailConfigError, setEmailConfigError] = useState<string | null>(null);
   const [automationRuns, setAutomationRuns] = useState<AutomationRun[]>([]);
   const [leadActivities, setLeadActivities] = useState<LeadActivity[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    void fetch("/api/messaging/status")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (json?.mode === "live" || json?.mode === "simulated") {
-          setMessagingMode(json.mode);
-        }
-      })
-      .catch(() => setMessagingMode(null));
-    void fetch("/api/email/status")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (json?.mode === "live" || json?.mode === "simulated") {
-          setEmailMode(json.mode);
-        }
-        setEmailInboundWebhook(Boolean(json?.inboundWebhook));
-        setEmailConfigError(typeof json?.configError === "string" ? json.configError : null);
-      })
-      .catch(() => {
-        setEmailMode(null);
-        setEmailInboundWebhook(false);
-        setEmailConfigError(null);
-      });
-  }, []);
 
   // Opening the CRM flushes automation waits that came due, so runs advance
   // even on hosting plans without a frequent cron.
@@ -811,25 +780,6 @@ export function CrmDesk({ view }: { view: CrmView }) {
         </TabsContent>
 
         <TabsContent value="inbox" className="mt-0">
-          {messagingMode || emailMode || emailConfigError ? (
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              {messagingMode ? (
-                <Badge tone={messagingMode === "live" ? "neutral" : "warning"}>
-                  {messagingMode === "live" ? "SMS via Twilio" : "SMS not configured — simulated"}
-                </Badge>
-              ) : null}
-              {emailMode ? (
-                <Badge tone={emailMode === "live" ? "neutral" : "warning"}>
-                  {emailMode === "live" ? "Email via Resend" : "Email not configured — simulated"}
-                </Badge>
-              ) : null}
-              {emailInboundWebhook ? <Badge tone="success">Inbound email webhook</Badge> : null}
-              {emailConfigError ? (
-                <p className="w-full text-[11px] text-[var(--warning)]">{emailConfigError}</p>
-              ) : null}
-            </div>
-          ) : null}
-
           {marketLeads.length === 0 ? (
             <EmptyState
               title="No conversations yet"
@@ -879,29 +829,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
                           ? ` · ${activeLead.email}`
                           : ""}
                       </p>
-                      {view === "conversations" ? (
-                        <CallStrip
-                          lead={activeLead}
-                          logs={callLogs.filter((call) => call.leadId === activeLead.id)}
-                          market={market}
-                          canEdit={canEdit}
-                          onLog={(outcome) => {
-                            void logCall({ leadId: activeLead.id, outcome })
-                              .then(() =>
-                                toast.success(
-                                  outcome === "voicemail"
-                                    ? `Voicemail logged for ${activeLead.name}`
-                                    : `Call logged for ${activeLead.name}`,
-                                ),
-                              )
-                              .catch((err) =>
-                                toast.error(
-                                  err instanceof Error ? err.message : "Could not log call",
-                                ),
-                              );
-                          }}
-                        />
-                      ) : null}
+                      {view === "conversations" ? <CallStrip lead={activeLead} /> : null}
                     </div>
 
                     <div className="flex flex-1 flex-col justify-end gap-3 py-5">
@@ -1002,24 +930,15 @@ export function CrmDesk({ view }: { view: CrmView }) {
                                   });
                                   setDraftText("");
                                   setDraftSubject("");
-                                  if (result.mode === "live") {
-                                    toast.success("Email sent via Resend");
-                                  } else {
-                                    toast.warning(
-                                      "Logged in the thread only — Resend was not called.",
-                                    );
-                                  }
+                                  toast.success("Email sent");
+                                  void result;
                                 } else {
-                                  const result = await sendSms({
+                                  await sendSms({
                                     leadId: activeLead.id,
                                     body: draftText.trim(),
                                   });
                                   setDraftText("");
-                                  toast.success(
-                                    result.mode === "live"
-                                      ? "Message sent via Twilio"
-                                      : "Message sent",
-                                  );
+                                  toast.success("Text sent");
                                 }
                               } catch (err) {
                                 const msg = err instanceof Error ? err.message : "Send failed";
@@ -1052,29 +971,13 @@ export function CrmDesk({ view }: { view: CrmView }) {
           <section className="hero-card rounded-[2rem] p-4">
             <h2 className="font-semibold">Call queue</h2>
             <p className="text-sm text-[var(--muted)]">
-              Dial opens your phone. We log the outcome here — there is no in-app
-              WebRTC dialer.
+              Call people who are waiting on a reply.
             </p>
             {callQueue.length ? (
               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {callQueue.map((lead) => {
                   const phone = lead.phones?.[0]?.number || lead.phone;
                   const tel = phone ? toTelHref(phone) : "";
-                  const logOutcome = (outcome: "connected" | "voicemail") => {
-                    void logCall({ leadId: lead.id, outcome })
-                      .then(() =>
-                        toast.success(
-                          outcome === "voicemail"
-                            ? `Voicemail logged for ${lead.name}`
-                            : `Call logged for ${lead.name}`,
-                        ),
-                      )
-                      .catch((err) =>
-                        toast.error(
-                          err instanceof Error ? err.message : "Could not log call",
-                        ),
-                      );
-                  };
                   return (
                     <div
                       key={lead.id}
@@ -1098,20 +1001,6 @@ export function CrmDesk({ view }: { view: CrmView }) {
                             Dial
                           </Button>
                         )}
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => logOutcome("connected")}
-                        >
-                          Log call
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => logOutcome("voicemail")}
-                        >
-                          Voicemail
-                        </Button>
                       </div>
                     </div>
                   );
@@ -2404,28 +2293,16 @@ function ContactForm({
   );
 }
 
-function CallStrip({
-  lead,
-  logs,
-  market,
-  canEdit,
-  onLog,
-}: {
-  lead: Lead;
-  logs: { id: string; outcome: string; createdAt: string; phoneNumber: string }[];
-  market: Market;
-  canEdit: boolean;
-  onLog: (outcome: "connected" | "voicemail") => void;
-}) {
+function CallStrip({ lead }: { lead: Lead }) {
   const phone =
     lead.phones?.find((item) => item.preferred)?.number ||
     lead.phones?.[0]?.number ||
     lead.phone;
   const tel = phone ? toTelHref(phone) : "";
-  const recent = [...logs].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
+  if (!phone) return null;
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      <span className="text-sm text-[var(--foreground)]">{phone || "No number on file"}</span>
+      <span className="text-sm">{phone}</span>
       {tel ? (
         <Button asChild size="sm">
           <a href={tel}>
@@ -2433,26 +2310,7 @@ function CallStrip({
             Call
           </a>
         </Button>
-      ) : (
-        <Button size="sm" disabled>
-          Call
-        </Button>
-      )}
-      {canEdit ? (
-        <>
-          <Button size="sm" variant="secondary" onClick={() => onLog("connected")}>
-            Log connected
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => onLog("voicemail")}>
-            Log voicemail
-          </Button>
-        </>
       ) : null}
-      <span className="text-xs text-[var(--muted)]">
-        {recent.length
-          ? `Last: ${recent.map((call) => `${call.outcome.replaceAll("_", " ")} ${formatDate(call.createdAt, market)}`).join(" · ")}`
-          : "No calls logged yet"}
-      </span>
     </div>
   );
 }
