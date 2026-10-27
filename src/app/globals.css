@@ -696,13 +696,18 @@ html,
   display: block;
 }
 
-/* Loading mark. The artwork itself is not transformed, so it stays sharp. */
+/* 3D loader. The turn is on the wrapper, never a filter on the bitmap. */
+.logo-loader-stage {
+  perspective: 900px;
+}
+
 .logo-loader-glow {
-  animation: logo-glow 2.8s ease-in-out infinite;
+  animation: logo-glow 5.2s ease-in-out infinite;
 }
 
 .logo-loader-mark {
-  animation: logo-float 3.4s ease-in-out infinite;
+  transform-style: preserve-3d;
+  animation: logo-turn 5.2s ease-in-out infinite;
 }
 
 @keyframes logo-glow {
@@ -717,13 +722,13 @@ html,
   }
 }
 
-@keyframes logo-float {
+@keyframes logo-turn {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translateY(0) rotateX(7deg) rotateY(-18deg);
   }
   50% {
-    transform: translateY(-4px);
+    transform: translateY(-10px) rotateX(2deg) rotateY(16deg);
   }
 }
 
@@ -734,6 +739,10 @@ html,
   .logo-loader-glow,
   .logo-loader-mark {
     animation: none;
+  }
+
+  .logo-loader-mark {
+    transform: rotateX(5deg) rotateY(-10deg);
   }
 
   html {
