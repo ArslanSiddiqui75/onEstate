@@ -78,7 +78,7 @@ const NAV: {
     short: "Opportunities",
     eyebrow: "Pipeline",
     title: "Opportunities",
-    description: "The lead pipeline, and the deals moving toward close.",
+    description: "Website, portal, and office enquiries land here, then move toward a deal.",
     icon: Target,
   },
   {
@@ -151,7 +151,6 @@ const WORKSPACE_NAV: {
   icon: typeof Inbox;
   markets?: readonly string[];
 }[] = [
-  { href: "/app/enquiries", short: "Enquiries", eyebrow: "Pipeline", title: "Enquiry centre", description: "Every lead, with source, property interest, and the next step.", icon: Inbox, markets: ["uk", "us"] },
   { href: "/app/diary", short: "Diary", eyebrow: "Diary", title: "Diary", description: "Viewings and valuations, including requests from the public booking link.", icon: CalendarDays, markets: ["uk", "us"] },
   { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings desk", description: "Repairs, rent, compliance, inspections, and a dispute pack.", icon: KeyRound, markets: ["uk"] },
   { href: "/app/teams", short: "Teams", eyebrow: "Roster", title: "Teams", description: "Office groups. CRM stays shared.", icon: UsersRound },

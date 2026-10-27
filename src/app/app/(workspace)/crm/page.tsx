@@ -271,6 +271,14 @@ export function CrmDesk({ view }: { view: CrmView }) {
     toast.success(`Exported ${leadsToExport.length} leads to CSV`);
   }
 
+  const marketListings = useMemo(
+    () =>
+      org
+        ? listings.filter((listing) => listing.market === market && !listing.archivedAt)
+        : [],
+    [listings, org, market],
+  );
+
   const allMarketLeads = useMemo(
     () =>
       org
@@ -284,12 +292,17 @@ export function CrmDesk({ view }: { view: CrmView }) {
                 l.name.toLowerCase().includes(q) ||
                 l.email?.toLowerCase().includes(q) ||
                 l.phone?.toLowerCase().includes(q) ||
-                l.source?.toLowerCase().includes(q)
+                l.source?.toLowerCase().includes(q) ||
+                l.nextAction?.toLowerCase().includes(q) ||
+                marketListings.some(
+                  (listing) =>
+                    listing.id === l.listingId && listing.title.toLowerCase().includes(q),
+                )
               );
             })
             .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
         : [],
-    [leads, org, market, stageFilter, searchQuery],
+    [leads, org, market, stageFilter, searchQuery, marketListings],
   );
 
   // Pagination — slice the full list into pages of PAGE_SIZE
@@ -503,6 +516,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
                           ]
                         : [],
                       budget: Number(form.get("budget") || 0) || undefined,
+                      listingId: String(form.get("listingId") || "") || undefined,
                       nextAction: String(form.get("nextAction") || "First outreach"),
                       nextActionDueAt: new Date().toISOString(),
                       priority: String(form.get("priority") || "medium") as Priority,
@@ -535,7 +549,20 @@ export function CrmDesk({ view }: { view: CrmView }) {
                   </option>
                 ))}
               </select>
-              <Input name="source" placeholder="Lead source" />
+              <Input name="source" placeholder="Source (Website, Portal, Phone)" />
+              <select
+                name="listingId"
+                aria-label="Property"
+                className="h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
+                defaultValue=""
+              >
+                <option value="">Property interest</option>
+                {marketListings.map((listing) => (
+                  <option key={listing.id} value={listing.id}>
+                    {listing.title}
+                  </option>
+                ))}
+              </select>
               <select
                 name="type"
                 className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
@@ -610,6 +637,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
                   <TH>Phone</TH>
                   <TH>Owner</TH>
                   <TH>Type</TH>
+                  <TH>Property</TH>
                   <TH>Stage</TH>
                   <TH>Next action</TH>
                   <TH>Budget</TH>
@@ -660,6 +688,10 @@ export function CrmDesk({ view }: { view: CrmView }) {
                       </TD>
                       <TD>{owner?.name ?? "Unassigned"}</TD>
                       <TD className="capitalize">{lead.type}</TD>
+                      <TD>
+                        {marketListings.find((listing) => listing.id === lead.listingId)?.title ||
+                          "—"}
+                      </TD>
                       <TD>
                         {canEdit ? (
                           <select
@@ -722,11 +754,11 @@ export function CrmDesk({ view }: { view: CrmView }) {
           {allMarketLeads.length === 0 ? (
             <EmptyState
               className="mt-4"
-              title={searchQuery ? "No leads match your search" : "No leads yet"}
+              title={searchQuery ? "No opportunities match your search" : "No opportunities yet"}
               description={
                 searchQuery
-                  ? "Try a different name, email, or source."
-                  : "Add your first lead to start building the pipeline."
+                  ? "Try a different name, email, source, or property."
+                  : "Website, portal, and office enquiries show up here. Add one to start the pipeline."
               }
             />
           ) : null}

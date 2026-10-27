@@ -150,8 +150,8 @@ export default function AppDashboardPage() {
         </Card>
         <Card>
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-semibold">Open enquiries</h2>
-            <Link href="/app/enquiries" className="text-sm font-semibold text-[var(--accent)]">
+            <h2 className="font-semibold">Open opportunities</h2>
+            <Link href="/app/opportunities" className="text-sm font-semibold text-[var(--accent)]">
               {openEnquiries.length}
             </Link>
           </div>
@@ -164,7 +164,7 @@ export default function AppDashboardPage() {
                 </span>
               </li>
             ))}
-            {openEnquiries.length === 0 ? <li className="text-[var(--muted)]">The enquiry list is clear.</li> : null}
+            {openEnquiries.length === 0 ? <li className="text-[var(--muted)]">Nothing open right now.</li> : null}
           </ul>
         </Card>
         <Card>

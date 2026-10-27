@@ -18,6 +18,9 @@ function Opportunities() {
 
   return (
     <div className="space-y-5">
+      <p className="max-w-2xl text-sm text-[var(--muted)]">
+        Website, portal, and office enquiries arrive here as new opportunities, with the source, the property, and the next step.
+      </p>
       <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-muted)] p-1">
         <button
           type="button"
