@@ -1,27 +1,34 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
+import { dueLabel, dueState, pendingTasks } from "@/lib/tasks/due";
 import { LockedModule } from "@/components/ui/locked-module";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import type { LeadTask } from "@/types";
+
+const selectClass =
+  "h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm";
+
+type View = "open" | "done";
 
 export default function AppTasksPage() {
   const { user, org, leads, tasks, resolveTask, createLeadTask } = useAppSession();
-  const [title, setTitle] = useState("");
-  const [leadId, setLeadId] = useState("");
-  const [dueAt, setDueAt] = useState("");
+  const [view, setView] = useState<View>("open");
+  const [addOpen, setAddOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const grouped = useMemo(() => {
-    const open = tasks.filter((t) => t.status === "open");
-    const done = tasks.filter((t) => t.status === "done");
-    return { open, done };
-  }, [tasks]);
+  const open = useMemo(() => pendingTasks(tasks), [tasks]);
+  const done = useMemo(() => tasks.filter((task) => task.status === "done"), [tasks]);
+  const overdue = open.filter((task) => dueState(task.dueAt) === "overdue").length;
 
   if (!user || !org) return null;
   if (!hasModuleAccess(user.role, org.plan, "crm", "view")) {
@@ -36,110 +43,194 @@ export default function AppTasksPage() {
   }
 
   const canEdit = hasModuleAccess(user.role, org.plan, "crm", "edit");
+  const visible = view === "open" ? open : done;
 
   return (
-    <div className="space-y-6">
-      <p className="text-sm text-[var(--muted)]">
-        {canEdit
-          ? "Follow-ups from sequences, plus anything you add below."
-          : "Open and completed follow-ups. Adding a task needs CRM edit access."}
-      </p>
-      {canEdit ? (
-        <form
-          className="grid gap-2 sm:grid-cols-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!leadId) {
-              toast.error("Pick a lead");
-              return;
-            }
-            setBusy(true);
-            void createLeadTask({
-              leadId,
-              title: title.trim(),
-              dueAt: dueAt || undefined,
-              channel: "Call",
-              status: "open",
-            })
-              .then(() => {
-                setTitle("");
-                setDueAt("");
-                toast.success("Task added");
-              })
-              .catch((err) =>
-                toast.error(err instanceof Error ? err.message : "Could not add task"),
-              )
-              .finally(() => setBusy(false));
-          }}
-        >
-          <Input
-            placeholder="Task title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-          <select
-            className="h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-sm"
-            value={leadId}
-            onChange={(e) => setLeadId(e.target.value)}
-            required
-          >
-            <option value="">Lead…</option>
-            {leads.map((lead) => (
-              <option key={lead.id} value={lead.id}>
-                {lead.name}
-              </option>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-[var(--muted)]">
+          {open.length === 0 ? "Nothing waiting." : open.length === 1 ? "1 pending task." : `${open.length} pending tasks.`}
+          {overdue > 0 ? <span className="text-[var(--danger)]"> {overdue === 1 ? "1 is overdue." : `${overdue} are overdue.`}</span> : null}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-muted)] p-1">
+            {(["open", "done"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setView(item)}
+                className={cn(
+                  "rounded-full px-4 py-1.5 text-sm font-semibold",
+                  view === item
+                    ? "bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[0_1px_2px_rgba(20,17,15,0.08)]"
+                    : "text-[var(--muted)]",
+                )}
+              >
+                {item === "open" ? "Pending" : "Done"}
+              </button>
             ))}
-          </select>
-          <Input type="date" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
-          <Button type="submit" disabled={busy}>
-            {busy ? "Adding…" : "Add task"}
-          </Button>
-        </form>
+          </div>
+          {canEdit ? (
+            <Button type="button" onClick={() => setAddOpen(true)}>
+              Add task
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      {visible.length === 0 ? (
+        <EmptyState
+          title={view === "open" ? "No pending tasks" : "Nothing finished yet"}
+          description={
+            view === "open"
+              ? "Follow-ups you add, and ones from a sequence, show up here."
+              : "Finished tasks land here."
+          }
+          action={
+            view === "open" && canEdit ? (
+              <Button type="button" onClick={() => setAddOpen(true)}>
+                Add task
+              </Button>
+            ) : null
+          }
+        />
+      ) : (
+        <div className="overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)]">
+          <ul>
+            {visible.map((task) => {
+              const lead = leads.find((item) => item.id === task.leadId);
+              const state = dueState(task.dueAt);
+              return (
+                <li key={task.id} className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-3 last:border-b-0">
+                  {canEdit && view === "open" ? (
+                    <button
+                      type="button"
+                      aria-label={`Mark ${task.title} done`}
+                      className="h-5 w-5 shrink-0 rounded-full border border-[var(--border-strong)] transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                      onClick={() => void resolveTask(task.id).then(() => toast.success("Task done"))}
+                    />
+                  ) : (
+                    <span className="h-5 w-5 shrink-0 rounded-full bg-[var(--success-soft)]" aria-hidden />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("truncate font-medium", view === "done" && "text-[var(--muted)] line-through")}>{task.title}</p>
+                    <p className="truncate text-xs text-[var(--muted)]">
+                      {lead?.name || "Lead"} · {task.channel}
+                    </p>
+                  </div>
+                  <Badge tone={state === "overdue" ? "danger" : state === "today" ? "warning" : "neutral"}>
+                    {view === "done" ? "Done" : dueLabel(task.dueAt)}
+                  </Badge>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {addOpen ? (
+        <AddTaskDialog
+          leads={leads.map((lead) => ({ id: lead.id, name: lead.name }))}
+          busy={busy}
+          onClose={() => setAddOpen(false)}
+          onCreate={async (input) => {
+            setBusy(true);
+            try {
+              await createLeadTask({ ...input, status: "open" });
+              setAddOpen(false);
+              setView("open");
+              toast.success("Task added");
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Could not add that task");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        />
       ) : null}
-
-      <section className="space-y-2">
-        <h2 className="font-semibold">Open ({grouped.open.length})</h2>
-        {grouped.open.length === 0 ? (
-          <p className="text-sm text-[var(--muted)]">Nothing open.</p>
-        ) : (
-          grouped.open.map((task) => {
-            const lead = leads.find((l) => l.id === task.leadId);
-            return (
-              <Card key={task.id} className="flex items-center justify-between gap-3 p-3">
-                <div>
-                  <p className="font-medium">{task.title}</p>
-                  <p className="text-xs text-[var(--muted)]">
-                    {lead?.name || "Lead"} · {task.channel}
-                    {task.dueAt ? ` · due ${task.dueAt.slice(0, 10)}` : ""}
-                  </p>
-                </div>
-                {canEdit ? (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() =>
-                      void resolveTask(task.id).then(() => toast.success("Task done"))
-                    }
-                  >
-                    Done
-                  </Button>
-                ) : null}
-              </Card>
-            );
-          })
-        )}
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="font-semibold">Done ({grouped.done.length})</h2>
-        {grouped.done.map((task) => (
-          <Card key={task.id} className="p-3">
-            <p className="font-medium">{task.title}</p>
-            <Badge className="mt-1">Done</Badge>
-          </Card>
-        ))}
-      </section>
     </div>
+  );
+}
+
+function AddTaskDialog({
+  leads,
+  busy,
+  onClose,
+  onCreate,
+}: {
+  leads: { id: string; name: string }[];
+  busy: boolean;
+  onClose: () => void;
+  onCreate: (input: { leadId: string; title: string; dueAt?: string; channel: LeadTask["channel"] }) => Promise<void>;
+}) {
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[min(40rem,calc(100dvh-2rem))] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add a task</DialogTitle>
+          <DialogDescription>A follow-up on a lead. It stays pending until you mark it done.</DialogDescription>
+        </DialogHeader>
+        {leads.length === 0 ? (
+          <p className="mt-4 text-sm text-[var(--muted)]">
+            Add a lead first, then come back to give it a follow-up.{" "}
+            <Link href="/app/opportunities" className="font-semibold text-[var(--accent)]">
+              Open opportunities
+            </Link>
+          </p>
+        ) : (
+          <form
+            className="mt-4 grid gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const data = new FormData(event.currentTarget);
+              const title = String(data.get("title") || "").trim();
+              const leadId = String(data.get("leadId") || "");
+              const dueAt = String(data.get("dueAt") || "");
+              const channel = String(data.get("channel") || "Call") as LeadTask["channel"];
+              if (!leadId) {
+                toast.error("Pick a lead");
+                return;
+              }
+              void onCreate({ leadId, title, dueAt: dueAt || undefined, channel });
+            }}
+          >
+            <label className="block text-sm font-medium">
+              What needs doing
+              <Input name="title" className="mt-1.5" required placeholder="Call back about the viewing" />
+            </label>
+            <label className="block text-sm font-medium">
+              Lead
+              <select name="leadId" className={`${selectClass} mt-1.5`} defaultValue="" required>
+                <option value="" disabled>
+                  Choose a lead
+                </option>
+                {leads.map((lead) => (
+                  <option key={lead.id} value={lead.id}>
+                    {lead.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-medium">
+                How
+                <select name="channel" className={`${selectClass} mt-1.5`} defaultValue="Call">
+                  <option value="Call">Call</option>
+                  <option value="SMS">Text</option>
+                  <option value="Email">Email</option>
+                </select>
+              </label>
+              <label className="block text-sm font-medium">
+                Due
+                <Input name="dueAt" type="date" className="mt-1.5" />
+              </label>
+            </div>
+            <Button type="submit" disabled={busy}>
+              {busy ? "Saving…" : "Save task"}
+            </Button>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

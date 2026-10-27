@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { TaskNotice } from "@/components/tasks/task-notice";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { useBrand } from "@/components/brand/brand-provider";
 import { useTheme } from "@/lib/theme/provider";
@@ -152,7 +153,7 @@ const WORKSPACE_NAV: {
 }[] = [
   { href: "/app/diary", short: "Diary", eyebrow: "Diary", title: "Diary", description: "Viewings and valuations, including requests from the public booking link.", icon: CalendarDays, markets: ["uk", "us"] },
   { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings", description: "Open repairs, this month's rent, and the file for each let.", icon: KeyRound, markets: ["uk"] },
-  { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Open and done lead tasks.", icon: ListChecks },
+  { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Pending follow-ups, with anything overdue first.", icon: ListChecks },
   { href: "/app/reports", short: "Reports", eyebrow: "Snapshot", title: "Reports", description: "Live pipeline and inventory counts.", icon: BarChart3 },
   { href: "/app/documents", short: "Documents", eyebrow: "Files", title: "Documents", description: "Uploads, e-sign, and listing media.", icon: FolderOpen },
   { href: "/app/tickets", short: "Support", eyebrow: "Help", title: "Support", description: "File a ticket with platform support.", icon: LifeBuoy },
@@ -504,7 +505,10 @@ export function AppShell({
               <span className="truncate">{statusLine}</span>
             </div>
 
-            <ThemeToggle />
+            <div className="flex shrink-0 items-center gap-2">
+              <TaskNotice />
+              <ThemeToggle />
+            </div>
           </header>
 
           <main className="surface-panel min-h-0 flex-1 overflow-y-auto scrollbar-thin p-4 sm:p-6 lg:p-8">
