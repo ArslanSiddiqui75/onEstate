@@ -2,7 +2,7 @@
 
 import { MenuSelect } from "@/components/ui/select";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/components/ui/toast";
 import { Alert } from "@/components/ui/alert";
@@ -12,7 +12,6 @@ import { LockedModule } from "@/components/ui/locked-module";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar } from "@/components/ui/avatar";
 import { buildPhoneContactMethod, formatDate, formatMoney, asErrorMessage } from "@/lib/utils";
 import { toTelHref } from "@/lib/phone/e164";
@@ -36,6 +35,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TBody, TD, TH, THead, TR, TableShell } from "@/components/ui/table";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConversationInbox } from "@/components/crm/conversation-inbox";
 import { AutomationBuilder } from "@/components/crm/automation-builder";
 import { LeadRoutingPanel } from "@/components/crm/lead-routing-panel";
 import { scoreLead } from "@/lib/crm/scoring";
@@ -172,9 +172,6 @@ export function CrmDesk({ view }: { view: CrmView }) {
   const [editingLead, setEditingLead] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [csvText, setCsvText] = useState("");
-  const [draftText, setDraftText] = useState("");
-  const [draftSubject, setDraftSubject] = useState("");
-  const [composeChannel, setComposeChannel] = useState<"sms" | "email">("sms");
   const [automationRuns, setAutomationRuns] = useState<AutomationRun[]>([]);
   const [leadActivities, setLeadActivities] = useState<LeadActivity[]>([]);
   const [busy, setBusy] = useState(false);
@@ -205,6 +202,18 @@ export function CrmDesk({ view }: { view: CrmView }) {
     const lead = searchParams.get("lead");
     if (lead) setSelectedLeadId(lead);
   }, [searchParams]);
+
+  const selectConversation = useCallback(
+    (id: string | null) => {
+      setSelectedLeadId(id);
+      if (view !== "conversations") return;
+      router.replace(
+        id ? `/app/conversations?lead=${encodeURIComponent(id)}` : "/app/conversations",
+        { scroll: false },
+      );
+    },
+    [router, view],
+  );
 
   async function refreshAutomationRuns() {
     const runs = await listAutomationRuns().catch(() => []);
@@ -328,23 +337,6 @@ export function CrmDesk({ view }: { view: CrmView }) {
 
   const activeLead =
     marketLeads.find((lead) => lead.id === selectedLeadId) || marketLeads[0] || null;
-  const activeMessages = activeLead
-    ? messages
-        .filter(
-          (m) =>
-            m.leadId === activeLead.id &&
-            (m.channel || "sms") === composeChannel,
-        )
-        .sort((a, b) => a.sentAt.localeCompare(b.sentAt))
-    : [];
-  const threadMessages = activeMessages.map((m) => ({
-    id: m.id,
-    body: m.body,
-    direction: m.direction,
-    sentAt: m.sentAt,
-    channel: m.channel,
-    subject: m.subject,
-  }));
 
   const followSeq = findSequenceByKind(sequences, "follow_up") || sequences[0];
   const nurtureSeq = findSequenceByKind(sequences, "nurture");
@@ -378,13 +370,25 @@ export function CrmDesk({ view }: { view: CrmView }) {
     setTab("inbox");
   }
 
+  const inboxLeads = org ? leads.filter((lead) => lead.market === market) : [];
+
   return (
-    <div className="space-y-6">
+    <div
+      className={
+        view === "conversations" ? "flex min-h-0 flex-1 flex-col" : "space-y-6"
+      }
+    >
       {error ? (
-        <Alert tone="danger">{error}</Alert>
+        <div className={view === "conversations" ? "px-4 pt-3" : undefined}>
+          <Alert tone="danger">{error}</Alert>
+        </div>
       ) : null}
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs
+        value={tab}
+        onValueChange={setTab}
+        className={view === "conversations" ? "flex min-h-0 flex-1 flex-col" : undefined}
+      >
         <TabsContent value="pipeline" className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             {/* Search bar */}
@@ -779,192 +783,25 @@ export function CrmDesk({ view }: { view: CrmView }) {
           />
         </TabsContent>
 
-        <TabsContent value="inbox" className="mt-0">
-          {marketLeads.length === 0 ? (
-            <EmptyState
-              title="No conversations yet"
-              description="People appear here once a lead has a phone number or email. Calls, texts, and email stay on the same thread."
-            />
-          ) : (
-            <div className="grid lg:grid-cols-[16rem_minmax(0,1fr)]">
-              <aside className="max-h-72 overflow-y-auto lg:max-h-[calc(100dvh-12rem)] lg:pr-4">
-                <div className="space-y-0.5">
-                  {marketLeads.map((lead) => {
-                    const phone = lead.phones?.find((item) => item.preferred) || lead.phones?.[0];
-                    const isActive = activeLead?.id === lead.id;
-                    return (
-                      <button
-                        key={lead.id}
-                        type="button"
-                        onClick={() => setSelectedLeadId(lead.id)}
-                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left ${
-                          isActive
-                            ? "bg-[var(--accent-soft)]"
-                            : "hover:bg-[var(--surface-muted)]"
-                        }`}
-                      >
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-medium">{lead.name}</span>
-                          <span className="block truncate text-xs text-[var(--muted)]">
-                            {phone?.number || lead.phone || lead.email || "No contact"}
-                          </span>
-                        </span>
-                        {lead.priority ? (
-                          <Badge className="shrink-0 capitalize">{lead.priority}</Badge>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              </aside>
-
-              <div className="mt-6 flex min-h-[28rem] flex-col border-t border-[var(--border)] pt-5 lg:mt-0 lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0">
-                {activeLead ? (
-                  <>
-                    <div>
-                      <h2 className="font-semibold">{activeLead.name}</h2>
-                      <p className="text-sm text-[var(--muted)]">
-                        {composeChannel === "email" ? "Email" : "Text"}
-                        {composeChannel === "email" && activeLead.email
-                          ? ` · ${activeLead.email}`
-                          : ""}
-                      </p>
-                      {view === "conversations" ? <CallStrip lead={activeLead} /> : null}
-                    </div>
-
-                    <div className="flex flex-1 flex-col justify-end gap-3 py-5">
-                      {threadMessages.length === 0 ? (
-                        <p className="text-sm text-[var(--muted)]">
-                          No {composeChannel === "email" ? "email" : "texts"} yet.
-                        </p>
-                      ) : (
-                        threadMessages.map((message) => (
-                          <div
-                            key={message.id}
-                            className={`max-w-[85%] px-3.5 py-2.5 text-sm ${
-                              message.direction === "outbound"
-                                ? "ml-auto rounded-2xl rounded-br-md bg-[var(--accent)] text-[var(--accent-foreground)]"
-                                : message.direction === "inbound"
-                                  ? "rounded-2xl rounded-bl-md bg-[var(--surface-muted)] text-[var(--foreground)]"
-                                  : "mx-auto text-center text-xs text-[var(--muted)]"
-                            }`}
-                          >
-                            <p>
-                              {message.subject ? (
-                                <span className="mb-1 block font-medium">{message.subject}</span>
-                              ) : null}
-                              {message.body}
-                            </p>
-                            <p className="mt-1.5 text-[11px] opacity-70">
-                              {message.direction === "system"
-                                ? formatDate(message.sentAt, market)
-                                : `${message.channel === "email" ? "Email" : "Text"} · ${formatDate(message.sentAt, market)}`}
-                            </p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    <div className="border-t border-[var(--border)] pt-4">
-                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <div className="segmented" role="group" aria-label="Message channel">
-                          <button
-                            type="button"
-                            data-active={composeChannel === "sms"}
-                            onClick={() => setComposeChannel("sms")}
-                          >
-                            SMS
-                          </button>
-                          <button
-                            type="button"
-                            data-active={composeChannel === "email"}
-                            onClick={() => setComposeChannel("email")}
-                          >
-                            Email
-                          </button>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setDraftText(
-                              composeChannel === "email"
-                                ? `Hi ${activeLead.name.split(" ")[0]},\n\nJust checking whether you’re still available for the next step.\n\nThanks,\n${org.name}`
-                                : `Hi ${activeLead.name.split(" ")[0]}, just checking whether you’re still available for the next step.`,
-                            )
-                          }
-                        >
-                          Insert template
-                        </Button>
-                      </div>
-                      {composeChannel === "email" ? (
-                        <Input
-                          className="mb-2"
-                          placeholder="Subject"
-                          value={draftSubject}
-                          onChange={(e) => setDraftSubject(e.target.value)}
-                        />
-                      ) : null}
-                      <Textarea
-                        className="min-h-20"
-                        placeholder={composeChannel === "email" ? "Write an email…" : "Write a text…"}
-                        value={draftText}
-                        onChange={(e) => setDraftText(e.target.value)}
-                      />
-                      <div className="mt-3 flex justify-end">
-                        <Button
-                          type="button"
-                          disabled={busy || !draftText.trim()}
-                          onClick={() => {
-                            void (async () => {
-                              setBusy(true);
-                              setError(null);
-                              try {
-                                if (composeChannel === "email") {
-                                  const result = await sendEmail({
-                                    leadId: activeLead.id,
-                                    subject:
-                                      draftSubject.trim() || `Following up from ${org.name}`,
-                                    body: draftText.trim(),
-                                  });
-                                  setDraftText("");
-                                  setDraftSubject("");
-                                  toast.success("Email sent");
-                                  void result;
-                                } else {
-                                  await sendSms({
-                                    leadId: activeLead.id,
-                                    body: draftText.trim(),
-                                  });
-                                  setDraftText("");
-                                  toast.success("Text sent");
-                                }
-                              } catch (err) {
-                                const msg = err instanceof Error ? err.message : "Send failed";
-                                setError(msg);
-                                toast.error(msg);
-                              } finally {
-                                setBusy(false);
-                              }
-                            })();
-                          }}
-                        >
-                          {busy
-                            ? "Sending…"
-                            : composeChannel === "email"
-                              ? "Send email"
-                              : "Send text"}
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-[var(--muted)]">No one selected.</p>
-                )}
-              </div>
-            </div>
-          )}
+        <TabsContent
+          value="inbox"
+          className="mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex"
+        >
+          <ConversationInbox
+            leads={inboxLeads}
+            messages={messages}
+            members={members}
+            market={market}
+            userId={user.id}
+            orgName={org.name}
+            canEdit={canEdit}
+            selectedLeadId={selectedLeadId}
+            onSelect={selectConversation}
+            onError={setError}
+            sendSms={sendSms}
+            sendEmail={sendEmail}
+            addLead={addLead}
+          />
         </TabsContent>
 
         <TabsContent value="calls" className="mt-4">
@@ -2290,28 +2127,6 @@ function ContactForm({
         ) : null}
       </div>
     </form>
-  );
-}
-
-function CallStrip({ lead }: { lead: Lead }) {
-  const phone =
-    lead.phones?.find((item) => item.preferred)?.number ||
-    lead.phones?.[0]?.number ||
-    lead.phone;
-  const tel = phone ? toTelHref(phone) : "";
-  if (!phone) return null;
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
-      <span className="text-sm">{phone}</span>
-      {tel ? (
-        <Button asChild size="sm">
-          <a href={tel}>
-            <Phone className="h-3.5 w-3.5" aria-hidden />
-            Call
-          </a>
-        </Button>
-      ) : null}
-    </div>
   );
 }
 

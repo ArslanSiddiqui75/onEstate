@@ -721,8 +721,24 @@ function ShellFrame({
             </div>
           </header>
 
-          <main className="surface-panel min-h-0 flex-1 overflow-y-auto scrollbar-thin p-4 sm:p-6 lg:p-8">
-            <motion.div key={pathname}>{children}</motion.div>
+          <main
+            className={cn(
+              "surface-panel min-h-0 flex-1",
+              pathname === "/app/conversations" || pathname === "/app/crm"
+                ? "flex flex-col overflow-hidden p-0"
+                : "overflow-y-auto scrollbar-thin p-4 sm:p-6 lg:p-8",
+            )}
+          >
+            <motion.div
+              key={pathname}
+              className={
+                pathname === "/app/conversations" || pathname === "/app/crm"
+                  ? "flex min-h-0 flex-1 flex-col"
+                  : undefined
+              }
+            >
+              {children}
+            </motion.div>
           </main>
         </div>
     </div>

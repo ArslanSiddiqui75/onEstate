@@ -67,7 +67,13 @@ function Guard({ children }: { children: React.ReactNode }) {
       orgId={org.id}
       onSignOut={() => signOut()}
     >
-      <div className="space-y-3">
+      <div
+        className={
+          pathname === "/app/conversations" || pathname === "/app/crm"
+            ? "flex min-h-0 flex-1 flex-col gap-3"
+            : "space-y-3"
+        }
+      >
         <ImpersonationBanner />
         <AdminOverlapBanner />
         <ErrorBoundary>{children}</ErrorBoundary>
