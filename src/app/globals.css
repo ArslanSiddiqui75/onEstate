@@ -139,7 +139,7 @@
   --color-background: var(--canvas);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-body);
-  --font-display: var(--font-display);
+  --font-display: var(--font-body);
 
   /* Promoted design tokens so Tailwind utilities (bg-accent, shadow-card, ease-out-expo…)
      resolve at runtime from the CSS variables below — enables theming (e.g. dark mode)
@@ -218,9 +218,9 @@ body::before {
 }
 
 .font-display {
-  font-family: var(--font-display), Georgia, serif;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.045em;
 }
 
 .marketing-grain::before {

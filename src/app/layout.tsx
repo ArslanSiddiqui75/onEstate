@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Inter, Newsreader } from "next/font/google";
+import { Inter } from "next/font/google";
 import { getBrandByMarket } from "@/lib/brand/config";
 import { defaultMarket, marketFromHost } from "@/lib/brand/host";
 import { BrandProvider } from "@/components/brand/brand-provider";
@@ -9,13 +9,6 @@ import { ToastContainer } from "@/components/ui/toast";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import type { Market } from "@/types";
 import "./globals.css";
-
-const display = Newsreader({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  display: "swap",
-});
 
 const body = Inter({
   variable: "--font-body",
@@ -83,7 +76,7 @@ export default async function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${display.variable} ${body.variable} h-full`}
+      className={`${body.variable} h-full`}
       suppressHydrationWarning
     >
       <head>
