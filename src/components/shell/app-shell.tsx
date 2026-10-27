@@ -364,7 +364,7 @@ export function AppShell({
 
           <div
             className={cn(
-              "m-3 rounded-2xl border p-4",
+              "m-3 rounded-[1.35rem] border p-4",
               ink
                 ? "border-white/8 bg-white/5"
                 : "border-[var(--border)] bg-[var(--surface-muted)]",
@@ -393,7 +393,7 @@ export function AppShell({
             </div>
             <div
               className={cn(
-                "mt-3 rounded-xl border px-3 py-2",
+                "mt-3 rounded-[1rem] border px-4 py-3",
                 ink
                   ? "border-white/10 bg-black/20"
                   : "border-[var(--border)] bg-[var(--surface-elevated)]",
@@ -426,7 +426,7 @@ export function AppShell({
                   type="button"
                   onClick={onSignOut}
                   className={cn(
-                    "inline-flex w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-medium transition",
+                    "inline-flex h-12 w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-[1rem] border px-4 text-sm font-medium transition",
                     ink
                       ? "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
                       : "border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--muted)] hover:text-[var(--foreground)]",
