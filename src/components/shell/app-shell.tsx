@@ -597,7 +597,7 @@ function ShellFrame({
                 width={512}
                 height={601}
                 draggable={false}
-                className="h-[4.75rem] w-auto dark:hidden"
+                className="h-[6.75rem] w-auto dark:hidden"
               />
               <img
                 src="/brand/loader-mark-dark.webp"
@@ -605,7 +605,7 @@ function ShellFrame({
                 width={524}
                 height={706}
                 draggable={false}
-                className="hidden h-[4.75rem] w-auto dark:block"
+                className="hidden h-[6.75rem] w-auto dark:block"
               />
             </Link>
             <button
