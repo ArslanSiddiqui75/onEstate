@@ -23,7 +23,6 @@ import {
   ListChecks,
   ListOrdered,
   MessagesSquare,
-  Plug,
   Route,
   Share2,
   Target,
@@ -181,17 +180,6 @@ const NAV: {
     title: "Listings & Portals",
     description: "Listing packs, portal readiness, and sync status.",
     icon: Building2,
-    children: [
-      {
-        href: "/app/listings?tab=portals",
-        short: "Portals",
-        eyebrow: "Inventory",
-        title: "Portal connections",
-        description: "Rightmove, Zoopla, OnTheMarket, and MLS feed status.",
-        icon: Plug,
-        query: { key: "tab", value: "portals" },
-      },
-    ],
   },
   {
     id: "lettings",
