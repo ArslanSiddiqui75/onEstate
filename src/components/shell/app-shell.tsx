@@ -156,7 +156,7 @@ const WORKSPACE_NAV: {
   { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Pending follow-ups, with anything overdue first.", icon: ListChecks },
   { href: "/app/reports", short: "Reports", eyebrow: "Book", title: "Reports", description: "Pipeline, stock, deals, tasks, conversations, and the rest of the book.", icon: BarChart3 },
   { href: "/app/documents", short: "Documents", eyebrow: "Files", title: "Documents", description: "Uploads, e-sign, and listing media.", icon: FolderOpen },
-  { href: "/app/tickets", short: "Support", eyebrow: "Help", title: "Support", description: "File a ticket with platform support.", icon: LifeBuoy },
+  { href: "/app/tickets", short: "Support", eyebrow: "Help", title: "Support", description: "Tickets with platform support, and how urgent each one is.", icon: LifeBuoy },
 ];
 
 interface AppShellProps {

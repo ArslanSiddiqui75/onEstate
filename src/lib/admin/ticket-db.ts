@@ -4,11 +4,13 @@ import {
   isTicketPriority,
   isTicketStatus,
   projectCustomerReply,
+  projectTicketAction,
   withTicketFacts,
   type DeskTicket,
   type TicketEvent,
   type TicketMessage,
   type TicketPatch,
+  type TicketPriority,
 } from "@/lib/admin/ticket-desk";
 
 export const DESK_MIGRATION_WARNING =
@@ -326,6 +328,26 @@ export async function applyHostedTicketPatch(
   const next = applyTicketPatch(loaded.ticket, patch, { email: actorEmail }, new Date());
   const saved = await persistDeskTicket(supabase, loaded.ticket, next);
   return { ...saved, ticket: next };
+}
+
+export async function applyHostedCustomerPriority(
+  supabase: SupabaseClient,
+  id: string,
+  email: string,
+  priority: TicketPriority,
+) {
+  const loaded = await getDeskTicket(supabase, id);
+  if (!loaded) throw new TicketDeskError("Not found", 404);
+  if (loaded.ticket.status === "closed") {
+    throw new TicketDeskError("This ticket is closed.", 409);
+  }
+  const next = projectTicketAction(
+    loaded.ticket,
+    { type: "priority", priority },
+    { email },
+    new Date(),
+  );
+  return persistDeskTicket(supabase, loaded.ticket, next);
 }
 
 export async function applyHostedCustomerReply(
