@@ -571,15 +571,11 @@ select:not([multiple]) optgroup {
   border-radius: var(--radius-sm);
 }
 
-/* Sign-in studio. Light and dark each use their own render, kept near the
-   source size so the 3D mark stays sharp. Desktop parks it in the left gutter;
-   mobile parks it under the card. Page color matches the studio edge. */
+/* Sign-in studio. Each theme uses its own render, faded to nothing at the
+   edges so it sits on the canvas instead of a rectangle. Width stays under
+   the source size so the sculpture is never blown up. */
 .login-screen {
-  background: #faf9f7;
-}
-
-.dark .login-screen {
-  background: #011b1c;
+  background: var(--canvas);
 }
 
 .login-field {
@@ -588,21 +584,17 @@ select:not([multiple]) optgroup {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  /* max-w-5xl card, centered, with the sm horizontal padding inside it. */
-  --login-card-left: max(1.5rem, calc((100% - 64rem) / 2 + 1.5rem));
-  /* Sculpture box inside the cropped render, as a fraction of image width. */
-  --art-inset: 0.194;
-  --art-span: 0.622;
-  /* Short enough that the sculpture clears the card and its shadow. */
-  --art-w: min(14.5rem, 64vw);
+  /* Distance from the viewport edge to the card: half the leftover width
+     outside the max-w-5xl column, plus that column's horizontal padding. */
+  --login-space: calc((100% - 64rem) / 2 + 1.5rem);
 }
 
 .login-bg {
   position: absolute;
-  width: var(--art-w);
+  width: min(11.5rem, 46vw);
   height: auto;
   left: 50%;
-  bottom: 0;
+  bottom: max(1.75rem, env(safe-area-inset-bottom));
   transform: translateX(-50%);
   user-select: none;
 }
@@ -619,17 +611,21 @@ select:not([multiple]) optgroup {
   display: block;
 }
 
-@media (min-width: 1280px) {
-  .login-field {
-    /* Fit the whole sculpture in the gutter. Cap at the pre-upscale width (760px). */
-    --art-w: min(47.5rem, calc((var(--login-card-left) - 1.75rem) / var(--art-span)));
+/* A short phone has no room under the card. Hide the mark instead of clipping it. */
+@media (max-width: 1279px) and (max-height: 720px) {
+  .login-bg,
+  .dark .login-bg-dark {
+    display: none;
   }
+}
 
+@media (min-width: 1280px) {
   .login-bg {
-    left: calc(0.75rem - var(--art-inset) * var(--art-w));
+    width: min(22rem, calc(var(--login-space) - 1.5rem));
+    left: calc(var(--login-space) / 2);
     top: 50%;
     bottom: auto;
-    transform: translateY(-50%);
+    transform: translate(-50%, -50%);
   }
 }
 
