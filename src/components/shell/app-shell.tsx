@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
   BarChart3,
-  Banknote,
   Building2,
   CalendarDays,
   Columns3,
@@ -12,7 +11,6 @@ import {
   FolderOpen,
   Globe2,
   Handshake,
-  Home,
   BookUser,
   Inbox,
   KeyRound,
@@ -190,26 +188,6 @@ const NAV: {
     description: "Open repairs, this month's rent, and the file for each let.",
     icon: KeyRound,
     markets: ["uk"],
-    children: [
-      {
-        href: "/app/lettings?section=rent",
-        short: "Rent",
-        eyebrow: "Landlords",
-        title: "Rent",
-        description: "What is due, late, or paid on each let this month.",
-        icon: Banknote,
-        query: { key: "section", value: "rent" },
-      },
-      {
-        href: "/app/lettings?section=properties",
-        short: "Properties",
-        eyebrow: "Landlords",
-        title: "Properties",
-        description: "Certificates, keys, and the file for each let.",
-        icon: Home,
-        query: { key: "section", value: "properties" },
-      },
-    ],
   },
   {
     id: "automations",
