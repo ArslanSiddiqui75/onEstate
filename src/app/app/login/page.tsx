@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
-import { BrandMark } from "@/components/brand/brand-mark";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { loginSchema, validateForm } from "@/lib/auth/validation";
 import {
@@ -73,7 +72,22 @@ export default function AppLoginPage() {
       </div>
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6 sm:py-4">
         <Link href={home} className="inline-flex min-w-0 lg:hidden" aria-label="OneStreet">
-          <BrandMark className="text-[15px]" />
+          <img
+            src="/brand/mark.png"
+            alt=""
+            width={291}
+            height={322}
+            draggable={false}
+            className="h-8 w-auto dark:hidden"
+          />
+          <img
+            src="/brand/mark-dark.png"
+            alt=""
+            width={304}
+            height={345}
+            draggable={false}
+            className="hidden h-8 w-auto dark:block"
+          />
         </Link>
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
           <Link
@@ -93,7 +107,14 @@ export default function AppLoginPage() {
             <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
             <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/20 blur-3xl" />
             <Link href={home} className="relative inline-flex" aria-label="OneStreet">
-              <BrandMark tone="dark" className="text-[1.65rem]" />
+              <img
+                src="/brand/mark-dark.png"
+                alt=""
+                width={304}
+                height={345}
+                draggable={false}
+                className="h-12 w-auto"
+              />
             </Link>
             <div className="relative max-w-sm">
               <h2 className="font-sans text-[3.25rem] font-semibold leading-[0.92] tracking-[-0.045em]">
