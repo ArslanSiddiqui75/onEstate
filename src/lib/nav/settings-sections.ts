@@ -38,7 +38,7 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     eyebrow: "Branding",
     title: "Branding",
     description:
-      "Connect Instagram, Facebook, LinkedIn, and X, and the domain visitors use for your website.",
+      "Connect Instagram, Facebook, LinkedIn, and X, and buy or connect the domain visitors use for your website.",
     anyOf: ["social", "website"],
   },
   {

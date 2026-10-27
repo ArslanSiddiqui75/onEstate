@@ -528,6 +528,8 @@ export interface WebsiteSite {
   domainVerifiedAt?: string;
   /** SSL certificate status */
   sslStatus?: SslStatus;
+  /** Registrar that holds this hostname, when we bought or connected it. */
+  domainRegistrar?: "namecheap";
   /**
    * Ordered page blocks. Missing on older payloads — hydrate from the
    * `show*` flags. Footer is always last and is not in this list.

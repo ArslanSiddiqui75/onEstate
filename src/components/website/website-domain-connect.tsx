@@ -6,11 +6,12 @@ import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { toast } from "@/components/ui/toast";
 import { DomainPanel } from "@/components/website/domain-panel";
+import { NamecheapDomains } from "@/components/website/namecheap-domains";
 import { defaultWebsiteSite } from "@/lib/website/defaults";
 import type { DomainStatus, SslStatus, WebsiteSite } from "@/types";
 
 export function WebsiteDomainConnect() {
-  const { user, org, website, saveWebsite, getAuthToken, persistence } = useAppSession();
+  const { user, org, website, saveWebsite, getAuthToken, persistence, market } = useAppSession();
   const [draft, setDraft] = useState<WebsiteSite | null>(website);
   const [dirty, setDirty] = useState(false);
   const [verifying, setVerifying] = useState(false);
@@ -29,10 +30,11 @@ export function WebsiteDomainConnect() {
     setDirty(true);
   }
 
-  async function handleVerify() {
-    if (!canEdit || !site.customDomain?.trim()) return;
+  async function handleVerify(domainOverride?: string) {
+    const domain = (domainOverride || site.customDomain || "").trim();
+    if (!canEdit || !domain) return;
     setVerifying(true);
-    updateDraft({ domainStatus: "verifying" });
+    updateDraft({ customDomain: domain, domainStatus: "verifying" });
     try {
       const token = persistence === "supabase" ? await getAuthToken() : null;
       const res = await fetch("/api/website/domain/verify", {
@@ -41,7 +43,7 @@ export function WebsiteDomainConnect() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ domain: site.customDomain }),
+        body: JSON.stringify({ domain }),
       });
       const data = (await res.json()) as {
         domain?: string;
@@ -51,7 +53,15 @@ export function WebsiteDomainConnect() {
         error?: string;
       };
       if (!res.ok) {
-        updateDraft({ domainStatus: "failed" });
+        const failed: WebsiteSite = {
+          ...site,
+          customDomain: domain,
+          domainStatus: "failed",
+          domainRegistrar: domainOverride ? "namecheap" : site.domainRegistrar,
+        };
+        setDraft(failed);
+        setDirty(false);
+        await saveWebsite(failed);
         toast.error(data.error || data.message || "Domain verification failed.");
         return;
       }
@@ -67,7 +77,8 @@ export function WebsiteDomainConnect() {
               : "none";
       const next: WebsiteSite = {
         ...site,
-        customDomain: data.domain || site.customDomain,
+        customDomain: data.domain || domain,
+        domainRegistrar: domainOverride ? "namecheap" : site.domainRegistrar,
         domainStatus: nextStatus,
         domainVerifiedAt:
           nextStatus === "connected" ? new Date().toISOString() : site.domainVerifiedAt,
@@ -79,7 +90,15 @@ export function WebsiteDomainConnect() {
       if (nextStatus === "connected") toast.success(data.message || "Domain connected");
       else toast.info(data.message || "Domain not yet verified.");
     } catch {
-      updateDraft({ domainStatus: "failed" });
+      const failed: WebsiteSite = {
+        ...site,
+        customDomain: domain,
+        domainStatus: "failed",
+        domainRegistrar: domainOverride ? "namecheap" : site.domainRegistrar,
+      };
+      setDraft(failed);
+      setDirty(false);
+      await saveWebsite(failed);
       toast.error("Domain verification failed. Please try again.");
     } finally {
       setVerifying(false);
@@ -91,13 +110,24 @@ export function WebsiteDomainConnect() {
       <div>
         <h2 className="font-display text-xl">Website domain</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Point a hostname at the public site. DNS is checked when you verify. Edit the page from{" "}
+          Buy a domain at Namecheap and point it at the public site, or connect one you already own there.
+          DNS is checked when you verify. Edit the page from{" "}
           <Link href="/app/website" className="text-[var(--accent)] hover:underline">
             Website
           </Link>
           .
         </p>
       </div>
+      <NamecheapDomains
+        canBuy={user.role === "owner"}
+        market={market === "us" ? "us" : "uk"}
+        fullName={user.name}
+        business={org.business}
+        getAuthToken={getAuthToken}
+        onConnected={async (domain) => {
+          await handleVerify(domain);
+        }}
+      />
       <DomainPanel
         site={site}
         canEdit={canEdit}
