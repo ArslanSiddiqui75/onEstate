@@ -1,93 +1,186 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
+import { loadAgencyBook } from "@/lib/agency/store";
+import type { AgencyBook } from "@/lib/agency/types";
+import { loadBook } from "@/lib/lettings/store";
+import type { LettingsBook } from "@/lib/lettings/types";
+import {
+  buildWorkspaceReport,
+  reportToCsv,
+  type ReportGroup,
+  type ReportRecord,
+  type WorkspaceReport,
+} from "@/lib/reports/detail";
+import { SNAPSHOT_RANGES, type SnapshotRange } from "@/lib/reports/snapshot";
 import { LockedModule } from "@/components/ui/locked-module";
 import { Card, CardHeader } from "@/components/ui/card";
-import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
-import {
-  SNAPSHOT_RANGES,
-  countBy,
-  rowsToCsv,
-  snapshotCutoff,
-  withinSnapshot,
-  type SnapshotRange,
-} from "@/lib/reports/snapshot";
-import { Users, Building2, FileText, ListChecks, Download } from "lucide-react";
+import { Download } from "lucide-react";
 
-function BarList({ rows }: { rows: [string, number][] }) {
-  const max = Math.max(1, ...rows.map(([, n]) => n));
-  if (!rows.length) {
-    return <p className="mt-3 text-sm text-[var(--muted)]">Nothing in this range.</p>;
+const PREVIEW = 40;
+
+function Records({ records, empty }: { records: ReportRecord[]; empty: string }) {
+  if (!records.length) {
+    return <p className="mt-2 text-sm text-[var(--muted)]">{empty}</p>;
   }
+  const shown = records.slice(0, PREVIEW);
   return (
-    <ul className="mt-3 space-y-2">
-      {rows.map(([label, n]) => (
-        <li key={label}>
-          <div className="flex justify-between text-sm">
-            <span className="capitalize">{label.replace("_", " ")}</span>
-            <span>{n}</span>
-          </div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--surface-muted)]">
-            <div
-              className="h-full rounded-full bg-[var(--accent)]"
-              style={{ width: `${(n / max) * 100}%` }}
-            />
-          </div>
+    <ul className="mt-1 divide-y divide-[var(--border)]">
+      {shown.map((record, index) => (
+        <li key={`${record.title}-${index}`} className="py-3">
+          <p className="font-medium leading-snug">{record.title}</p>
+          {record.detail ? (
+            <p className="mt-0.5 text-sm leading-relaxed text-[var(--muted)]">{record.detail}</p>
+          ) : null}
+          {record.note ? (
+            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{record.note}</p>
+          ) : null}
         </li>
       ))}
+      {records.length > PREVIEW ? (
+        <li className="py-3 text-sm text-[var(--muted)]">
+          {records.length - PREVIEW} more are in the CSV export.
+        </li>
+      ) : null}
     </ul>
   );
 }
 
+function GroupBlock({ bundle }: { bundle: ReportGroup }) {
+  return (
+    <div className="mt-4">
+      {bundle.title ? <h3 className="text-sm font-semibold">{bundle.title}</h3> : null}
+      <Records records={bundle.records} empty={bundle.empty} />
+    </div>
+  );
+}
+
+function ReportView({ report }: { report: WorkspaceReport }) {
+  return (
+    <div className="space-y-4">
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {report.overview.map((item) => (
+          <li key={item.label} className="rounded-[var(--radius-sm)] border border-[var(--border)] px-3 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+              {item.label}
+            </p>
+            <p className="mt-1 font-display text-2xl leading-none tracking-tight">{item.value}</p>
+            <p className="mt-1.5 text-xs text-[var(--muted)]">{item.hint}</p>
+          </li>
+        ))}
+      </ul>
+      {report.sections.map((block) => (
+        <Card key={block.id} className="p-4 sm:p-5" data-report-section={block.id}>
+          <CardHeader title={block.title} description={block.summary} />
+          {block.facts.length ? (
+            <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-3">
+              {block.facts.map((fact) => (
+                <div key={`${block.id}-${fact.label}`}>
+                  <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+                    {fact.label}
+                  </dt>
+                  <dd className="text-sm font-medium">{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+          {block.groups.map((bundle) => {
+            const alreadySaid =
+              !bundle.title && !bundle.records.length && block.summary.trim() === bundle.empty.trim();
+            if (alreadySaid) return null;
+            return <GroupBlock key={bundle.title || block.id} bundle={bundle} />;
+          })}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function AppReportsPage() {
-  const { user, org, leads, listings, deals, tasks, callLogs, messages, market } =
-    useAppSession();
+  const session = useAppSession();
+  const {
+    user,
+    org,
+    market,
+    members,
+    leads,
+    contacts,
+    listings,
+    deals,
+    messages,
+    callLogs,
+    sequences,
+    automations,
+    enrollments,
+    tasks,
+    website,
+    socialAccounts,
+    socialPosts,
+    listPortalConnections,
+  } = session;
   const [range, setRange] = useState<SnapshotRange>("all");
+  const [agency, setAgency] = useState<AgencyBook | null>(null);
+  const [lettings, setLettings] = useState<LettingsBook | null>(null);
 
-  const snapshot = useMemo(() => {
-    const cutoff = snapshotCutoff(range);
-    const rangedLeads = leads.filter((l) => l.market === market && withinSnapshot(l.createdAt, cutoff));
-    const rangedListings = listings.filter((l) =>
-      l.market === market && withinSnapshot(l.createdAt, cutoff),
-    );
-    const rangedDeals = deals.filter((d) => d.market === market && withinSnapshot(d.updatedAt, cutoff));
-    const marketLeadIds = new Set(leads.filter((lead) => lead.market === market).map((lead) => lead.id));
-    const openTasks = tasks.filter((task) => task.status === "open" && marketLeadIds.has(task.leadId)).length;
-    const rangedCalls = callLogs.filter((c) =>
-      withinSnapshot(c.createdAt, cutoff),
-    );
-    const rangedSms = messages.filter(
-      (m) =>
-        m.channel !== "email" && withinSnapshot(m.sentAt, cutoff),
-    );
-    return {
-      leads: rangedLeads,
-      listings: rangedListings,
-      deals: rangedDeals,
-      openTasks,
-      calls: rangedCalls.length,
-      sms: rangedSms.length,
-      leadStages: countBy(
-        rangedLeads as unknown as Array<Record<string, unknown>>,
-        "stage",
-      ),
-      listingStatuses: countBy(
-        rangedListings as unknown as Array<Record<string, unknown>>,
-        "status",
-      ),
-      dealStages: countBy(
-        rangedDeals as unknown as Array<Record<string, unknown>>,
-        "stage",
-      ),
-    };
-  }, [range, leads, listings, deals, tasks, callLogs, messages, market]);
+  useEffect(() => {
+    if (!org) return;
+    setAgency(loadAgencyBook(org.id));
+    setLettings(market === "uk" ? loadBook(org.id) : null);
+  }, [org, market]);
 
-  if (!user || !org) return null;
+  const report = useMemo(() => {
+    if (!org) return null;
+    return buildWorkspaceReport({
+      range,
+      market,
+      orgName: org.name,
+      members,
+      leads,
+      contacts,
+      listings,
+      deals,
+      messages,
+      callLogs,
+      sequences,
+      automations,
+      enrollments,
+      tasks,
+      website,
+      socialAccounts,
+      socialPosts,
+      portals: listPortalConnections(),
+      agency,
+      lettings: market === "uk" ? lettings : null,
+    });
+  }, [
+    range,
+    market,
+    org,
+    members,
+    leads,
+    contacts,
+    listings,
+    deals,
+    messages,
+    callLogs,
+    sequences,
+    automations,
+    enrollments,
+    tasks,
+    website,
+    socialAccounts,
+    socialPosts,
+    listPortalConnections,
+    agency,
+    lettings,
+  ]);
+
+  if (!user || !org || !report) return null;
   if (!hasModuleAccess(user.role, org.plan, "crm", "view")) {
     return (
       <LockedModule
@@ -100,44 +193,28 @@ export default function AppReportsPage() {
   }
 
   function exportCsv() {
-    const rows: string[][] = [
-      ["Metric", "Value"],
-      ["Range", range],
-      ["Leads", String(snapshot.leads.length)],
-      ["Listings", String(snapshot.listings.length)],
-      ["Deals", String(snapshot.deals.length)],
-      ["Open tasks", String(snapshot.openTasks)],
-      ["Calls logged", String(snapshot.calls)],
-      ["SMS messages", String(snapshot.sms)],
-      [],
-      ["Leads by stage", "Count"],
-      ...snapshot.leadStages.map(([k, n]) => [k, String(n)]),
-      [],
-      ["Listings by status", "Count"],
-      ...snapshot.listingStatuses.map(([k, n]) => [k, String(n)]),
-      [],
-      ["Deals by stage", "Count"],
-      ...snapshot.dealStages.map(([k, n]) => [k, String(n)]),
-    ];
-    const blob = new Blob([rowsToCsv(rows)], { type: "text/csv;charset=utf-8" });
+    const blob = new Blob([reportToCsv(report!)], { type: "text/csv;charset=utf-8" });
     const href = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = href;
-    link.download = `reports_snapshot_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `reports_${range}_${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(href);
-    toast.success("Snapshot exported");
+    toast.success("Report exported");
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="max-w-2xl text-sm text-[var(--muted)]">
-          {market === "uk" ? "UK book" : "US book"}. Counts include this region’s
-          leads, listings, and deals. The other region keeps its own stats.
-        </p>
+        <div className="max-w-2xl">
+          <p className="text-sm font-medium">{report.headline}</p>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Dated records follow the range. Team, website, sequences, automations, and portal
+            feeds stay visible on every range.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-full border border-[var(--border)] p-0.5">
             {SNAPSHOT_RANGES.map((option) => (
@@ -162,43 +239,7 @@ export default function AppReportsPage() {
           </Button>
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Leads" value={snapshot.leads.length} icon={Users} />
-        <StatCard
-          label="Listings"
-          value={snapshot.listings.length}
-          icon={Building2}
-        />
-        <StatCard label="Deals" value={snapshot.deals.length} icon={FileText} />
-        <StatCard
-          label="Open tasks"
-          value={snapshot.openTasks}
-          icon={ListChecks}
-        />
-      </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="p-4">
-          <CardHeader title="Leads by stage" />
-          <BarList rows={snapshot.leadStages} />
-        </Card>
-        <Card className="p-4">
-          <CardHeader title="Listings by status" />
-          <BarList rows={snapshot.listingStatuses} />
-        </Card>
-        <Card className="p-4">
-          <CardHeader title="Deals by stage" />
-          <BarList rows={snapshot.dealStages} />
-        </Card>
-        <Card className="p-4">
-          <CardHeader title="Activity" />
-          <BarList
-            rows={[
-              ["Calls logged", snapshot.calls],
-              ["SMS messages", snapshot.sms],
-            ]}
-          />
-        </Card>
-      </div>
+      <ReportView report={report} />
     </div>
   );
 }

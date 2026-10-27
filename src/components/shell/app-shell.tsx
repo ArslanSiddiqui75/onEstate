@@ -154,7 +154,7 @@ const WORKSPACE_NAV: {
   { href: "/app/diary", short: "Diary", eyebrow: "Diary", title: "Diary", description: "Viewings and valuations, including requests from the public booking link.", icon: CalendarDays, markets: ["uk", "us"] },
   { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings", description: "Open repairs, this month's rent, and the file for each let.", icon: KeyRound, markets: ["uk"] },
   { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Pending follow-ups, with anything overdue first.", icon: ListChecks },
-  { href: "/app/reports", short: "Reports", eyebrow: "Snapshot", title: "Reports", description: "Live pipeline and inventory counts.", icon: BarChart3 },
+  { href: "/app/reports", short: "Reports", eyebrow: "Book", title: "Reports", description: "Pipeline, stock, deals, tasks, conversations, and the rest of the book.", icon: BarChart3 },
   { href: "/app/documents", short: "Documents", eyebrow: "Files", title: "Documents", description: "Uploads, e-sign, and listing media.", icon: FolderOpen },
   { href: "/app/tickets", short: "Support", eyebrow: "Help", title: "Support", description: "File a ticket with platform support.", icon: LifeBuoy },
 ];
