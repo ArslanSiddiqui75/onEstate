@@ -3,28 +3,16 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  BarChart3,
   Building2,
   CalendarDays,
-  Columns3,
-  CreditCard,
-  FolderOpen,
   Globe2,
-  Handshake,
   BookUser,
-  Inbox,
   KeyRound,
   LayoutDashboard,
-  LifeBuoy,
-  Link2,
-  Mail,
-  Phone,
   ListChecks,
   MessagesSquare,
-  Route,
   Share2,
   Target,
-  Users,
   Workflow,
   Menu,
   X,
@@ -32,6 +20,7 @@ import {
   LogOut,
   Settings,
   Zap,
+  type LucideIcon,
 } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -47,22 +36,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NoticeBell } from "@/components/notices/notice-bell";
 import { useBrand } from "@/components/brand/brand-provider";
 import { useTheme } from "@/lib/theme/provider";
-
-type NavChild = {
-  href: string;
-  short: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  icon: typeof Inbox;
-  module?: ModuleId;
-  /** Locked unless the member can view at least one of these. */
-  anyOf?: readonly ModuleId[];
-  /** Active when the module path is open and this query value is set. */
-  query?: { key: string; value: string };
-  /** The module home. Active when no sibling query matches. */
-  defaultView?: boolean;
-};
+import { settingsSectionFor } from "@/lib/nav/settings-sections";
 
 const NAV: {
   id: string;
@@ -73,10 +47,8 @@ const NAV: {
   eyebrow: string;
   title: string;
   description: string;
-  icon: typeof Inbox;
+  icon: LucideIcon;
   markets?: readonly string[];
-  /** Shown under this row only while the module is open. */
-  children?: NavChild[];
 }[] = [
   {
     id: "dashboard",
@@ -106,27 +78,6 @@ const NAV: {
     title: "Opportunities",
     description: "Website, portal, and office enquiries land here, then move toward a deal.",
     icon: Target,
-    children: [
-      {
-        href: "/app/opportunities",
-        short: "Pipeline",
-        eyebrow: "Opportunities",
-        title: "Pipeline",
-        description: "Website, portal, and office enquiries land here, then move toward a deal.",
-        icon: Columns3,
-        defaultView: true,
-      },
-      {
-        href: "/app/opportunities?view=deals",
-        short: "Deals",
-        eyebrow: "Opportunities",
-        title: "Deals",
-        description: "Offers, progression, and the checklist for each sale.",
-        icon: Handshake,
-        module: "transactions",
-        query: { key: "view", value: "deals" },
-      },
-    ],
   },
   {
     id: "diary",
@@ -137,17 +88,6 @@ const NAV: {
     description: "Viewings and valuations, including requests from the public booking link.",
     icon: CalendarDays,
     markets: ["uk", "us"],
-    children: [
-      {
-        href: "/app/diary?section=links",
-        short: "Client links",
-        eyebrow: "Diary",
-        title: "Client links",
-        description: "Private links a client uses to follow their sale or let.",
-        icon: Link2,
-        query: { key: "section", value: "links" },
-      },
-    ],
   },
   {
     id: "tasks",
@@ -226,85 +166,6 @@ const NAV: {
     title: "Settings",
     description: "Contact details, workspace, and the brokerage business profile.",
     icon: Settings,
-    children: [
-      {
-        href: "/app/settings/team",
-        short: "Team",
-        eyebrow: "People",
-        title: "Team",
-        description: "Everyone in the workspace. The owner changes roles and removes people.",
-        icon: Users,
-      },
-      {
-        href: "/app/settings/phone",
-        short: "Phone number",
-        eyebrow: "Calling",
-        title: "Phone number",
-        description: "Search Twilio and buy the number this brokerage texts from.",
-        icon: Phone,
-      },
-      {
-        href: "/app/settings/email",
-        short: "Email domain",
-        eyebrow: "Mail",
-        title: "Email domain",
-        description: "Connect the brokerage domain with DNS and send mail from it.",
-        icon: Mail,
-      },
-      {
-        href: "/app/settings/routing",
-        short: "Lead routing",
-        eyebrow: "Assignment",
-        title: "Lead routing",
-        description: "Choose who receives the next enquiry.",
-        icon: Route,
-        module: "crm",
-      },
-      {
-        href: "/app/settings/social",
-        short: "Social accounts",
-        eyebrow: "Social",
-        title: "Social accounts",
-        description: "Connect Instagram, Facebook, LinkedIn, and X. Compose and the queue stay on Social.",
-        icon: Share2,
-        module: "social",
-      },
-      {
-        href: "/app/settings/reports",
-        short: "Reports",
-        eyebrow: "Book",
-        title: "Reports",
-        description: "Pipeline, stock, deals, tasks, conversations, and the rest of the book.",
-        icon: BarChart3,
-        module: "crm",
-      },
-      {
-        href: "/app/settings/documents",
-        short: "Documents",
-        eyebrow: "Files",
-        title: "Documents",
-        description: "Uploads, e-sign, and listing media.",
-        icon: FolderOpen,
-        anyOf: ["crm", "listings", "transactions"],
-      },
-      {
-        href: "/app/settings/support",
-        short: "Support",
-        eyebrow: "Help",
-        title: "Support",
-        description: "Tickets with platform support, and how urgent each one is.",
-        icon: LifeBuoy,
-      },
-      {
-        href: "/app/settings/billing",
-        short: "Billing",
-        eyebrow: "Plan",
-        title: "Billing",
-        description: "Plan, seats, invoices, and the card on file.",
-        icon: CreditCard,
-        module: "billing",
-      },
-    ],
   },
 ];
 
@@ -315,17 +176,15 @@ function SideLink({
   active,
   locked,
   ink,
-  nested,
   className,
   onNavigate,
 }: {
   href: string;
   short: string;
-  icon: typeof Inbox;
+  icon: LucideIcon;
   active: boolean;
   locked?: boolean;
   ink: boolean;
-  nested?: boolean;
   className?: string;
   onNavigate: () => void;
 }) {
@@ -334,8 +193,7 @@ function SideLink({
       href={href}
       onClick={onNavigate}
       className={cn(
-        "group relative flex items-center gap-3 rounded-2xl py-2.5 text-sm transition-colors",
-        nested ? "pr-3 pl-6" : "px-3",
+        "group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
         className,
         ink
           ? active
@@ -386,38 +244,9 @@ function SideLink({
   );
 }
 
-function childIsLocked(child: NavChild, parentLocked: boolean, role: Role, plan: PlanId) {
-  if (parentLocked) return true;
-  if (child.module) return !hasModuleAccess(role, plan, child.module, "view");
-  if (child.anyOf) return !child.anyOf.some((module) => hasModuleAccess(role, plan, module, "view"));
-  return false;
-}
-
 function moduleOpen(pathname: string, href: string, basePath: string) {
   if (href === basePath) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function childIsActive(
-  child: NavChild,
-  pathname: string,
-  searchParams: { get(name: string): string | null },
-  siblings: readonly NavChild[] = [],
-) {
-  const path = child.href.split("?")[0];
-  if (child.query) {
-    return pathname === path && searchParams.get(child.query.key) === child.query.value;
-  }
-  if (child.defaultView) {
-    if (pathname !== path) return false;
-    return !siblings.some(
-      (sibling) =>
-        sibling.query &&
-        sibling.href.split("?")[0] === path &&
-        searchParams.get(sibling.query.key) === sibling.query.value,
-    );
-  }
-  return pathname === child.href || pathname.startsWith(`${child.href}/`);
 }
 
 interface AppShellProps {
@@ -479,45 +308,47 @@ function ShellFrame({
     const locked = item.module
       ? !hasModuleAccess(role, plan, item.module, "view")
       : false;
-    const children = item.children?.map((child) => ({
-      ...child,
-      eyebrow: item.id === "diary" && brand.market === "us" ? "Calendar" : child.eyebrow,
-      locked: childIsLocked(child, locked, role, plan),
-    }));
     if (item.id === "diary" && brand.market === "us") {
       return {
         ...item,
         href,
         locked,
-        children,
         short: "Calendar",
         eyebrow: "Calendar",
         title: "Calendar",
         description: "Showings and valuations, including requests from the public booking link.",
       };
     }
-    return { ...item, href, locked, children };
+    return { ...item, href, locked };
   });
 
-  const activeChild = items
-    .flatMap((item) =>
-      (item.children ?? []).filter((child) =>
-        childIsActive(child, pathname, searchParams, item.children),
-      ),
-    )[0];
   const activeParent = items
     .filter((item) => item.id !== "dashboard")
-    .find((item) => {
-      if (!moduleOpen(pathname, item.href, basePath)) return false;
-      return !(item.children ?? []).some((child) =>
-        childIsActive(child, pathname, searchParams, item.children),
-      );
-    });
-  const activePage =
-    activeChild ||
-    activeParent ||
-    items.find((item) => item.id === "dashboard") ||
-    items[0];
+    .find((item) => moduleOpen(pathname, item.href, basePath));
+  const basePage =
+    activeParent || items.find((item) => item.id === "dashboard") || items[0];
+  const settingsSection = settingsSectionFor(pathname);
+  const activePage = settingsSection
+    ? {
+        ...basePage,
+        eyebrow: settingsSection.eyebrow,
+        title: settingsSection.title,
+        description: settingsSection.description,
+      }
+    : pathname === "/app/diary" && searchParams.get("section") === "links"
+      ? {
+          ...basePage,
+          title: "Client links",
+          description: "Private links a client uses to follow their sale or let.",
+        }
+      : pathname === "/app/opportunities" && searchParams.get("view") === "deals"
+        ? {
+            ...basePage,
+            eyebrow: "Opportunities",
+            title: "Deals",
+            description: "Offers, progression, and the checklist for each sale.",
+          }
+        : basePage;
 
   const statusLine = headerMeta || `${brand.name} · ${PLANS[plan].name}`;
 
@@ -571,42 +402,19 @@ function ShellFrame({
             className="mt-6 flex-1 space-y-1 overflow-y-auto px-3"
             aria-label="Primary"
           >
-            {items.flatMap((item) => {
-              const open = moduleOpen(pathname, item.href, basePath) && item.href !== basePath;
-              const childHit = (item.children ?? []).some((child) =>
-                childIsActive(child, pathname, searchParams, item.children),
-              );
-              const link = (
-                <SideLink
-                  key={item.href}
-                  href={item.href}
-                  short={item.short}
-                  icon={item.icon}
-                  ink={ink}
-                  locked={item.locked}
-                  className={item.id === "settings" ? "mt-3" : undefined}
-                  active={moduleOpen(pathname, item.href, basePath) && !childHit}
-                  onNavigate={() => setOpen(false)}
-                />
-              );
-              if (!open || !item.children?.length) return [link];
-              return [
-                link,
-                ...item.children.map((child) => (
-                  <SideLink
-                    key={`${child.href}-${child.short}`}
-                    href={child.href}
-                    short={child.short}
-                    icon={child.icon}
-                    ink={ink}
-                    locked={child.locked}
-                    nested
-                    active={childIsActive(child, pathname, searchParams, item.children)}
-                    onNavigate={() => setOpen(false)}
-                  />
-                )),
-              ];
-            })}
+            {items.map((item) => (
+              <SideLink
+                key={item.href}
+                href={item.href}
+                short={item.short}
+                icon={item.icon}
+                ink={ink}
+                locked={item.locked}
+                className={item.id === "settings" ? "mt-3" : undefined}
+                active={moduleOpen(pathname, item.href, basePath)}
+                onNavigate={() => setOpen(false)}
+              />
+            ))}
           </nav>
 
           <div

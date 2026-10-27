@@ -17,6 +17,7 @@ import { addAppointment, createAppointment, setAppointmentStatus } from "@/lib/a
 import type { Appointment } from "@/lib/agency/types";
 import { formatWhen } from "@/lib/lettings/format";
 import { useModuleSection } from "@/lib/nav/module-section";
+import { SectionPills } from "@/components/ui/section-pills";
 
 function dayKey(iso: string) {
   return iso.slice(0, 10);
@@ -41,7 +42,7 @@ export default function DiaryPage() {
 function DiaryDesk() {
   const { user, org, market } = useAppSession();
   const { book, commit } = useAgencyBook(org?.id ?? "workspace");
-  const [section] = useModuleSection("section", ["board", "links"] as const, "board");
+  const [section, setSection] = useModuleSection("section", ["board", "links"] as const, "board");
 
   if (!user || !org) return null;
   const us = market === "us";
@@ -62,11 +63,22 @@ function DiaryDesk() {
   const sorted = [...book.appointments].sort((a, b) => a.at.localeCompare(b.at));
   const days = [...new Set(sorted.map((item) => dayKey(item.at)))];
 
-  if (section === "links") {
-    return <ClientLinks book={book} commit={commit} canEdit={canEdit} us={us} />;
-  }
+  const bookLabel = us ? "Calendar" : "Diary";
 
   return (
+    <div className="space-y-5">
+      <SectionPills
+        label={bookLabel}
+        value={section}
+        onChange={setSection}
+        items={[
+          { id: "board", label: bookLabel },
+          { id: "links", label: "Client links" },
+        ]}
+      />
+      {section === "links" ? (
+        <ClientLinks book={book} commit={commit} canEdit={canEdit} us={us} />
+      ) : (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="max-w-xl text-sm text-[var(--muted)]">
@@ -169,6 +181,8 @@ function DiaryDesk() {
         </div>
         ) : null}
       </div>
+    </div>
+      )}
     </div>
   );
 }
