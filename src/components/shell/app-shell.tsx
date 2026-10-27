@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarDays,
   CircleCheck,
+  Columns3,
   CreditCard,
   FolderOpen,
   Globe2,
@@ -64,6 +65,8 @@ type NavChild = {
   anyOf?: readonly ModuleId[];
   /** Active when the module path is open and this query value is set. */
   query?: { key: string; value: string };
+  /** The module home. Active when no sibling query matches. */
+  defaultView?: boolean;
 };
 
 const NAV: {
@@ -110,9 +113,18 @@ const NAV: {
     icon: Target,
     children: [
       {
+        href: "/app/opportunities",
+        short: "Pipeline",
+        eyebrow: "Opportunities",
+        title: "Pipeline",
+        description: "Website, portal, and office enquiries land here, then move toward a deal.",
+        icon: Columns3,
+        defaultView: true,
+      },
+      {
         href: "/app/opportunities?view=deals",
         short: "Deals",
-        eyebrow: "Pipeline",
+        eyebrow: "Opportunities",
         title: "Deals",
         description: "Offers, progression, and the checklist for each sale.",
         icon: Handshake,
@@ -470,10 +482,20 @@ function childIsActive(
   child: NavChild,
   pathname: string,
   searchParams: { get(name: string): string | null },
+  siblings: readonly NavChild[] = [],
 ) {
+  const path = child.href.split("?")[0];
   if (child.query) {
-    const path = child.href.split("?")[0];
     return pathname === path && searchParams.get(child.query.key) === child.query.value;
+  }
+  if (child.defaultView) {
+    if (pathname !== path) return false;
+    return !siblings.some(
+      (sibling) =>
+        sibling.query &&
+        sibling.href.split("?")[0] === path &&
+        searchParams.get(sibling.query.key) === sibling.query.value,
+    );
   }
   return pathname === child.href || pathname.startsWith(`${child.href}/`);
 }
@@ -558,13 +580,18 @@ function ShellFrame({
   });
 
   const activeChild = items
-    .flatMap((item) => item.children ?? [])
-    .find((child) => childIsActive(child, pathname, searchParams));
+    .flatMap((item) =>
+      (item.children ?? []).filter((child) =>
+        childIsActive(child, pathname, searchParams, item.children),
+      ),
+    )[0];
   const activeParent = items
     .filter((item) => item.id !== "dashboard")
     .find((item) => {
       if (!moduleOpen(pathname, item.href, basePath)) return false;
-      return !(item.children ?? []).some((child) => childIsActive(child, pathname, searchParams));
+      return !(item.children ?? []).some((child) =>
+        childIsActive(child, pathname, searchParams, item.children),
+      );
     });
   const activePage =
     activeChild ||
@@ -627,7 +654,7 @@ function ShellFrame({
             {items.flatMap((item) => {
               const open = moduleOpen(pathname, item.href, basePath) && item.href !== basePath;
               const childHit = (item.children ?? []).some((child) =>
-                childIsActive(child, pathname, searchParams),
+                childIsActive(child, pathname, searchParams, item.children),
               );
               const link = (
                 <SideLink
@@ -647,14 +674,14 @@ function ShellFrame({
                 link,
                 ...item.children.map((child) => (
                   <SideLink
-                    key={child.href}
+                    key={`${child.href}-${child.short}`}
                     href={child.href}
                     short={child.short}
                     icon={child.icon}
                     ink={ink}
                     locked={child.locked}
                     nested
-                    active={childIsActive(child, pathname, searchParams)}
+                    active={childIsActive(child, pathname, searchParams, item.children)}
                     onNavigate={() => setOpen(false)}
                   />
                 )),
