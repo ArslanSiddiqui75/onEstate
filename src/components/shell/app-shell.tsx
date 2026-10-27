@@ -331,15 +331,7 @@ export function AppShell({
                 </Link>
               );
             })}
-            <p
-              className={cn(
-                "px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wide",
-                ink ? "text-white/35" : "text-[var(--muted)]",
-              )}
-            >
-              Workspace
-            </p>
-            {workspaceNav.map((item) => {
+            {workspaceNav.map((item, index) => {
               const active =
                 pathname === item.href || pathname.startsWith(`${item.href}/`);
               const Icon = item.icon;
@@ -350,6 +342,7 @@ export function AppShell({
                   onClick={() => setOpen(false)}
                   className={cn(
                     "group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
+                    index === 0 && "mt-3",
                     ink
                       ? active
                         ? "text-white"
