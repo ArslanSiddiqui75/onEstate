@@ -16,7 +16,9 @@ import { PLANS } from "@/lib/plans/catalog";
 import { getIntegrationStack } from "@/lib/integrations/registry";
 import { fadeUp, staggerContainer } from "@/lib/motion";
 import { useAgencyBook } from "@/components/agency/use-agency-book";
+import { openClientPortal } from "@/lib/agency/publish-client";
 import { PORTAL_ROLE_LABELS } from "@/lib/agency/types";
+import { toast } from "@/components/ui/toast";
 import { formatWhen } from "@/lib/lettings/format";
 
 export default function AppDashboardPage() {
@@ -170,16 +172,25 @@ export default function AppDashboardPage() {
         <Card>
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold">Client links</h2>
-            <Link href="/app/diary" className="text-sm font-semibold text-[var(--accent)]">
+            <Link href="/app/diary?section=links" className="text-sm font-semibold text-[var(--accent)]">
               Manage
             </Link>
           </div>
           <ul className="mt-3 space-y-2 text-sm">
             {book.portals.slice(0, 4).map((portal) => (
               <li key={portal.token}>
-                <Link href={`/portal/${portal.token}`} className="font-medium hover:underline">
+                <a
+                  href={`/portal/${portal.token}`}
+                  className="font-medium hover:underline"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void openClientPortal(portal).catch((err: unknown) => {
+                      toast.error(err instanceof Error ? err.message : "That link is not live yet.");
+                    });
+                  }}
+                >
                   {PORTAL_ROLE_LABELS[portal.role]} · {portal.name}
-                </Link>
+                </a>
                 <span className="block text-xs text-[var(--muted)]">{portal.address}</span>
               </li>
             ))}

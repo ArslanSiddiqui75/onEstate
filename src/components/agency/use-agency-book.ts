@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { applyAgencyInbox, seedAgencyBook } from "@/lib/agency/book";
+import { publishMissingPortals } from "@/lib/agency/publish-client";
 import { loadAgencyBook, saveAgencyBook } from "@/lib/agency/store";
 import type { AgencyBook, AgencyInbox } from "@/lib/agency/types";
 
@@ -27,9 +28,15 @@ export function useAgencyBook(orgId: string) {
               saveAgencyBook(orgId, merged.book);
               next = merged.book;
             }
+            void publishMissingPortals(
+              next.portals,
+              (json.portals ?? []).map((portal) => portal.token),
+            );
+          } else {
+            void publishMissingPortals(next.portals, []);
           }
         } catch {
-          // The desk still has this browser's copy.
+          void publishMissingPortals(next.portals, []);
         }
         if (!cancel) setBook(next);
       })();

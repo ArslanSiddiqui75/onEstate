@@ -9,6 +9,8 @@ import { readAgencyInbox, serverPortal } from "@/lib/agency/server-inbox";
 import { seedBook, seedPropertyByToken } from "@/lib/lettings/book";
 import { formatWhen, gbp } from "@/lib/lettings/format";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {

@@ -2,9 +2,10 @@
 
 import { MenuSelect } from "@/components/ui/select";
 
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
+import { ClientLinks } from "@/components/agency/client-links";
 import { useAgencyBook } from "@/components/agency/use-agency-book";
 import { LockedModule } from "@/components/ui/locked-module";
 import { Badge } from "@/components/ui/badge";
@@ -12,14 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
-import {
-  addAppointment,
-  createAppointment,
-  issuePortal,
-  setAppointmentStatus,
-} from "@/lib/agency/book";
-import type { Appointment, PortalRole } from "@/lib/agency/types";
-import { PORTAL_ROLE_LABELS } from "@/lib/agency/types";
+import { addAppointment, createAppointment, setAppointmentStatus } from "@/lib/agency/book";
+import type { Appointment } from "@/lib/agency/types";
 import { formatWhen } from "@/lib/lettings/format";
 import { useModuleSection } from "@/lib/nav/module-section";
 
@@ -46,7 +41,6 @@ export default function DiaryPage() {
 function DiaryDesk() {
   const { user, org, market } = useAppSession();
   const { book, commit } = useAgencyBook(org?.id ?? "workspace");
-  const [busy, setBusy] = useState(false);
   const [section] = useModuleSection("section", ["board", "links"] as const, "board");
 
   if (!user || !org) return null;
@@ -68,38 +62,28 @@ function DiaryDesk() {
   const sorted = [...book.appointments].sort((a, b) => a.at.localeCompare(b.at));
   const days = [...new Set(sorted.map((item) => dayKey(item.at)))];
 
-  async function publishPortal(portal: { token: string; role: PortalRole; name: string; address: string; listingId?: string; leadId?: string; lettingsToken?: string }) {
-    const res = await fetch("/api/agency", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "register", ...portal }),
-    });
-    if (!res.ok) throw new Error("The public link could not be published.");
+  if (section === "links") {
+    return <ClientLinks book={book} commit={commit} canEdit={canEdit} us={us} />;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <p className="max-w-xl text-sm text-[var(--muted)]">
-          {section === "links"
-            ? "A private page for each client, covering their sale or let."
-            : `${us ? "Showings" : "Viewings"} and valuations for the office. A client can request a slot from the public link, and confirming it keeps it on this board.`}
+          {us ? "Showings" : "Viewings"} and valuations for the office. A client can request a slot from the public link, and confirming it keeps it on this board.
         </p>
-        {section === "board" ? (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              const url = `${window.location.origin}/book/${book.bookingToken}`;
-              void navigator.clipboard.writeText(url).then(() => toast.success("Booking link copied"));
-            }}
-          >
-            Copy booking link
-          </Button>
-        ) : null}
+        <Button
+          variant="secondary"
+          onClick={() => {
+            const url = `${window.location.origin}/book/${book.bookingToken}`;
+            void navigator.clipboard.writeText(url).then(() => toast.success("Booking link copied"));
+          }}
+        >
+          Copy booking link
+        </Button>
       </div>
 
-      <div className={section === "links" ? "max-w-xl" : "grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]"}>
-        {section === "board" ? (
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)]">
         <div className="space-y-4">
           {days.map((day) => (
             <Card key={day}>
@@ -144,11 +128,9 @@ function DiaryDesk() {
             </Card>
           ))}
         </div>
-        ) : null}
 
-        {section === "links" || canEdit ? (
+        {canEdit ? (
         <div className="space-y-4">
-          {section === "board" && canEdit ? (
             <Card>
               <h2 className="font-semibold">Add to the {bookName}</h2>
               <form
@@ -184,75 +166,6 @@ function DiaryDesk() {
                 <Button type="submit">Add</Button>
               </form>
             </Card>
-          ) : null}
-
-          {section === "links" ? (
-          <Card>
-            <h2 className="font-semibold">Client links</h2>
-            <ul className="mt-3 space-y-2 text-sm">
-              {book.portals.map((portal) => (
-                <li key={portal.token} className="flex items-center justify-between gap-2">
-                  <span>
-                    {PORTAL_ROLE_LABELS[portal.role]} · {portal.name}
-                    <span className="block text-xs text-[var(--muted)]">{portal.address}</span>
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      const url = `${window.location.origin}/portal/${portal.token}`;
-                      void navigator.clipboard.writeText(url).then(() => toast.success("Client link copied"));
-                    }}
-                  >
-                    Copy
-                  </Button>
-                </li>
-              ))}
-            </ul>
-            {canEdit ? (
-              <form
-                className="mt-4 grid gap-2"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  const form = event.currentTarget;
-                  const data = new FormData(form);
-                  void (async () => {
-                    setBusy(true);
-                    try {
-                      const issued = issuePortal(book, {
-                        role: String(data.get("role")) as PortalRole,
-                        name: String(data.get("name") || ""),
-                        address: String(data.get("address") || ""),
-                        lettingsToken: String(data.get("lettingsToken") || ""),
-                      });
-                      commit(issued.book);
-                      await publishPortal(issued.portal);
-                      form.reset();
-                      toast.success("Client link ready");
-                    } catch (err) {
-                      toast.error(err instanceof Error ? err.message : "Could not create that link.");
-                    } finally {
-                      setBusy(false);
-                    }
-                  })();
-                }}
-              >
-                <Input name="name" placeholder="Client name" aria-label="Client name" required />
-                <Input name="address" placeholder="Address" aria-label="Address" required />
-                <MenuSelect name="role" aria-label="Role" className="h-11 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm" defaultValue="vendor">
-                  <option value="vendor">{market === "us" ? "Seller" : "Vendor"}</option>
-                  <option value="buyer">Buyer</option>
-                  <option value="landlord">Landlord</option>
-                  <option value="tenant">{market === "us" ? "Resident" : "Tenant"}</option>
-                </MenuSelect>
-                <Input name="lettingsToken" placeholder="Repair token, if a let" aria-label="Repair token" />
-                <Button type="submit" variant="secondary" disabled={busy}>
-                  Create client link
-                </Button>
-              </form>
-            ) : null}
-          </Card>
-          ) : null}
         </div>
         ) : null}
       </div>
