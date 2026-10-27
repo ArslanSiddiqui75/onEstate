@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Avatar } from "@/components/ui/avatar";
 import { LockedModule } from "@/components/ui/locked-module";
+import { cn } from "@/lib/utils";
+import { ROLE_LABELS } from "@/lib/rbac/matrix";
 import {
   DEFAULT_LEAD_ROUTING,
   eligibleAssignees,
@@ -75,10 +78,9 @@ export function LeadRoutingPanel({
     );
   }
 
-  const eligible = eligibleAssignees(
-    members.filter((m) => !m.id.startsWith("invite_")),
-    draft,
-  );
+  const activeMembers = members.filter((member) => !member.id.startsWith("invite_"));
+  const owners = activeMembers.filter((member) => member.role === "owner").length;
+  const eligible = eligibleAssignees(activeMembers, draft);
   const preview = routeLead({
     plan,
     settings: draft,
@@ -119,45 +121,112 @@ export function LeadRoutingPanel({
         })}
       </div>
 
-      <div className="space-y-2">
-        <p className="text-sm font-semibold">Who is allowed to receive leads</p>
-        <p className="text-sm text-[var(--muted)]">Untick a role to keep those people out of the pool.</p>
-        <div className="flex flex-wrap gap-3">
-          {ROLE_OPTIONS.map((role) => {
-            const checked = draft.includeRoles.includes(role.id);
+      <section className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+        <h3 className="font-semibold">Who can receive a lead</h3>
+        <p className="mt-1 text-sm text-[var(--muted)]">Turn a role off to leave those people out of the pool.</p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {ROLE_OPTIONS.map((option) => {
+            const on = draft.includeRoles.includes(option.id);
+            const count = activeMembers.filter((member) => member.role === option.id).length;
             return (
-              <label key={role.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  disabled={!canEdit}
-                  checked={checked}
-                  onChange={() => {
-                    const includeRoles = checked
-                      ? draft.includeRoles.filter((r) => r !== role.id)
-                      : [...draft.includeRoles, role.id];
-                    setDraft({
-                      ...draft,
-                      includeRoles: includeRoles.length ? includeRoles : DEFAULT_LEAD_ROUTING.includeRoles,
-                    });
-                  }}
-                />
-                {role.label}
-              </label>
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={on}
+                disabled={!canEdit}
+                onClick={() => {
+                  const includeRoles = on
+                    ? draft.includeRoles.filter((item) => item !== option.id)
+                    : [...draft.includeRoles, option.id];
+                  setDraft({
+                    ...draft,
+                    includeRoles: includeRoles.length ? includeRoles : DEFAULT_LEAD_ROUTING.includeRoles,
+                  });
+                }}
+                className={cn(
+                  "flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
+                  on
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                    : "border-[var(--border)] bg-[var(--surface-elevated)]",
+                )}
+              >
+                <span>
+                  <span className="block text-sm font-medium">{option.label}</span>
+                  <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                    {count === 1 ? "1 person" : `${count} people`}
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                    on
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                      : "border-[var(--border-strong)] bg-transparent",
+                  )}
+                  aria-hidden
+                >
+                  {on ? <Check className="h-3 w-3" /> : null}
+                </span>
+              </button>
             );
           })}
-          <label className="flex items-center gap-2 text-sm">
-            <Switch
-              checked={draft.includeOwner}
-              disabled={!canEdit}
-              onCheckedChange={(val) => setDraft({ ...draft, includeOwner: val })}
-            />
-            Include owner
-          </label>
+          <button
+            type="button"
+            aria-pressed={draft.includeOwner}
+            disabled={!canEdit}
+            onClick={() => setDraft({ ...draft, includeOwner: !draft.includeOwner })}
+            className={cn(
+              "flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
+              draft.includeOwner
+                ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                : "border-[var(--border)] bg-[var(--surface-elevated)]",
+            )}
+          >
+            <span>
+              <span className="block text-sm font-medium">Owner</span>
+              <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                {owners === 1 ? "1 person" : `${owners} people`}
+              </span>
+            </span>
+            <span
+              className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                draft.includeOwner
+                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                  : "border-[var(--border-strong)] bg-transparent",
+              )}
+              aria-hidden
+            >
+              {draft.includeOwner ? <Check className="h-3 w-3" /> : null}
+            </span>
+          </button>
         </div>
-        <p className="text-xs text-[var(--muted)]">
-          Pool of accepted members: {eligible.length ? eligible.map((m) => members.find((x) => m.id === x.id)?.name || m.id).join(", ") : "nobody — falls back to the whole team"}
-        </p>
-      </div>
+
+        <div className="mt-4 border-t border-[var(--border)] pt-4">
+          <p className="text-xs font-medium text-[var(--muted)]">
+            {eligible.length === 1 ? "1 person in the pool" : `${eligible.length} people in the pool`}
+          </p>
+          {eligible.length === 0 ? (
+            <p className="mt-2 text-sm text-[var(--muted)]">Nobody matches. New leads fall back to the whole team.</p>
+          ) : (
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              {eligible.map((person) => {
+                const member = members.find((item) => item.id === person.id);
+                const name = member?.name || "Team member";
+                return (
+                  <li key={person.id} className="flex items-center gap-2.5 rounded-2xl bg-[var(--surface-muted)] px-3 py-2">
+                    <Avatar name={name} size="sm" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium">{name}</span>
+                      <span className="block truncate text-xs text-[var(--muted)]">{ROLE_LABELS[person.role]}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </section>
 
       {draft.mode === "territory" ? (
         <div className="space-y-2">
