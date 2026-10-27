@@ -34,11 +34,12 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   },
   {
     href: "/app/settings/social",
-    short: "Social accounts",
-    eyebrow: "Social",
-    title: "Social accounts",
-    description: "Connect Instagram, Facebook, LinkedIn, and X. Compose and the queue stay on Social.",
-    module: "social",
+    short: "Branding",
+    eyebrow: "Branding",
+    title: "Branding",
+    description:
+      "Connect Instagram, Facebook, LinkedIn, and X, and the domain visitors use for your website.",
+    anyOf: ["social", "website"],
   },
   {
     href: "/app/settings/reports",

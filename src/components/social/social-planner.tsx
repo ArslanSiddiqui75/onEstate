@@ -506,9 +506,9 @@ export function SocialPlanner({
               href="/app/settings/social"
               className="font-medium text-[var(--foreground)] underline-offset-2 hover:underline"
             >
-              Accounts
+              Branding
             </Link>{" "}
-            live in Settings.
+            lives in Settings.
           </p>
           {planHint ? (
             <p className="mt-1 text-xs text-[var(--muted)]">{planHint}</p>
