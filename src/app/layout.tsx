@@ -34,33 +34,33 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: [
         {
-          url: "/brand/favicon-32.png",
+          url: "/brand/favicon-32.png?v=3d",
           sizes: "32x32",
           type: "image/png",
           media: "(prefers-color-scheme: light)",
         },
         {
-          url: "/brand/favicon-dark-32.png",
+          url: "/brand/favicon-dark-32.png?v=3d",
           sizes: "32x32",
           type: "image/png",
           media: "(prefers-color-scheme: dark)",
         },
         {
-          url: "/brand/icon-512.png",
+          url: "/brand/icon-512.png?v=3d",
           sizes: "512x512",
           type: "image/png",
           media: "(prefers-color-scheme: light)",
         },
         {
-          url: "/brand/icon-dark-512.png",
+          url: "/brand/icon-dark-512.png?v=3d",
           sizes: "512x512",
           type: "image/png",
           media: "(prefers-color-scheme: dark)",
         },
       ],
       apple: [
-        { url: "/brand/apple-touch.png", sizes: "180x180", media: "(prefers-color-scheme: light)" },
-        { url: "/brand/apple-touch-dark.png", sizes: "180x180", media: "(prefers-color-scheme: dark)" },
+        { url: "/brand/apple-touch.png?v=3d", sizes: "180x180", media: "(prefers-color-scheme: light)" },
+        { url: "/brand/apple-touch-dark.png?v=3d", sizes: "180x180", media: "(prefers-color-scheme: dark)" },
       ],
     },
   };
