@@ -3,6 +3,14 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
 
+export interface EnquiryInput {
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+  type: "buyer" | "seller" | "landlord" | "tenant";
+}
+
 export interface PublicContactFormProps {
   /** Slug or custom domain used to resolve the owning org server-side */
   site: string;
@@ -17,6 +25,12 @@ export interface PublicContactFormProps {
   };
   wrapperBackground: string;
   layout?: "compact" | "stacked";
+  /**
+   * When set, the form saves through the signed-in workspace instead of the
+   * public endpoint. Used by the website editor so a test enquiry still lands
+   * in Opportunities and Contacts.
+   */
+  onCapture?: (input: EnquiryInput) => Promise<void>;
 }
 
 export function PublicContactForm({
@@ -24,11 +38,14 @@ export function PublicContactForm({
   ctaLabel,
   colors,
   wrapperBackground,
-  layout = "compact",
+  layout = "stacked",
+  onCapture,
 }: PublicContactFormProps) {
   const [name, setName] = useState("");
-  const [contact, setContact] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
+  const [type, setType] = useState<EnquiryInput["type"]>("buyer");
   const [honeypot, setHoneypot] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -40,41 +57,45 @@ export function PublicContactForm({
   };
 
   async function submit() {
-    if (!name.trim() || !contact.trim()) {
+    if (!name.trim() || (!email.trim() && !phone.trim())) {
       setStatus("error");
-      setErrorMessage("Add your name and a way to reach you.");
+      setErrorMessage("Add your name, and an email or a phone number.");
       return;
     }
     setStatus("sending");
     setErrorMessage("");
 
-    const looksLikeEmail = contact.includes("@");
+    const input: EnquiryInput = {
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      message: message.trim(),
+      type,
+    };
     try {
-      const res = await fetch("/api/public/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          site,
-          name: name.trim(),
-          email: looksLikeEmail ? contact.trim() : "",
-          phone: looksLikeEmail ? "" : contact.trim(),
-          message: message.trim(),
-          honeypot,
-        }),
-      });
-      const json = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        setStatus("error");
-        setErrorMessage(json.error || "Something went wrong. Please try again.");
-        return;
+      if (onCapture) {
+        await onCapture(input);
+      } else {
+        const res = await fetch("/api/public/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ site, ...input, honeypot }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          setStatus("error");
+          setErrorMessage(json.error || "Something went wrong. Please try again.");
+          return;
+        }
       }
       setStatus("sent");
       setName("");
-      setContact("");
+      setEmail("");
+      setPhone("");
       setMessage("");
-    } catch {
+    } catch (err) {
       setStatus("error");
-      setErrorMessage("Network error. Please try again.");
+      setErrorMessage(err instanceof Error ? err.message : "Network error. Please try again.");
     }
   }
 
@@ -88,7 +109,7 @@ export function PublicContactForm({
           Thanks — we’ve got your details.
         </p>
         <p className="mt-2 text-sm" style={{ color: colors.muted }}>
-          Someone from the team will be in touch shortly.
+          You’re in the pipeline. Someone from the team will be in touch shortly.
         </p>
       </div>
     );
@@ -103,15 +124,9 @@ export function PublicContactForm({
         void submit();
       }}
     >
-      <div
-        className={
-          layout === "stacked"
-            ? "grid gap-3"
-            : "grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
-        }
-      >
+      <div className={layout === "stacked" ? "grid gap-3" : "grid gap-3 sm:grid-cols-2"}>
         <input
-          className="rounded-2xl px-4 py-3 text-sm outline-none"
+          className="rounded-2xl px-4 py-3 text-sm outline-none sm:col-span-2"
           style={fieldStyle}
           placeholder="Your name"
           value={name}
@@ -121,49 +136,51 @@ export function PublicContactForm({
         <input
           className="rounded-2xl px-4 py-3 text-sm outline-none"
           style={fieldStyle}
-          placeholder="Email / phone"
-          value={contact}
-          onChange={(e) => setContact(e.target.value)}
-          required
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
-        {layout === "stacked" ? null : (
-          <button
-            type="submit"
-            disabled={status === "sending"}
-            className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium disabled:opacity-60"
-            style={{
-              backgroundColor: colors.accent,
-              color: colors.accentText,
-              borderRadius: 9999,
-            }}
-          >
-            {status === "sending" ? "Sending…" : ctaLabel}
-          </button>
-        )}
+        <input
+          className="rounded-2xl px-4 py-3 text-sm outline-none"
+          style={fieldStyle}
+          placeholder="Phone"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+        <select
+          className="rounded-2xl px-4 py-3 text-sm outline-none sm:col-span-2"
+          style={fieldStyle}
+          value={type}
+          onChange={(e) => setType(e.target.value as EnquiryInput["type"])}
+        >
+          <option value="buyer">I want to buy</option>
+          <option value="seller">I want to sell</option>
+          <option value="landlord">I want to let a property</option>
+          <option value="tenant">I want to rent</option>
+        </select>
       </div>
 
       <textarea
         className="mt-3 min-h-24 w-full rounded-2xl px-4 py-3 text-sm outline-none"
         style={fieldStyle}
-        placeholder="What are you looking for? (optional)"
+        placeholder="Tell us what you need"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
       />
 
-      {layout === "stacked" ? (
-        <button
-          type="submit"
-          disabled={status === "sending"}
-          className="mt-3 inline-flex w-full items-center justify-center px-6 py-3 text-sm font-medium disabled:opacity-60 sm:w-auto"
-          style={{
-            backgroundColor: colors.accent,
-            color: colors.accentText,
-            borderRadius: 9999,
-          }}
-        >
-          {status === "sending" ? "Sending…" : ctaLabel}
-        </button>
-      ) : null}
+      <button
+        type="submit"
+        disabled={status === "sending"}
+        className="mt-3 inline-flex w-full items-center justify-center px-6 py-3 text-sm font-medium disabled:opacity-60 sm:w-auto"
+        style={{
+          backgroundColor: colors.accent,
+          color: colors.accentText,
+          borderRadius: 9999,
+        }}
+      >
+        {status === "sending" ? "Sending…" : ctaLabel}
+      </button>
 
       {/* Spam trap — hidden from real visitors */}
       <input

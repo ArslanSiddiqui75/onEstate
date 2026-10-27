@@ -1,29 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Globe, ExternalLink, Monitor } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toast";
 import { FEATURED_TEMPLATES, getTemplate } from "@/lib/website/templates";
 import { hydrateWebsiteSite } from "@/lib/website/defaults";
-import { applySectionLayout, resolveSections } from "@/lib/website/sections";
+import {
+  addSection,
+  applySectionLayout,
+  resolveSections,
+  setSectionVisible,
+} from "@/lib/website/sections";
 import { WebsiteCanvas } from "@/components/website/website-preview";
-import { SectionPalette } from "@/components/website/section-palette";
 import { DomainPanel } from "@/components/website/domain-panel";
+import { PublicContactForm } from "@/components/website/public-contact-form";
 import { fileToSocialMedia, uploadSocialMediaFile } from "@/lib/social/media";
-import type { WebsiteSite, WebsiteTemplateId, DomainStatus, SslStatus } from "@/types";
+import type { WebsiteSectionKind, WebsiteSite, WebsiteTemplateId, DomainStatus, SslStatus } from "@/types";
 
 export default function AppWebsitePage() {
-  const { user, org, website, saveWebsite, listings, market, getAuthToken, persistence } =
+  const { user, org, website, saveWebsite, listings, market, getAuthToken, persistence, addLead } =
     useAppSession();
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState(website);
   const [dirty, setDirty] = useState(false);
-  const [panel, setPanel] = useState<"none" | "theme" | "sections" | "domain">("none");
   const [verifying, setVerifying] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
 
@@ -95,9 +102,14 @@ export default function AppWebsitePage() {
     const usingDefaultHero =
       !site.heroImageUrl ||
       site.heroImageUrl === getTemplate(site.templateId).defaultHeroImage;
+    const cleared = resolveSections(site).map((section) => ({
+      kind: section.kind,
+      visible: section.visible,
+    }));
     updateDraft({
       templateId,
       heroImageUrl: usingDefaultHero ? nextTemplate.defaultHeroImage : site.heroImageUrl,
+      ...applySectionLayout(cleared),
     });
   };
 
@@ -176,137 +188,229 @@ export default function AppWebsitePage() {
     }
   };
 
-  return (
-    <div className="-m-4 flex min-h-[calc(100vh-10rem)] flex-col sm:-m-6 lg:-m-8">
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-        <p className="mr-auto text-xs text-[var(--muted)]">
-          Hover text to edit · hover the hero photo to replace it · Sections to add, hide, or reorder blocks
-        </p>
-        <Button
-          size="sm"
-          variant={panel === "theme" ? "secondary" : "ghost"}
-          onClick={() => setPanel(panel === "theme" ? "none" : "theme")}
-        >
-          <Monitor className="h-3.5 w-3.5" />
-          {template.name}
-        </Button>
-        <Button
-          size="sm"
-          variant={panel === "sections" ? "secondary" : "ghost"}
-          onClick={() => setPanel(panel === "sections" ? "none" : "sections")}
-        >
-          Sections
-        </Button>
-        <Button
-          size="sm"
-          variant={panel === "domain" ? "secondary" : "ghost"}
-          onClick={() => setPanel(panel === "domain" ? "none" : "domain")}
-        >
-          <Globe className="h-3.5 w-3.5" />
-          Domain
-        </Button>
-        <Badge tone={site.published ? "success" : "warning"}>
-          {site.published ? "Published" : "Draft"}
-        </Badge>
-        {site.published && publicPath ? (
-          <a
-            href={publicPath}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs underline text-[var(--muted)] hover:text-[var(--foreground)]"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            View live site
-          </a>
-        ) : null}
-        {canEdit ? (
-          <>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={busy}
-              onClick={() => {
-                if (!site.published && activeListings.length === 0) {
-                  toast.error(
-                    "Publish needs an active listing. Drafts stay off the public site.",
-                  );
-                  return;
-                }
-                const nextPublished = !site.published;
-                const confirmed = window.confirm(
-                  nextPublished
-                    ? "Publish this site so it is public?"
-                    : "Unpublish this site? Visitors will no longer see it.",
-                );
-                if (!confirmed) return;
-                const next = { ...site, published: nextPublished };
-                setDraft(next);
-                void handleSave(next);
-              }}
-            >
-              {site.published ? "Unpublish" : "Publish"}
-            </Button>
-            <Button size="sm" disabled={busy || !dirty} onClick={() => void handleSave()}>
-              {busy ? "Saving…" : dirty ? "Save" : "Saved"}
-            </Button>
-          </>
-        ) : null}
-      </div>
+  const pageSections = resolveSections(hydrated);
+  function showBlock(kind: WebsiteSectionKind, on: boolean) {
+    const exists = pageSections.some((section) => section.kind === kind);
+    const next =
+      !exists && on ? addSection(pageSections, kind) : setSectionVisible(pageSections, kind, on);
+    updateDraft(applySectionLayout(next));
+  }
 
-      {panel !== "none" ? (
-        <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-4">
-          {panel === "theme" ? (
-            <div className="grid gap-3 sm:grid-cols-4">
-              {FEATURED_TEMPLATES.map((tmpl) => {
-                const active = hydrated.templateId === tmpl.id;
-                return (
-                  <button
-                    key={tmpl.id}
-                    type="button"
-                    disabled={!canEdit}
-                    onClick={() => handleSelectTemplate(tmpl.id)}
-                    className={`rounded-xl border p-2 text-left ${
-                      active ? "border-[var(--accent)] ring-1 ring-[var(--accent)]/30" : "border-[var(--border)]"
-                    }`}
-                  >
-                    <div
-                      className="h-16 rounded-lg"
-                      style={{ background: tmpl.thumbnailGradient }}
-                    />
-                    <p className="mt-2 text-xs font-semibold">{tmpl.name}</p>
-                    <p className="text-[10px] text-[var(--muted)]">{tmpl.tagline}</p>
-                  </button>
-                );
-              })}
+  const blocks: { kind: WebsiteSectionKind; label: string }[] = [
+    { kind: "hero", label: "Opening" },
+    { kind: "listings", label: "Homes" },
+    { kind: "about", label: "About" },
+    { kind: "testimonials", label: "Client quotes" },
+    { kind: "stats", label: "Numbers" },
+    { kind: "contact", label: "Enquiry form" },
+  ];
+
+  return (
+    <div className="grid items-start gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone={site.published ? "success" : "warning"}>
+            {site.published ? "Published" : "Draft"}
+          </Badge>
+          {site.published && publicPath ? (
+            <a
+              href={publicPath}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-[var(--accent)] hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              View live site
+            </a>
+          ) : null}
+          {canEdit ? (
+            <div className="ml-auto flex gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  if (!site.published && activeListings.length === 0) {
+                    toast.error("Publish needs an active listing. Drafts stay off the public site.");
+                    return;
+                  }
+                  const nextPublished = !site.published;
+                  const confirmed = window.confirm(
+                    nextPublished
+                      ? "Publish this site so it is public?"
+                      : "Unpublish this site? Visitors will no longer see it.",
+                  );
+                  if (!confirmed) return;
+                  const next = { ...site, published: nextPublished };
+                  setDraft(next);
+                  void handleSave(next);
+                }}
+              >
+                {site.published ? "Unpublish" : "Publish"}
+              </Button>
+              <Button size="sm" disabled={busy || !dirty} onClick={() => void handleSave()}>
+                {busy ? "Saving…" : dirty ? "Save" : "Saved"}
+              </Button>
             </div>
           ) : null}
-
-          {panel === "sections" ? (
-            <SectionPalette site={hydrated} canEdit={canEdit} onChange={updateDraft} />
-          ) : null}
-
-          {panel === "domain" ? (
-            <DomainPanel
-              site={site}
-              canEdit={canEdit}
-              verifying={verifying}
-              onChange={updateDraft}
-              onVerify={() => void handleVerifyDomain()}
-            />
-          ) : null}
         </div>
-      ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+        <section className="space-y-3 rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div>
+            <h2 className="font-semibold">Theme</h2>
+            <p className="text-sm text-[var(--muted)]">Each theme has its own type, photo treatment, and way of listing homes.</p>
+          </div>
+          <div className="grid gap-2">
+            {FEATURED_TEMPLATES.map((tmpl) => {
+              const active = hydrated.templateId === tmpl.id;
+              return (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  disabled={!canEdit}
+                  onClick={() => handleSelectTemplate(tmpl.id)}
+                  className={`rounded-[1rem] border p-3 text-left ${
+                    active ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-[var(--border)]"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <span
+                      className="h-10 w-10 shrink-0 rounded-[0.7rem]"
+                      style={{ background: tmpl.thumbnailGradient }}
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold">{tmpl.name}</span>
+                      <span className="mt-0.5 block text-xs leading-5 text-[var(--muted)]">{tmpl.description}</span>
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="space-y-3 rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div>
+            <h2 className="font-semibold">Words</h2>
+            <p className="text-sm text-[var(--muted)]">These are the lines visitors read. The preview updates as you type.</p>
+          </div>
+          <label className="block space-y-1 text-sm">
+            <span className="text-xs text-[var(--muted)]">Headline</span>
+            <Input value={hydrated.headline} disabled={!canEdit} onChange={(e) => updateDraft({ headline: e.target.value })} />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="text-xs text-[var(--muted)]">Supporting line</span>
+            <Input value={hydrated.tagline} disabled={!canEdit} onChange={(e) => updateDraft({ tagline: e.target.value })} />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="text-xs text-[var(--muted)]">About</span>
+            <Textarea value={hydrated.aboutBio || ""} disabled={!canEdit} onChange={(e) => updateDraft({ aboutBio: e.target.value })} />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block space-y-1 text-sm">
+              <span className="text-xs text-[var(--muted)]">Phone</span>
+              <Input value={hydrated.phone || ""} disabled={!canEdit} onChange={(e) => updateDraft({ phone: e.target.value })} />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span className="text-xs text-[var(--muted)]">Email</span>
+              <Input value={hydrated.email || ""} disabled={!canEdit} onChange={(e) => updateDraft({ email: e.target.value })} />
+            </label>
+          </div>
+          <label className="block space-y-1 text-sm">
+            <span className="text-xs text-[var(--muted)]">Button label</span>
+            <Input value={hydrated.primaryCta} disabled={!canEdit} onChange={(e) => updateDraft({ primaryCta: e.target.value })} />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="text-xs text-[var(--muted)]">Cover photo</span>
+            <input
+              type="file"
+              accept="image/*"
+              disabled={!canEdit || uploadingHero}
+              className="block w-full text-sm text-[var(--muted)] file:mr-3 file:rounded-[1rem] file:border file:border-[var(--border)] file:bg-[var(--surface-muted)] file:px-3 file:py-1.5 file:text-sm file:text-[var(--foreground)]"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.currentTarget.value = "";
+                if (file) void handleHeroFile(file);
+              }}
+            />
+            <span className="text-xs text-[var(--muted)]">{uploadingHero ? "Uploading…" : "Or keep the theme’s photograph."}</span>
+          </label>
+        </section>
+
+        <section className="space-y-3 rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div>
+            <h2 className="font-semibold">On the page</h2>
+            <p className="text-sm text-[var(--muted)]">Turn a block off if you don’t need it. The theme decides how the rest looks.</p>
+          </div>
+          <ul className="space-y-2">
+            {blocks.map((block) => {
+              const on = pageSections.find((section) => section.kind === block.kind)?.visible !== false
+                && pageSections.some((section) => section.kind === block.kind);
+              return (
+                <li key={block.kind} className="flex items-center justify-between gap-3">
+                  <span className="text-sm">{block.label}</span>
+                  <Switch checked={on} disabled={!canEdit} onCheckedChange={(value) => showBlock(block.kind, value)} />
+                </li>
+              );
+            })}
+          </ul>
+          <p className="text-sm text-[var(--muted)]">
+            The enquiry form opens a new opportunity and saves the person as a contact.
+          </p>
+        </section>
+
+        <section className="space-y-3 rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface)] p-4">
+          <h2 className="font-semibold">Domain</h2>
+          <DomainPanel
+            site={site}
+            canEdit={canEdit}
+            verifying={verifying}
+            onChange={updateDraft}
+            onVerify={() => void handleVerifyDomain()}
+          />
+        </section>
+      </div>
+
+      <div className="overflow-hidden rounded-[1.35rem] border border-[var(--border)] xl:sticky xl:top-0 xl:max-h-[calc(100vh-8rem)] xl:overflow-y-auto">
         <WebsiteCanvas
           site={hydrated}
           orgName={org.name}
           listings={activeListings}
           market={market}
-          editable={canEdit}
+          editable={false}
           uploadingHero={uploadingHero}
-          onChange={(patch) => updateDraft(patch)}
-          onHeroFile={(file) => void handleHeroFile(file)}
+          contactForm={
+            <PublicContactForm
+              site={site.slug || org.id}
+              ctaLabel={hydrated.primaryCta}
+              colors={{
+                surface: template.colors.surface,
+                text: template.colors.text,
+                muted: template.colors.muted,
+                accent: template.colors.accent,
+                accentText: template.colors.accentText,
+                border: template.colors.border,
+              }}
+              wrapperBackground={template.id === "luxury-dark" ? template.colors.surface : template.colors.bg}
+              onCapture={async (input) => {
+                await addLead({
+                  name: input.name,
+                  email: input.email,
+                  phone: input.phone,
+                  type: input.type,
+                  stage: "new",
+                  score: 0,
+                  assignedTo: user.id,
+                  market,
+                  source: "Website",
+                  notes: input.message,
+                  nextAction: "Respond to website enquiry",
+                  priority: "high",
+                });
+                toast.success("Saved to Opportunities and Contacts");
+              }}
+            />
+          }
         />
       </div>
     </div>

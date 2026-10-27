@@ -64,7 +64,7 @@ export function DomainPanel({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <div className="grid gap-4">
       <div className="space-y-3">
         <label className="text-xs font-medium text-[var(--muted)]">Custom domain</label>
         <div className="flex gap-2">

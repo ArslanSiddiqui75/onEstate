@@ -39,10 +39,10 @@ const TEMPLATE_ALIASES: Record<string, WebsiteTemplateId> = {
 export const WEBSITE_TEMPLATES: WebsiteTemplate[] = [
   {
     id: "modern-minimal",
-    name: "Modern Minimal",
+    name: "Atelier",
     featured: true,
-    description: "Light, airy, and image-led. Headline over a full-bleed hero.",
-    tagline: "Clean and contemporary",
+    description: "A magazine page. Italic headline, one featured home, and thin rules.",
+    tagline: "Editorial",
     defaultHeroImage:
       "https://images.unsplash.com/photo-1600596542813-85a1c2dae59e?auto=format&fit=crop&w=1600&q=80",
     colors: {
@@ -56,7 +56,7 @@ export const WEBSITE_TEMPLATES: WebsiteTemplate[] = [
       heroFrom: "#111111",
       heroTo: "#404040",
     },
-    fonts: { heading: "Inter, system-ui, sans-serif", body: "Inter, system-ui, sans-serif" },
+    fonts: { heading: "Newsreader, Georgia, serif", body: "Outfit, system-ui, sans-serif" },
     heroLayout: "overlay",
     listingLayout: "grid-2",
     radius: "rounded",
@@ -64,10 +64,10 @@ export const WEBSITE_TEMPLATES: WebsiteTemplate[] = [
   },
   {
     id: "luxury-dark",
-    name: "Luxury Dark",
+    name: "Nocturne",
     featured: true,
-    description: "Night palette with gold accents. Built for high-end stock.",
-    tagline: "Quiet luxury",
+    description: "An evening brochure. Gold frame, centered type, and dark property cards.",
+    tagline: "After dark",
     defaultHeroImage:
       "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1600&q=80",
     colors: {
@@ -81,18 +81,18 @@ export const WEBSITE_TEMPLATES: WebsiteTemplate[] = [
       heroFrom: "#0c0c0b",
       heroTo: "#1c1917",
     },
-    fonts: { heading: "Inter, system-ui, sans-serif", body: "Inter, system-ui, sans-serif" },
-    heroLayout: "overlay",
+    fonts: { heading: "Cormorant Garamond, Georgia, serif", body: "Manrope, system-ui, sans-serif" },
+    heroLayout: "centered",
     listingLayout: "cards",
     radius: "rounded",
     thumbnailGradient: "linear-gradient(135deg, #0c0c0b 0%, #c6a15b 100%)",
   },
   {
     id: "classic-agency",
-    name: "Classic Agency",
+    name: "The Practice",
     featured: true,
-    description: "Navy split layout. Text on one side, photography on the other.",
-    tagline: "Established and trusted",
+    description: "A letterhead. Navy particulars on the left, homes listed like a price sheet.",
+    tagline: "Established",
     defaultHeroImage:
       "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1600&q=80",
     colors: {
@@ -106,7 +106,7 @@ export const WEBSITE_TEMPLATES: WebsiteTemplate[] = [
       heroFrom: "#ffffff",
       heroTo: "#ffffff",
     },
-    fonts: { heading: "Inter, system-ui, sans-serif", body: "Inter, system-ui, sans-serif" },
+    fonts: { heading: "Libre Baskerville, Georgia, serif", body: "Manrope, system-ui, sans-serif" },
     heroLayout: "split",
     listingLayout: "grid-3",
     radius: "rounded",
@@ -114,10 +114,10 @@ export const WEBSITE_TEMPLATES: WebsiteTemplate[] = [
   },
   {
     id: "coastal-living",
-    name: "Coastal Living",
+    name: "Shore",
     featured: true,
-    description: "Soft teal and sand. Left-aligned copy over a bright coastal hero.",
-    tagline: "Light, air, and sea",
+    description: "Sand paper and sea glass. A caption card sits over the photograph.",
+    tagline: "By the water",
     defaultHeroImage:
       "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
     colors: {
@@ -131,7 +131,7 @@ export const WEBSITE_TEMPLATES: WebsiteTemplate[] = [
       heroFrom: "#0f766e",
       heroTo: "#134e4a",
     },
-    fonts: { heading: "Inter, system-ui, sans-serif", body: "Inter, system-ui, sans-serif" },
+    fonts: { heading: "Fraunces, Georgia, serif", body: "Manrope, system-ui, sans-serif" },
     heroLayout: "left-aligned",
     listingLayout: "grid-2",
     radius: "rounded",

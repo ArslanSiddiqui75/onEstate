@@ -1,7 +1,41 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Cormorant_Garamond, Fraunces, Libre_Baskerville, Manrope, Newsreader, Outfit } from "next/font/google";
 import { ArrowUpRight } from "lucide-react";
+
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
+const outfit = Outfit({ subsets: ["latin"], weight: ["400", "500", "600"], display: "swap" });
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  display: "swap",
+});
+const baskerville = Libre_Baskerville({
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
+});
+const fraunces = Fraunces({ subsets: ["latin"], weight: ["500", "600"], display: "swap" });
+const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600"], display: "swap" });
+
+function themeType(id: string) {
+  if (id === "luxury-dark") {
+    return { display: cormorant.style.fontFamily, body: manrope.style.fontFamily };
+  }
+  if (id === "classic-agency") {
+    return { display: baskerville.style.fontFamily, body: manrope.style.fontFamily };
+  }
+  if (id === "coastal-living") {
+    return { display: fraunces.style.fontFamily, body: manrope.style.fontFamily };
+  }
+  return { display: newsreader.style.fontFamily, body: outfit.style.fontFamily };
+}
 import { formatMoney } from "@/lib/utils";
 import { getTemplate } from "@/lib/website/templates";
 import { hydrateWebsiteSite } from "@/lib/website/defaults";
@@ -40,14 +74,13 @@ export function WebsiteCanvas({
 }) {
   const hydrated = hydrateWebsiteSite(site, orgName);
   const template = getTemplate(hydrated.templateId);
+  const type = themeType(template.id);
   const tc = template.colors;
   const heroImage = hydrated.heroImageUrl || template.defaultHeroImage;
   const sections = resolveSections(hydrated);
   const visible = sections.filter((s) => s.visible);
   const heroSection = sections.find((s) => s.kind === "hero");
   const heroOn = heroSection?.visible !== false;
-  const heroLayout = heroSection ? sectionVariant(heroSection, template) : template.heroLayout;
-  const isSplitHero = heroOn && heroLayout === "split";
   const isDark = template.id === "luxury-dark";
   const activeListings = listings.filter(
     (l) =>
@@ -61,82 +94,158 @@ export function WebsiteCanvas({
     color: tc.accentText,
     borderRadius: 9999,
   };
-  const ghostPill = {
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.35)" : tc.border}`,
-    borderRadius: 9999,
-    color: isDark ? "#fff" : tc.text,
-  };
 
   const renderSection = (section: WebsiteSectionConfig) => {
     const variant = sectionVariant(section, template);
     switch (section.kind) {
       case "hero":
-        return isSplitHero ? (
-          <section key="hero" id="section-hero">
-            <header className="flex items-center justify-between px-6 py-5 md:px-10">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em]">{orgName}</p>
-              <nav className="hidden gap-8 text-[12px] md:flex" style={{ color: tc.muted }}>
-                <span>Home</span>
-                <span>Properties</span>
-                <span>About</span>
-                <span>Contact</span>
-              </nav>
-              <span className="px-4 py-2 text-[11px] font-medium" style={ghostPill}>
-                {hydrated.primaryCta}
-              </span>
-            </header>
-            <div className="grid items-stretch gap-5 px-5 pb-8 md:grid-cols-[1.1fr_0.9fr] md:px-8">
-              <div
-                className="flex min-h-[62vh] flex-col justify-between rounded-[2rem] px-8 py-10 md:px-12"
-                style={{ backgroundColor: tc.surface, color: tc.text }}
-              >
-                <EditableText
-                  as="p"
+        if (template.id === "classic-agency") {
+          return (
+            <section key="hero" id="section-hero" style={{ backgroundColor: "#f3efe6" }}>
+              <header className="flex items-center justify-between border-b px-6 py-4 md:px-12" style={{ borderColor: tc.border }}>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.32em]" style={{ color: tc.accent }}>
+                    Estate agents
+                  </p>
+                  <p className="text-sm" style={{ ...displayFont(), color: tc.text }}>{orgName}</p>
+                </div>
+                <p className="text-xs" style={{ color: tc.muted }}>{hydrated.phone || hydrated.email}</p>
+              </header>
+              <div className="grid md:grid-cols-[0.9fr_1.1fr]">
+                <div className="flex min-h-[70vh] flex-col justify-between px-6 py-12 md:px-12" style={{ backgroundColor: "#172033", color: "#f6f1e7" }}>
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-[#d6c7a1]">Particulars</p>
+                  <div>
+                    <EditableText
+                      as="h1"
+                      enabled={editable}
+                      value={hydrated.headline}
+                      onChange={(v) => patch({ headline: v })}
+                      placeholder="Your headline"
+                      className="text-4xl leading-[1.15] md:text-5xl"
+                      style={displayFont()}
+                    />
+                    <EditableText
+                      as="p"
+                      enabled={editable}
+                      value={hydrated.tagline}
+                      onChange={(v) => patch({ tagline: v })}
+                      placeholder="A line under the headline"
+                      className="mt-5 max-w-sm text-sm leading-7 text-[#d9d3c7]"
+                    />
+                  </div>
+                  <EditableText
+                    enabled={editable}
+                    value={hydrated.primaryCta}
+                    onChange={(v) => patch({ primaryCta: v })}
+                    placeholder="Primary button"
+                    className="inline-flex w-fit border border-[#d6c7a1] px-5 py-2.5 text-xs uppercase tracking-[0.18em]"
+                  />
+                </div>
+                <EditableImage
                   enabled={editable}
-                  value={hydrated.tagline}
-                  onChange={(v) => patch({ tagline: v })}
-                  placeholder="Short line above the headline"
-                  className="text-center text-xs tracking-wide"
-                  style={{ color: tc.muted }}
-                />
+                  uploading={uploadingHero}
+                  onPickFile={(file) => onHeroFile?.(file)}
+                  className="min-h-[420px] bg-cover bg-center md:min-h-[70vh]"
+                  style={{ backgroundImage: `url(${heroImage})` }}
+                >
+                  <div className="h-full min-h-[420px] border-[12px] border-[#172033] md:min-h-[70vh]" />
+                </EditableImage>
+              </div>
+            </section>
+          );
+        }
+        if (template.id === "luxury-dark") {
+          return (
+            <section key="hero" id="section-hero" className="px-4 py-4 md:px-8 md:py-8">
+              <EditableImage
+                enabled={editable}
+                uploading={uploadingHero}
+                onPickFile={(file) => onHeroFile?.(file)}
+                className="relative min-h-[86vh] overflow-hidden bg-cover bg-center"
+                style={{ backgroundImage: `url(${heroImage})` }}
+              >
+                <div className="absolute inset-5 border border-[#c6a15b]/70 md:inset-8" />
+                <div className="absolute inset-0 bg-black/45" />
+                <div className="relative z-10 flex min-h-[86vh] flex-col items-center justify-center px-8 text-center text-[#f5f0e6]">
+                  <p className="text-[11px] uppercase tracking-[0.42em] text-[#c6a15b]">{orgName}</p>
+                  <EditableText
+                    as="h1"
+                    enabled={editable}
+                    value={hydrated.headline}
+                    onChange={(v) => patch({ headline: v })}
+                    placeholder="Your headline"
+                    className="mt-6 max-w-3xl text-5xl leading-none md:text-7xl"
+                    style={displayFont()}
+                  />
+                  <EditableText
+                    as="p"
+                    enabled={editable}
+                    value={hydrated.tagline}
+                    onChange={(v) => patch({ tagline: v })}
+                    placeholder="Your tagline"
+                    className="mt-6 max-w-md text-sm leading-7 text-[#f5f0e6]/80"
+                  />
+                  <EditableText
+                    enabled={editable}
+                    value={hydrated.primaryCta}
+                    onChange={(v) => patch({ primaryCta: v })}
+                    placeholder="Primary button"
+                    className="mt-8 inline-flex border border-[#c6a15b] px-6 py-2.5 text-[11px] uppercase tracking-[0.22em] text-[#c6a15b]"
+                  />
+                </div>
+              </EditableImage>
+            </section>
+          );
+        }
+        if (template.id === "coastal-living") {
+          return (
+            <section key="hero" id="section-hero" className="px-4 pt-4 md:px-8">
+              <EditableImage
+                enabled={editable}
+                uploading={uploadingHero}
+                onPickFile={(file) => onHeroFile?.(file)}
+                className="relative min-h-[78vh] overflow-hidden rounded-[2rem] bg-cover bg-center"
+                style={{ backgroundImage: `url(${heroImage})` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-t from-[#134e4a]/80 via-transparent to-[#134e4a]/20" />
+                <header className="relative z-10 flex items-center justify-between px-6 py-5 text-white">
+                  <p className="text-sm" style={displayFont()}>{orgName}</p>
+                  <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] backdrop-blur">{hydrated.phone || "By the water"}</span>
+                </header>
+              </EditableImage>
+              <div className="relative z-10 mx-auto -mt-24 max-w-3xl rounded-[1.75rem] px-8 py-8 shadow-[0_20px_50px_rgba(15,60,50,0.12)]" style={{ backgroundColor: "#fffaf3", color: tc.text }}>
+                <p className="text-[11px] uppercase tracking-[0.22em]" style={{ color: tc.accent }}>Open houses this week</p>
                 <EditableText
                   as="h1"
                   enabled={editable}
                   value={hydrated.headline}
                   onChange={(v) => patch({ headline: v })}
                   placeholder="Your headline"
-                  className="text-center text-4xl font-semibold leading-[1.1] tracking-tight md:text-5xl"
+                  className="mt-3 text-4xl leading-tight md:text-5xl"
+                  style={displayFont()}
                 />
-                <div className="flex items-center justify-between gap-4">
-                  <EditableText
-                    enabled={editable}
-                    value={hydrated.primaryCta}
-                    onChange={(v) => patch({ primaryCta: v })}
-                    placeholder="Primary button"
-                    className="inline-flex px-5 py-2.5 text-sm font-medium"
-                    style={pill}
-                  />
-                  <EditableText
-                    enabled={editable}
-                    value={hydrated.secondaryCta || ""}
-                    onChange={(v) => patch({ secondaryCta: v })}
-                    placeholder="Secondary link"
-                    className="inline-flex items-center gap-1 text-sm"
-                  />
-                </div>
+                <EditableText
+                  as="p"
+                  enabled={editable}
+                  value={hydrated.tagline}
+                  onChange={(v) => patch({ tagline: v })}
+                  placeholder="Your tagline"
+                  className="mt-3 text-sm leading-7"
+                  style={{ color: tc.muted }}
+                />
+                <EditableText
+                  enabled={editable}
+                  value={hydrated.primaryCta}
+                  onChange={(v) => patch({ primaryCta: v })}
+                  placeholder="Primary button"
+                  className="mt-6 inline-flex rounded-full px-5 py-2.5 text-sm"
+                  style={pill}
+                />
               </div>
-              <EditableImage
-                enabled={editable}
-                uploading={uploadingHero}
-                onPickFile={(file) => onHeroFile?.(file)}
-                className="min-h-[360px] overflow-hidden rounded-[2rem] bg-cover bg-center md:min-h-[62vh]"
-                style={{ backgroundImage: `url(${heroImage})` }}
-              >
-                <div className="h-full min-h-[360px] md:min-h-[62vh]" />
-              </EditableImage>
-            </div>
-          </section>
-        ) : (
+            </section>
+          );
+        }
+        return (
           <section key="hero" id="section-hero" className="relative">
             <EditableImage
               enabled={editable}
@@ -177,13 +286,15 @@ export function WebsiteCanvas({
                     : "items-start justify-end md:max-w-3xl"
                 }`}
               >
+                <p className="mb-4 text-[11px] uppercase tracking-[0.32em] text-white/70">Issue 01 — {orgName}</p>
                 <EditableText
                   as="h1"
                   enabled={editable}
                   value={hydrated.headline}
                   onChange={(v) => patch({ headline: v })}
                   placeholder="Your headline"
-                  className="max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight md:text-6xl"
+                  className="max-w-3xl text-5xl italic leading-[0.95] md:text-7xl"
+                  style={displayFont()}
                 />
                 <EditableText
                   as="p"
@@ -225,6 +336,7 @@ export function WebsiteCanvas({
             activeListings={activeListings}
             market={market}
             templateImage={template.defaultHeroImage}
+            themeId={template.id}
             tc={tc}
             patch={patch}
           />
@@ -305,7 +417,8 @@ export function WebsiteCanvas({
       style={{
         backgroundColor: tc.bg,
         color: tc.text,
-        fontFamily: template.fonts.body,
+        fontFamily: type.body,
+        ["--site-display" as string]: type.display,
       }}
     >
       {!heroOn ? (
@@ -366,6 +479,10 @@ export function WebsiteCanvas({
   );
 }
 
+function displayFont() {
+  return { fontFamily: "var(--site-display), Georgia, serif" } as const;
+}
+
 function SlashHeading({
   value,
   placeholder,
@@ -380,17 +497,15 @@ function SlashHeading({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex items-baseline gap-2">
-      <span className="text-3xl font-light" style={{ color: muted }}>
-        /
-      </span>
+    <div className="border-b pb-3" style={{ borderColor: muted }}>
       <EditableText
         as="h2"
         enabled={editable}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="text-3xl font-semibold tracking-tight md:text-4xl"
+        className="text-3xl leading-tight md:text-5xl"
+        style={displayFont()}
       />
     </div>
   );
@@ -403,6 +518,7 @@ function ListingsBlock({
   activeListings,
   market,
   templateImage,
+  themeId,
   tc,
   patch,
 }: {
@@ -412,7 +528,8 @@ function ListingsBlock({
   activeListings: Listing[];
   market: Market;
   templateImage: string;
-  tc: { muted: string; surface: string; border: string };
+  themeId: string;
+  tc: { muted: string; surface: string; border: string; text?: string; accent?: string };
   patch: (next: Partial<WebsiteSite>) => void;
 }) {
   const cols =
@@ -438,37 +555,65 @@ function ListingsBlock({
           {activeListings.length === 1 ? "home" : "homes"}. Drafts stay off the public site.
         </p>
       </div>
-      <div className={`grid gap-6 ${cols}`}>
-        {activeListings.slice(0, 6).map((item) => (
+      {themeId === "classic-agency" ? (
+        <div className="divide-y" style={{ borderColor: tc.border }}>
+          {activeListings.slice(0, 6).map((item, index) => (
+            <article key={item.id} className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-4 py-4">
+              <div
+                className="h-16 w-16 bg-cover bg-center"
+                style={{ backgroundImage: `url(${item.imageUrl || templateImage})` }}
+              />
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em]" style={{ color: tc.muted }}>
+                  {String(index + 1).padStart(2, "0")}
+                </p>
+                <h3 className="text-base" style={displayFont()}>{item.title}</h3>
+                <p className="text-xs" style={{ color: tc.muted }}>{item.city}</p>
+              </div>
+              <p className="text-sm">{formatMoney(item.price, market)}</p>
+            </article>
+          ))}
+        </div>
+      ) : (
+      <div className={`grid gap-6 ${themeId === "modern-minimal" ? "md:grid-cols-2" : cols}`}>
+        {activeListings.slice(0, 6).map((item, index) => (
           <article
             key={item.id}
-            className="group"
+            className={index === 0 && themeId === "modern-minimal" ? "md:col-span-2" : "group"}
             style={
-              isCards
-                ? {
-                    backgroundColor: tc.surface,
-                    border: `1px solid ${tc.border}`,
-                    borderRadius: 22,
-                    overflow: "hidden",
-                  }
-                : undefined
+              themeId === "luxury-dark"
+                ? { backgroundColor: tc.surface, border: "1px solid #c6a15b55", overflow: "hidden" }
+                : themeId === "coastal-living"
+                  ? { backgroundColor: "#fffaf3", borderRadius: 28, overflow: "hidden" }
+                  : isCards
+                    ? { backgroundColor: tc.surface, border: `1px solid ${tc.border}`, borderRadius: 22, overflow: "hidden" }
+                    : undefined
             }
           >
             <div
-              className={`w-full bg-cover bg-center ${isCards ? "h-56" : "h-72"}`}
+              className={`w-full bg-cover bg-center ${
+                index === 0 && themeId === "modern-minimal" ? "h-96" : themeId === "coastal-living" ? "h-64" : isCards ? "h-56" : "h-72"
+              }`}
               style={{
                 backgroundImage: `url(${item.imageUrl || templateImage})`,
-                borderRadius: isCards ? 0 : 18,
+                borderRadius: themeId === "modern-minimal" ? 0 : themeId === "coastal-living" ? 0 : isCards ? 0 : 18,
               }}
             />
-            <div className={`flex items-start justify-between gap-3 ${isCards ? "p-4" : "mt-3"}`}>
+            <div className={`flex items-start justify-between gap-3 ${themeId === "luxury-dark" || themeId === "coastal-living" || isCards ? "p-4" : "mt-3"}`}>
               <div>
-                <h3 className="text-sm font-semibold">{item.title}</h3>
-                <p className="mt-0.5 text-xs" style={{ color: tc.muted }}>
-                  {item.city}
-                </p>
+                {themeId === "coastal-living" ? (
+                  <p className="mb-1 inline-flex rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide" style={{ backgroundColor: "#e7f3ef", color: "#0f766e" }}>
+                    {item.city}
+                  </p>
+                ) : null}
+                <h3 className="text-base" style={displayFont()}>{item.title}</h3>
+                {themeId === "coastal-living" ? null : (
+                  <p className="mt-0.5 text-xs" style={{ color: tc.muted }}>{item.city}</p>
+                )}
               </div>
-              <p className="text-sm font-semibold">{formatMoney(item.price, market)}</p>
+              <p className="text-sm" style={themeId === "luxury-dark" ? { color: "#c6a15b" } : undefined}>
+                {formatMoney(item.price, market)}
+              </p>
             </div>
           </article>
         ))}
@@ -478,6 +623,7 @@ function ListingsBlock({
           </p>
         ) : null}
       </div>
+      )}
     </section>
   );
 }

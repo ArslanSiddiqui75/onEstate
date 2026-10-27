@@ -150,6 +150,64 @@ export async function POST(request: Request) {
   }
 
   const leadId = String(lead.id);
+  const enquiryNote = parsed.data.message?.trim() || null;
+
+  const { data: existingContacts } = await supabase
+    .from("contacts")
+    .select("id, email, phone")
+    .eq("org_id", orgId)
+    .limit(400);
+  const emailKey = (parsed.data.email || "").trim().toLowerCase();
+  const phoneDigits = phone.replace(/\D/g, "");
+  const matched = (existingContacts || []).find((row) => {
+    if (emailKey && String(row.email || "").trim().toLowerCase() === emailKey) return true;
+    const rowDigits = String(row.phone || "").replace(/\D/g, "");
+    return phoneDigits.length >= 7 && rowDigits === phoneDigits;
+  });
+
+  if (matched) {
+    await supabase
+      .from("contacts")
+      .update({
+        name: parsed.data.name.trim(),
+        email: parsed.data.email || matched.email,
+        phone: phone || matched.phone,
+        category: "lead",
+        lead_id: leadId,
+        notes: enquiryNote,
+        assigned_to: prepared.assignedTo || null,
+      })
+      .eq("id", matched.id);
+  } else {
+    const { data: contact } = await supabase
+      .from("contacts")
+      .insert({
+        org_id: orgId,
+        name: parsed.data.name.trim(),
+        email: parsed.data.email || null,
+        phone: phone || null,
+        category: "lead",
+        tags: ["website"],
+        notes: enquiryNote,
+        lead_id: leadId,
+        assigned_to: prepared.assignedTo || null,
+        market: org?.market || "uk",
+      })
+      .select("id")
+      .single();
+    if (contact && phone) {
+      await supabase.from("contact_phone_numbers").insert({
+        contact_id: contact.id,
+        org_id: orgId,
+        label: "Primary",
+        number: phone,
+        source: "website",
+        consent: "unknown",
+        verification: "unverified",
+        preferred: true,
+      });
+    }
+  }
 
   // Automations match on lead_phone_numbers, so a captured phone has to land
   // there too — not just on the lead row.
