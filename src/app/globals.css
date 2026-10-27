@@ -696,39 +696,34 @@ html,
   display: block;
 }
 
-/* 3D loader. The turn is on the wrapper, never a filter on the bitmap. */
-.logo-loader-stage {
-  perspective: 900px;
-}
-
+/* 3D loader. The mark only lifts, so the render is never skewed. */
 .logo-loader-glow {
-  animation: logo-glow 5.2s ease-in-out infinite;
+  animation: logo-glow 3.6s ease-in-out infinite;
 }
 
 .logo-loader-mark {
-  transform-style: preserve-3d;
-  animation: logo-turn 5.2s ease-in-out infinite;
+  animation: logo-float 3.6s ease-in-out infinite;
 }
 
 @keyframes logo-glow {
   0%,
   100% {
-    opacity: 0.45;
-    transform: scale(0.92);
+    opacity: 0.85;
+    transform: scaleX(1);
   }
   50% {
-    opacity: 0.9;
-    transform: scale(1);
+    opacity: 0.35;
+    transform: scaleX(0.8);
   }
 }
 
-@keyframes logo-turn {
+@keyframes logo-float {
   0%,
   100% {
-    transform: translateY(0) rotateX(7deg) rotateY(-18deg);
+    transform: translateY(0);
   }
   50% {
-    transform: translateY(-10px) rotateX(2deg) rotateY(16deg);
+    transform: translateY(-8px);
   }
 }
 
@@ -739,10 +734,6 @@ html,
   .logo-loader-glow,
   .logo-loader-mark {
     animation: none;
-  }
-
-  .logo-loader-mark {
-    transform: rotateX(5deg) rotateY(-10deg);
   }
 
   html {

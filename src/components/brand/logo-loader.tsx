@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-/** The 3D house, rocking in place. The artwork is not filtered, so the edges stay sharp. */
+/** The 3D house, lifting slightly. The picture itself is not tilted. */
 export function LogoLoader({
   label,
   layout = "screen",
@@ -27,9 +27,9 @@ export function LogoLoader({
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(12,110,99,0.09),transparent_58%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(23,186,168,0.12),transparent_58%)]"
         />
       ) : null}
-      <div className="logo-loader-stage relative">
-        <div aria-hidden className="absolute left-1/2 top-[58%] h-32 w-32 -translate-x-1/2 -translate-y-1/2">
-          <div className="logo-loader-glow h-full w-full rounded-full bg-[var(--accent)]/30 blur-2xl" />
+      <div className="relative">
+        <div aria-hidden className="absolute bottom-[8%] left-1/2 h-8 w-36 -translate-x-1/2">
+          <div className="logo-loader-glow h-full w-full rounded-full bg-[var(--accent)]/50 blur-xl" />
         </div>
         <div className="logo-loader-mark relative">
           <img
