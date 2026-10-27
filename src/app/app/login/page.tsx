@@ -68,10 +68,8 @@ export default function AppLoginPage() {
   return (
     <div data-auth-screen="login" className="login-screen relative flex min-h-dvh flex-col overflow-x-hidden">
       <div className="login-field" aria-hidden>
-        <div className="login-logo">
-          <img src="/brand/logo-light.png" alt="" className="login-logo-face login-logo-light" />
-          <img src="/brand/logo-dark.png" alt="" className="login-logo-face login-logo-dark" />
-        </div>
+        <img src="/brand/login-bg-light.webp" alt="" className="login-bg login-bg-light" />
+        <img src="/brand/login-bg-dark.webp" alt="" className="login-bg login-bg-dark" />
       </div>
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6 sm:py-4">
         <Link href={home} className="inline-flex min-w-0 lg:hidden" aria-label="OneStreet">

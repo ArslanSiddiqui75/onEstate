@@ -571,9 +571,15 @@ select:not([multiple]) optgroup {
   border-radius: var(--radius-sm);
 }
 
-/* Sign-in field. The lockup sits as a thin plane, tilted back and kept quiet. */
+/* Sign-in studio. Light and dark each use their own render, kept near the
+   source size so the 3D mark stays sharp. Desktop parks it in the left gutter;
+   mobile parks it under the card. Page color matches the studio edge. */
 .login-screen {
-  background: linear-gradient(180deg, var(--canvas) 0%, var(--canvas-deep) 100%);
+  background: #faf9f7;
+}
+
+.dark .login-screen {
+  background: #011b1c;
 }
 
 .login-field {
@@ -582,52 +588,48 @@ select:not([multiple]) optgroup {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  perspective: 1200px;
+  /* max-w-5xl card, centered, with the sm horizontal padding inside it. */
+  --login-card-left: max(1.5rem, calc((100% - 64rem) / 2 + 1.5rem));
+  /* Sculpture box inside the cropped render, as a fraction of image width. */
+  --art-inset: 0.194;
+  --art-span: 0.622;
+  /* Short enough that the sculpture clears the card and its shadow. */
+  --art-w: min(14.5rem, 64vw);
 }
 
-.login-logo {
+.login-bg {
   position: absolute;
-  width: min(46rem, 68vw);
-  max-width: 1040px;
-  right: -4vw;
-  bottom: 6vh;
-  transform: rotateX(16deg) rotateY(-34deg) rotateZ(-8deg);
-  transform-origin: 72% 50%;
-  opacity: 0.11;
-}
-
-.login-logo-face {
-  display: block;
-  width: 100%;
+  width: var(--art-w);
   height: auto;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  user-select: none;
 }
 
-.login-logo-dark {
+.login-bg-dark {
   display: none;
 }
 
-.dark .login-logo {
-  opacity: 0.16;
-}
-
-.dark .login-logo-light {
+.dark .login-bg-light {
   display: none;
 }
 
-.dark .login-logo-dark {
+.dark .login-bg-dark {
   display: block;
 }
 
-@media (max-width: 1023px) {
-  .login-logo {
-    width: min(34rem, 120vw);
-    right: -28vw;
-    bottom: -1.5rem;
-    opacity: 0.08;
+@media (min-width: 1280px) {
+  .login-field {
+    /* Fit the whole sculpture in the gutter. Cap at the pre-upscale width (760px). */
+    --art-w: min(47.5rem, calc((var(--login-card-left) - 1.75rem) / var(--art-span)));
   }
 
-  .dark .login-logo {
-    opacity: 0.12;
+  .login-bg {
+    left: calc(0.75rem - var(--art-inset) * var(--art-w));
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
   }
 }
 
