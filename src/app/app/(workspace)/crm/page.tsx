@@ -2057,19 +2057,21 @@ function ContactsDirectory({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative min-w-[14rem] flex-1 sm:flex-none">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name, email, phone, company, tag…"
-              className="pl-9"
-            />
-          </div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, email, phone, or company"
+            aria-label="Search contacts"
+            className="pl-10"
+          />
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <MenuSelect
-            className="h-10 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
+            aria-label="Category"
+            className="w-full sm:w-52"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as ContactCategory | "all")}
           >
@@ -2080,17 +2082,18 @@ function ContactsDirectory({
               </option>
             ))}
           </MenuSelect>
+          {canEdit ? (
+            <Button
+              className="shrink-0"
+              onClick={() => {
+                setEditingId(null);
+                setShowForm((v) => !v);
+              }}
+            >
+              {showForm ? "Close form" : "Add contact"}
+            </Button>
+          ) : null}
         </div>
-        {canEdit ? (
-          <Button
-            onClick={() => {
-              setEditingId(null);
-              setShowForm((v) => !v);
-            }}
-          >
-            {showForm ? "Close form" : "Add contact"}
-          </Button>
-        ) : null}
       </div>
 
       {showForm && canEdit ? (
@@ -2128,68 +2131,84 @@ function ContactsDirectory({
           />
         )
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+        <ul className="overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)]">
           {filtered.map((contact) => {
             const owner = members.find((m) => m.id === contact.assignedTo);
             const linkedLead = contact.leadId
               ? leads.find((l) => l.id === contact.leadId)
               : undefined;
             const isPromoting = promotingId === contact.id;
+            const phoneHref = contact.phone ? toTelHref(contact.phone) : "";
             return (
-              <div
+              <li
                 key={contact.id}
-                className="data-card flex flex-col gap-3 p-4"
+                className="border-b border-[var(--border)] px-4 py-4 last:border-b-0 sm:px-5"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={contact.name} />
-                    <div>
-                      <p className="font-semibold leading-tight">{contact.name}</p>
-                      {contact.company ? (
-                        <p className="text-xs text-[var(--muted)]">{contact.company}</p>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <Avatar name={contact.name} className="mt-0.5" />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold leading-tight">{contact.name}</p>
+                        {contact.company ? (
+                          <span className="text-sm text-[var(--muted)]">{contact.company}</span>
+                        ) : null}
+                        <Badge tone={CATEGORY_TONE[contact.category]}>
+                          {CATEGORY_LABELS[contact.category]}
+                        </Badge>
+                        {linkedLead ? (
+                          <button
+                            type="button"
+                            onClick={() => onOpenThread(linkedLead.id)}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)] transition hover:opacity-80"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            In pipeline · {linkedLead.stage}
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--muted)]">
+                        {contact.phone ? (
+                          phoneHref ? (
+                            <a href={phoneHref} className="inline-flex items-center gap-1.5 hover:text-[var(--foreground)]">
+                              <Phone className="h-3.5 w-3.5" />
+                              {contact.phone}
+                            </a>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5">
+                              <Phone className="h-3.5 w-3.5" />
+                              {contact.phone}
+                            </span>
+                          )
+                        ) : null}
+                        {contact.email ? (
+                          <a
+                            href={`mailto:${contact.email}`}
+                            className="inline-flex min-w-0 items-center gap-1.5 hover:text-[var(--foreground)]"
+                          >
+                            <Mail className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{contact.email}</span>
+                          </a>
+                        ) : null}
+                        {owner ? <span>Owner · {owner.name}</span> : null}
+                      </div>
+                      {contact.tags.length || contact.notes ? (
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          {contact.tags.map((tag) => (
+                            <Badge key={tag} className="lowercase">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {contact.notes ? (
+                            <p className="line-clamp-1 text-xs text-[var(--muted)]">{contact.notes}</p>
+                          ) : null}
+                        </div>
                       ) : null}
                     </div>
                   </div>
-                  <Badge tone={CATEGORY_TONE[contact.category]}>
-                    {CATEGORY_LABELS[contact.category]}
-                  </Badge>
-                </div>
-
-                <div className="space-y-1 text-sm text-[var(--muted)]">
-                  {contact.phone ? <p>{contact.phone}</p> : null}
-                  {contact.email ? <p className="truncate">{contact.email}</p> : null}
-                  {owner ? <p>Owner: {owner.name}</p> : null}
-                </div>
-
-                {contact.tags.length ? (
-                  <div className="flex flex-wrap gap-1">
-                    {contact.tags.map((tag) => (
-                      <Badge key={tag} className="lowercase">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : null}
-
-                {contact.notes ? (
-                  <p className="line-clamp-2 text-xs text-[var(--muted)]">
-                    {contact.notes}
-                  </p>
-                ) : null}
-
-                {linkedLead ? (
-                  <button
-                    type="button"
-                    onClick={() => onOpenThread(linkedLead.id)}
-                    className="flex items-center gap-1.5 self-start rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)] transition hover:opacity-80"
-                  >
-                    <Sparkles className="h-3 w-3" />
-                    In pipeline · {linkedLead.stage}
-                  </button>
-                ) : null}
 
                 {canEdit ? (
-                  <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-3">
+                  <div className="flex flex-wrap items-center gap-2 lg:max-w-[24rem] lg:shrink-0 lg:justify-end">
                     <Button
                       size="sm"
                       variant="secondary"
@@ -2262,7 +2281,8 @@ function ContactsDirectory({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="ml-auto text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                      className="text-[var(--danger)] hover:bg-[var(--danger-soft)]"
+                      aria-label={`Delete ${contact.name}`}
                       onClick={() => {
                         if (window.confirm(`Delete ${contact.name} from contacts?`)) {
                           void deleteContact(contact.id);
@@ -2273,10 +2293,11 @@ function ContactsDirectory({
                     </Button>
                   </div>
                 ) : null}
-              </div>
+                </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </div>
   );
