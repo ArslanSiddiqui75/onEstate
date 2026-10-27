@@ -53,6 +53,7 @@ const NAV: {
   title: string;
   description: string;
   icon: typeof Inbox;
+  markets?: readonly string[];
 }[] = [
   {
     id: "dashboard",
@@ -84,6 +85,25 @@ const NAV: {
     icon: Target,
   },
   {
+    id: "diary",
+    href: "/app/diary",
+    short: "Diary",
+    eyebrow: "Diary",
+    title: "Diary",
+    description: "Viewings and valuations, including requests from the public booking link.",
+    icon: CalendarDays,
+    markets: ["uk", "us"],
+  },
+  {
+    id: "tasks",
+    href: "/app/tasks",
+    short: "Tasks",
+    eyebrow: "Follow-ups",
+    title: "Tasks",
+    description: "Pending follow-ups, with anything overdue first.",
+    icon: ListChecks,
+  },
+  {
     id: "contacts",
     module: "crm",
     href: "/app/contacts",
@@ -102,6 +122,16 @@ const NAV: {
     title: "Listings & Portals",
     description: "Listing packs, portal readiness, and sync status.",
     icon: Building2,
+  },
+  {
+    id: "lettings",
+    href: "/app/lettings",
+    short: "Lettings",
+    eyebrow: "Landlords",
+    title: "Lettings",
+    description: "Open repairs, this month's rent, and the file for each let.",
+    icon: KeyRound,
+    markets: ["uk"],
   },
   {
     id: "automations",
@@ -142,20 +172,6 @@ const NAV: {
     description: "Your profile, and the brokerage name and market.",
     icon: Settings,
   },
-];
-
-const WORKSPACE_NAV: {
-  href: string;
-  short: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  icon: typeof Inbox;
-  markets?: readonly string[];
-}[] = [
-  { href: "/app/diary", short: "Diary", eyebrow: "Diary", title: "Diary", description: "Viewings and valuations, including requests from the public booking link.", icon: CalendarDays, markets: ["uk", "us"] },
-  { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings", description: "Open repairs, this month's rent, and the file for each let.", icon: KeyRound, markets: ["uk"] },
-  { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Pending follow-ups, with anything overdue first.", icon: ListChecks },
 ];
 
 const SETTINGS_NAV: {
@@ -348,27 +364,25 @@ export function AppShell({
     setOpen(false);
   }, [pathname]);
 
-  const items = NAV.map((item) => {
+  const items = NAV.filter((item) => !item.markets || item.markets.includes(brand.market)).map((item) => {
     const href = item.id === "dashboard" ? basePath : item.href;
     const locked = item.module
       ? !hasModuleAccess(role, plan, item.module, "view")
       : false;
+    if (item.id === "diary" && brand.market === "us") {
+      return {
+        ...item,
+        href,
+        locked,
+        short: "Calendar",
+        eyebrow: "Calendar",
+        title: "Calendar",
+        description: "Showings and valuations, including requests from the public booking link.",
+      };
+    }
     return { ...item, href, locked };
   });
 
-  const workspaceNav = WORKSPACE_NAV.filter((item) => {
-    if (!("markets" in item)) return true;
-    return (item.markets as readonly string[]).includes(brand.market);
-  }).map((item) => {
-    if (item.href !== "/app/diary" || brand.market !== "us") return item;
-    return {
-      ...item,
-      short: "Calendar",
-      eyebrow: "Calendar",
-      title: "Calendar",
-      description: "Showings and valuations, including requests from the public booking link.",
-    };
-  });
   const settingsNav = SETTINGS_NAV.map((item) => {
     const locked = item.module
       ? !hasModuleAccess(role, plan, item.module, "view")
@@ -377,14 +391,10 @@ export function AppShell({
         : false;
     return { ...item, locked };
   });
-  const workspaceActive = workspaceNav.find(
-    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
-  );
   const settingsActive = settingsNav.find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
   );
   const activePage =
-    workspaceActive ||
     settingsActive ||
     items
       .filter((item) => item.id !== "dashboard")
@@ -448,25 +458,8 @@ export function AppShell({
             className="mt-6 flex-1 space-y-1 overflow-y-auto px-3"
             aria-label="Primary"
           >
-            {items.map((item) => (
-              <SideLink
-                key={item.href}
-                href={item.href}
-                short={item.short}
-                icon={item.icon}
-                ink={ink}
-                locked={item.locked}
-                active={
-                  item.id === "settings"
-                    ? pathname === item.href
-                    : pathname === item.href ||
-                      (item.href !== basePath && pathname.startsWith(item.href))
-                }
-                onNavigate={() => setOpen(false)}
-              />
-            ))}
-            {(pathname === "/app/settings" || pathname.startsWith("/app/settings/")) &&
-              settingsNav.map((item) => (
+            {items.flatMap((item) => {
+              const link = (
                 <SideLink
                   key={item.href}
                   href={item.href}
@@ -474,23 +467,36 @@ export function AppShell({
                   icon={item.icon}
                   ink={ink}
                   locked={item.locked}
-                  nested
-                  active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+                  className={item.id === "settings" ? "mt-3" : undefined}
+                  active={
+                    item.id === "settings"
+                      ? pathname === item.href
+                      : pathname === item.href ||
+                        (item.href !== basePath && pathname.startsWith(item.href))
+                  }
                   onNavigate={() => setOpen(false)}
                 />
-              ))}
-            {workspaceNav.map((item, index) => (
-              <SideLink
-                key={item.href}
-                href={item.href}
-                short={item.short}
-                icon={item.icon}
-                ink={ink}
-                className={index === 0 ? "mt-3" : undefined}
-                active={pathname === item.href || pathname.startsWith(`${item.href}/`)}
-                onNavigate={() => setOpen(false)}
-              />
-            ))}
+              );
+              if (item.id !== "settings" || (pathname !== "/app/settings" && !pathname.startsWith("/app/settings/"))) {
+                return [link];
+              }
+              return [
+                link,
+                ...settingsNav.map((child) => (
+                  <SideLink
+                    key={child.href}
+                    href={child.href}
+                    short={child.short}
+                    icon={child.icon}
+                    ink={ink}
+                    locked={child.locked}
+                    nested
+                    active={pathname === child.href || pathname.startsWith(`${child.href}/`)}
+                    onNavigate={() => setOpen(false)}
+                  />
+                )),
+              ];
+            })}
           </nav>
 
           <div
