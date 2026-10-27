@@ -379,13 +379,14 @@ function ShellFrame({
                 draggable={false}
                 className="h-[6.75rem] w-auto dark:hidden"
               />
+              {/* The dark render includes the floor, so the house needs a taller frame to match. */}
               <img
                 src="/brand/loader-mark-dark.webp"
                 alt=""
                 width={524}
                 height={706}
                 draggable={false}
-                className="hidden h-[6.75rem] w-auto dark:block"
+                className="hidden h-[7.85rem] w-auto dark:block"
               />
             </Link>
             <button
