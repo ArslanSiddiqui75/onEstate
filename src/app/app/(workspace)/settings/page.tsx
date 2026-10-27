@@ -12,13 +12,29 @@ import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
 import { PhoneField } from "@/components/crm/phone-field";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  businessProfileFilled,
+  validateBusinessProfile,
+  type BusinessProfile,
+} from "@/lib/org/business-profile";
 
 export default function AppSettingsPage() {
   const { user, org, market, updateWorkspace, updateProfile } = useAppSession();
   const [profileName, setProfileName] = useState(user?.name || "");
   const [orgName, setOrgName] = useState(org?.name || "");
   const [orgMarket, setOrgMarket] = useState<"uk" | "us">(market || "uk");
-  const [busy, setBusy] = useState<"profile" | "org" | null>(null);
+  const [business, setBusiness] = useState<BusinessProfile>({
+    tradingName: org?.business?.tradingName || org?.name || "",
+    address: org?.business?.address || "",
+    city: org?.business?.city || "",
+    postcode: org?.business?.postcode || "",
+    phone: org?.business?.phone || "",
+    email: org?.business?.email || "",
+    website: org?.business?.website || "",
+    about: org?.business?.about || "",
+  });
+  const [busy, setBusy] = useState<"profile" | "org" | "business" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!user || !org) return null;
@@ -28,7 +44,7 @@ export default function AppSettingsPage() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-[var(--muted)]">
-        Contact information from sign-up, and the brokerage name and market.
+        Contact information from sign-up, the brokerage workspace, and the public business profile.
       </p>
 
       <Card className="space-y-4 p-5">
@@ -155,7 +171,156 @@ export default function AppSettingsPage() {
         )}
       </Card>
 
+      <Card className="space-y-4 p-5">
+        <div>
+          <h2 className="font-semibold">Business profile</h2>
+          <p className="text-sm text-[var(--muted)]">
+            How the brokerage appears to clients. Only the owner can change this.
+          </p>
+        </div>
+        {isOwner ? (
+          <form
+            className="grid gap-3 sm:grid-cols-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const phone = String(new FormData(e.currentTarget).get("businessPhone") || "").trim();
+              const checked = validateBusinessProfile({ ...business, phone });
+              if (!checked.ok) {
+                setError(checked.error);
+                return;
+              }
+              setBusiness(checked.value);
+              setBusy("business");
+              setError(null);
+              void updateWorkspace({ business: checked.value })
+                .then(() => toast.success("Business profile saved"))
+                .catch((err) => {
+                  const msg =
+                    err instanceof Error ? err.message : "Could not save the business profile";
+                  setError(msg);
+                  toast.error(msg);
+                })
+                .finally(() => setBusy(null));
+            }}
+          >
+            <label className="block space-y-1 text-sm sm:col-span-2">
+              <span className="text-xs font-medium text-[var(--muted)]">Trading name</span>
+              <Input
+                value={business.tradingName}
+                onChange={(e) => setBusiness((current) => ({ ...current, tradingName: e.target.value }))}
+                placeholder={org.name}
+                autoComplete="organization"
+                required
+              />
+            </label>
+            <label className="block space-y-1 text-sm sm:col-span-2">
+              <span className="text-xs font-medium text-[var(--muted)]">Street address</span>
+              <Input
+                value={business.address}
+                onChange={(e) => setBusiness((current) => ({ ...current, address: e.target.value }))}
+                placeholder="14 Harbour Lane"
+                autoComplete="street-address"
+              />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span className="text-xs font-medium text-[var(--muted)]">City</span>
+              <Input
+                value={business.city}
+                onChange={(e) => setBusiness((current) => ({ ...current, city: e.target.value }))}
+                placeholder={market === "us" ? "Austin" : "Manchester"}
+                autoComplete="address-level2"
+              />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span className="text-xs font-medium text-[var(--muted)]">
+                {market === "us" ? "ZIP code" : "Postcode"}
+              </span>
+              <Input
+                value={business.postcode}
+                onChange={(e) => setBusiness((current) => ({ ...current, postcode: e.target.value }))}
+                placeholder={market === "us" ? "78701" : "M1 2AB"}
+                autoComplete="postal-code"
+              />
+            </label>
+            <label className="block space-y-1 text-sm sm:col-span-2">
+              <span className="text-xs font-medium text-[var(--muted)]">Business phone</span>
+              <PhoneField
+                key={business.phone || "business-phone"}
+                name="businessPhone"
+                market={market}
+                defaultValue={business.phone}
+                className="mt-1"
+              />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span className="text-xs font-medium text-[var(--muted)]">Business email</span>
+              <Input
+                type="email"
+                value={business.email}
+                onChange={(e) => setBusiness((current) => ({ ...current, email: e.target.value }))}
+                placeholder="hello@northbridge.co.uk"
+                autoComplete="email"
+              />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span className="text-xs font-medium text-[var(--muted)]">Website</span>
+              <Input
+                value={business.website}
+                onChange={(e) => setBusiness((current) => ({ ...current, website: e.target.value }))}
+                placeholder="northbridge.co.uk"
+                autoComplete="url"
+              />
+            </label>
+            <label className="block space-y-1 text-sm sm:col-span-2">
+              <span className="text-xs font-medium text-[var(--muted)]">About the business</span>
+              <Textarea
+                value={business.about}
+                onChange={(e) => setBusiness((current) => ({ ...current, about: e.target.value }))}
+                placeholder="Independent estate agency covering sales and lettings across the city."
+                maxLength={600}
+              />
+            </label>
+            <Button type="submit" className="w-fit" disabled={busy === "business"}>
+              {busy === "business" ? "Saving…" : "Save business profile"}
+            </Button>
+          </form>
+        ) : businessProfileFilled(org.business) ? (
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <BusinessFact label="Trading name" value={org.business?.tradingName} />
+            <BusinessFact label="Business email" value={org.business?.email} />
+            <BusinessFact label="Street address" value={org.business?.address} wide />
+            <BusinessFact label="City" value={org.business?.city} />
+            <BusinessFact label={market === "us" ? "ZIP code" : "Postcode"} value={org.business?.postcode} />
+            <BusinessFact label="Business phone" value={org.business?.phone} />
+            <BusinessFact label="Website" value={org.business?.website} />
+            <BusinessFact label="About the business" value={org.business?.about} wide />
+          </dl>
+        ) : (
+          <p className="text-sm text-[var(--muted)]">
+            The owner has not filled in a business profile yet.
+          </p>
+        )}
+      </Card>
+
       {error ? <Alert tone="danger">{error}</Alert> : null}
+    </div>
+  );
+}
+
+function BusinessFact({
+  label,
+  value,
+  wide,
+}: {
+  label: string;
+  value?: string;
+  wide?: boolean;
+}) {
+  if (!value) return null;
+  return (
+    <div className={wide ? "sm:col-span-2" : undefined}>
+      <dt className="text-xs font-medium text-[var(--muted)]">{label}</dt>
+      <dd className="mt-1 whitespace-pre-wrap">{value}</dd>
     </div>
   );
 }

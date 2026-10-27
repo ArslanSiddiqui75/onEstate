@@ -28,6 +28,7 @@ import { fallbackSlug, normalizeHost } from "@/lib/website/slug";
 import { asErrorMessage } from "@/lib/utils";
 import { ensureDefaultSequences } from "@/lib/sequences/ensure";
 import { mapSequenceRow } from "@/lib/sequences/catalog";
+import { readBusinessProfile } from "@/lib/org/business-profile";
 
 function mapLead(row: Record<string, unknown>, phones: Lead["phones"] = []): Lead {
   return {
@@ -249,6 +250,7 @@ export function createSupabaseRepository(
       if (patch.onboardingCompleted !== undefined) {
         row.onboarding_completed = patch.onboardingCompleted;
       }
+      if (patch.business !== undefined) row.business = patch.business;
       if (Object.keys(row).length === 0) return ctx.org;
       const { error } = await supabase
         .from("organizations")
@@ -260,6 +262,7 @@ export function createSupabaseRepository(
       if (patch.onboardingCompleted !== undefined) {
         ctx.org.onboardingCompleted = patch.onboardingCompleted;
       }
+      if (patch.business !== undefined) ctx.org.business = patch.business;
       return ctx.org;
     },
 
@@ -1581,6 +1584,7 @@ export async function hydrateSupabaseSession(): Promise<{
       lastPaymentAt: org.last_payment_at ? String(org.last_payment_at) : undefined,
       leadRouting: (org.lead_routing as WorkspaceOrg["leadRouting"]) || undefined,
       onboardingCompleted: Boolean(org.onboarding_completed),
+      business: readBusinessProfile(org.business),
     },
   };
 }

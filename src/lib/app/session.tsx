@@ -87,6 +87,7 @@ import {
   type WorkspaceSnapshot,
   type WorkspaceUser,
 } from "@/lib/data/workspace-store";
+import type { BusinessProfile } from "@/lib/org/business-profile";
 import { defaultDealChecklist } from "@/lib/transactions/checklist";
 
 function buildDevSeedWorkspace(
@@ -153,6 +154,7 @@ export interface AppOrg {
   lastPaymentAt?: string;
   leadRouting?: LeadRoutingSettings;
   onboardingCompleted?: boolean;
+  business?: BusinessProfile;
 }
 
 interface AppState {
@@ -196,6 +198,7 @@ interface AppState {
     name?: string;
     market?: Market;
     onboardingCompleted?: boolean;
+    business?: BusinessProfile;
   }) => Promise<void>;
   updateProfile: (patch: { name: string; phone?: string }) => Promise<void>;
   refresh: () => Promise<void>;
@@ -407,6 +410,7 @@ function toAppOrg(org: WorkspaceOrg): AppOrg {
     lastPaymentAt: org.lastPaymentAt,
     leadRouting: org.leadRouting,
     onboardingCompleted: org.onboardingCompleted,
+    business: org.business,
   };
 }
 
@@ -811,6 +815,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       name?: string;
       market?: Market;
       onboardingCompleted?: boolean;
+      business?: BusinessProfile;
     }) => {
       if (!repoRef.current) return;
       const next = await repoRef.current.updateOrganization(patch);

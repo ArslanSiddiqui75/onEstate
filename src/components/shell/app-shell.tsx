@@ -222,7 +222,7 @@ const NAV: {
     short: "Settings",
     eyebrow: "Workspace",
     title: "Settings",
-    description: "Name, work email, phone, and brokerage from sign-up.",
+    description: "Contact details, workspace, and the brokerage business profile.",
     icon: Settings,
     children: [
       {

@@ -193,6 +193,7 @@ export function createLocalRepository(
       if (patch.onboardingCompleted !== undefined) {
         snap.org.onboardingCompleted = patch.onboardingCompleted;
       }
+      if (patch.business !== undefined) snap.org.business = patch.business;
       commit(snap);
       return snap.org;
     },

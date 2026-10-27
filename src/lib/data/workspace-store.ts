@@ -1,3 +1,4 @@
+import type { BusinessProfile } from "@/lib/org/business-profile";
 import type {
   CallLog,
   Contact,
@@ -35,6 +36,8 @@ export interface WorkspaceOrg {
   lastPaymentAt?: string;
   leadRouting?: LeadRoutingSettings;
   onboardingCompleted?: boolean;
+  /** Public brokerage details filled in on Settings. */
+  business?: BusinessProfile;
 }
 
 export interface WorkspaceUser {

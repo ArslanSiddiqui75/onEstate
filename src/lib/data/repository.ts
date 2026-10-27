@@ -24,6 +24,7 @@ import type {
   TransactionDeal,
   WebsiteSite,
 } from "@/types";
+import type { BusinessProfile } from "@/lib/org/business-profile";
 import type {
   WorkspaceOrg,
   WorkspaceSnapshot,
@@ -40,6 +41,7 @@ export interface WorkspaceRepository {
     name?: string;
     market?: Market;
     onboardingCompleted?: boolean;
+    business?: BusinessProfile;
   }): Promise<WorkspaceOrg>;
   updateProfile(patch: { name: string; phone?: string }): Promise<WorkspaceUser>;
   saveLeadRouting(settings: LeadRoutingSettings): Promise<WorkspaceOrg>;
