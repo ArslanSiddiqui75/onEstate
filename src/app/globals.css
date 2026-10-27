@@ -696,25 +696,9 @@ html,
   display: block;
 }
 
-/* 3D loader. The mark only lifts, so the render is never skewed. */
-.logo-loader-glow {
-  animation: logo-glow 3.6s ease-in-out infinite;
-}
-
+/* 3D loader. Translate only — a tilt or a blurred plate warps the render. */
 .logo-loader-mark {
   animation: logo-float 3.6s ease-in-out infinite;
-}
-
-@keyframes logo-glow {
-  0%,
-  100% {
-    opacity: 0.85;
-    transform: scaleX(1);
-  }
-  50% {
-    opacity: 0.35;
-    transform: scaleX(0.8);
-  }
 }
 
 @keyframes logo-float {
@@ -731,7 +715,6 @@ html,
   .animate-float-slow,
   .animate-pulse-ring,
   body::before,
-  .logo-loader-glow,
   .logo-loader-mark {
     animation: none;
   }

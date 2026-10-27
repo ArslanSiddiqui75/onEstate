@@ -79,8 +79,15 @@ const TOAST_CONFIG: Record<
 // Because we want to call `toast.success("Saved!")` from ANYWHERE — even from
 // non-React code like API utility functions. This store lives outside React.
 
-let toasts: Toast[] = [];
+// One stable empty list. A fresh `[]` from getServerSnapshot makes React
+// re-render forever and the workspace loader never leaves the screen.
+const EMPTY_TOASTS: Toast[] = [];
+let toasts: Toast[] = EMPTY_TOASTS;
 let listeners: Array<(toasts: Toast[]) => void> = [];
+
+function getToastSnapshot() {
+  return toasts;
+}
 
 function notify() {
   // Tell every listener "hey, the toasts changed!"
@@ -191,8 +198,8 @@ function ToastItem({
 export function ToastContainer() {
   const currentToasts = React.useSyncExternalStore(
     subscribe,
-    () => toasts,
-    () => [], // Server-side: no toasts
+    getToastSnapshot,
+    getToastSnapshot,
   );
 
   if (currentToasts.length === 0) return null;

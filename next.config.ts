@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The dev server is opened at 127.0.0.1. Without this, Next blocks the
+  // client runtime and the app stays on the server-rendered loader.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
   async headers() {
     return [
       {
