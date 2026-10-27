@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
 import { buildPhoneContactMethod, formatDate, formatMoney, asErrorMessage } from "@/lib/utils";
-import { toTelHref } from "@/lib/phone/e164";
 import { PhoneField } from "@/components/crm/phone-field";
 import { SequenceProgress } from "@/components/crm/sequence-panel";
 import { findSequenceByKind } from "@/lib/sequences/catalog";
@@ -167,7 +166,9 @@ export function CrmDesk({ view }: { view: CrmView }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(
+    () => searchParams.get("lead"),
+  );
   const [viewDetailLead, setViewDetailLead] = useState<Lead | null>(null);
   const [editingLead, setEditingLead] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
@@ -207,12 +208,18 @@ export function CrmDesk({ view }: { view: CrmView }) {
     (id: string | null) => {
       setSelectedLeadId(id);
       if (view !== "conversations") return;
-      router.replace(
-        id ? `/app/conversations?lead=${encodeURIComponent(id)}` : "/app/conversations",
-        { scroll: false },
-      );
+      if (!id) {
+        router.replace("/app/conversations", { scroll: false });
+        return;
+      }
+      const params = new URLSearchParams({ lead: id });
+      const channel = searchParams.get("channel");
+      if ((channel === "sms" || channel === "email") && searchParams.get("lead") === id) {
+        params.set("channel", channel);
+      }
+      router.replace(`/app/conversations?${params.toString()}`, { scroll: false });
     },
-    [router, view],
+    [router, searchParams, view],
   );
 
   async function refreshAutomationRuns() {
@@ -362,13 +369,17 @@ export function CrmDesk({ view }: { view: CrmView }) {
 
   const inboxTasks = tasks.filter((t) => t.status === "open").slice(0, 8);
 
-  function goToLeadThread(leadId: string) {
+  function goToLeadThread(leadId: string, channel?: "sms" | "email") {
     setSelectedLeadId(leadId);
+    const params = new URLSearchParams({ lead: leadId });
+    if (channel) params.set("channel", channel);
+    const href = `/app/conversations?${params.toString()}`;
     if (view !== "conversations") {
-      router.push(`/app/conversations?lead=${encodeURIComponent(leadId)}`);
+      router.push(href);
       return;
     }
     setTab("inbox");
+    router.replace(href, { scroll: false });
   }
 
   const inboxLeads = org ? leads.filter((lead) => lead.market === market) : [];
@@ -798,8 +809,16 @@ export function CrmDesk({ view }: { view: CrmView }) {
             orgName={org.name}
             canEdit={canEdit}
             selectedLeadId={selectedLeadId}
+            pinnedLeadId={searchParams.get("lead")}
             onSelect={selectConversation}
             onError={setError}
+            composeChannel={
+              searchParams.get("channel") === "email"
+                ? "email"
+                : searchParams.get("channel") === "sms"
+                  ? "sms"
+                  : undefined
+            }
             sendSms={sendSms}
             sendEmail={sendEmail}
             addLead={addLead}
@@ -817,7 +836,6 @@ export function CrmDesk({ view }: { view: CrmView }) {
               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {callQueue.map((lead) => {
                   const phone = lead.phones?.[0]?.number || lead.phone;
-                  const tel = phone ? toTelHref(phone) : "";
                   return (
                     <div
                       key={lead.id}
@@ -829,18 +847,10 @@ export function CrmDesk({ view }: { view: CrmView }) {
                         {lead.nextAction || "Call required"}
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {tel ? (
-                          <Button asChild size="sm">
-                            <a href={tel}>
-                              <Phone className="h-3.5 w-3.5" aria-hidden />
-                              Dial
-                            </a>
-                          </Button>
-                        ) : (
-                          <Button size="sm" disabled>
-                            Dial
-                          </Button>
-                        )}
+                        <Button size="sm" onClick={() => goToLeadThread(lead.id, "sms")}>
+                          <Phone className="h-3.5 w-3.5" aria-hidden />
+                          Message
+                        </Button>
                       </div>
                     </div>
                   );
@@ -1618,8 +1628,8 @@ interface ContactsDirectoryProps {
   promoteContactToLead: (
     contactId: string,
     input: { type: LeadType; source?: string },
-  ) => Promise<void>;
-  onOpenThread: (leadId: string) => void;
+  ) => Promise<string | undefined>;
+  onOpenThread: (leadId: string, channel?: "sms" | "email") => void;
 }
 
 function ContactsDirectory({
@@ -1690,6 +1700,33 @@ function ContactsDirectory({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save contact");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function messageContact(contact: Contact, channel: "sms" | "email") {
+    const existing =
+      (contact.leadId && leads.some((lead) => lead.id === contact.leadId) && contact.leadId) ||
+      undefined;
+    if (existing) {
+      onOpenThread(existing, channel);
+      return;
+    }
+    if (!canEdit) {
+      toast.error("This contact is not in a conversation yet.");
+      return;
+    }
+    if (channel === "sms" && !contact.phone) return;
+    if (channel === "email" && !contact.email) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const leadId = await promoteContactToLead(contact.id, { type: "buyer", source: "Manual" });
+      if (!leadId) throw new Error("Could not open that conversation");
+      onOpenThread(leadId, channel);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open that conversation");
     } finally {
       setBusy(false);
     }
@@ -1778,7 +1815,6 @@ function ContactsDirectory({
               ? leads.find((l) => l.id === contact.leadId)
               : undefined;
             const isPromoting = promotingId === contact.id;
-            const phoneHref = contact.phone ? toTelHref(contact.phone) : "";
             return (
               <li
                 key={contact.id}
@@ -1809,26 +1845,24 @@ function ContactsDirectory({
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--muted)]">
                         {contact.phone ? (
-                          phoneHref ? (
-                            <a href={phoneHref} className="inline-flex items-center gap-1.5 hover:text-[var(--foreground)]">
-                              <Phone className="h-3.5 w-3.5" />
-                              {contact.phone}
-                            </a>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5">
-                              <Phone className="h-3.5 w-3.5" />
-                              {contact.phone}
-                            </span>
-                          )
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1.5 hover:text-[var(--foreground)]"
+                            onClick={() => void messageContact(contact, "sms")}
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                            {contact.phone}
+                          </button>
                         ) : null}
                         {contact.email ? (
-                          <a
-                            href={`mailto:${contact.email}`}
+                          <button
+                            type="button"
                             className="inline-flex min-w-0 items-center gap-1.5 hover:text-[var(--foreground)]"
+                            onClick={() => void messageContact(contact, "email")}
                           >
                             <Mail className="h-3.5 w-3.5 shrink-0" />
                             <span className="truncate">{contact.email}</span>
-                          </a>
+                          </button>
                         ) : null}
                         {owner ? <span>Owner · {owner.name}</span> : null}
                       </div>

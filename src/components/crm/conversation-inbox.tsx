@@ -15,7 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { buildPhoneContactMethod, asErrorMessage, cn, formatDate } from "@/lib/utils";
-import { toTelHref } from "@/lib/phone/e164";
 import type {
   Contact,
   ConversationMessage,
@@ -140,6 +139,8 @@ export function ConversationInbox({
   orgName,
   canEdit,
   selectedLeadId,
+  composeChannel,
+  pinnedLeadId,
   onSelect,
   onError,
   sendSms,
@@ -156,6 +157,8 @@ export function ConversationInbox({
   orgName: string;
   canEdit: boolean;
   selectedLeadId: string | null;
+  composeChannel?: "sms" | "email";
+  pinnedLeadId?: string | null;
   onSelect: (id: string | null) => void;
   onError: (message: string | null) => void;
   sendSms: (input: { leadId: string; body: string }) => Promise<unknown>;
@@ -164,7 +167,7 @@ export function ConversationInbox({
   promoteContactToLead: (
     contactId: string,
     input: { type: Lead["type"]; source?: string },
-  ) => Promise<void>;
+  ) => Promise<string | undefined>;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<InboxFilter>("all");
@@ -279,10 +282,14 @@ export function ConversationInbox({
   }, [shown?.id]);
 
   useEffect(() => {
-    if (selectedLeadId || !rows[0]) return;
+    if (composeChannel) setChannel(composeChannel);
+  }, [composeChannel, shown?.id]);
+
+  useEffect(() => {
+    if (selectedLeadId || pinnedLeadId || !rows[0]) return;
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
     onSelect(rows[0].id);
-  }, [onSelect, rows, selectedLeadId]);
+  }, [onSelect, pinnedLeadId, rows, selectedLeadId]);
 
   useEffect(() => {
     const el = scroller.current;
@@ -292,7 +299,6 @@ export function ConversationInbox({
 
   const threadOpen = Boolean(picked);
   const phone = shown ? leadPhone(shown) : "";
-  const tel = phone ? toTelHref(phone) : "";
   const owner = shown
     ? members.find((member) => member.id === shown.assignedTo)?.name || "Unassigned"
     : "";
@@ -576,12 +582,28 @@ export function ConversationInbox({
                   {phone || shown.email || "No contact details"}
                 </p>
               </div>
-              {tel ? (
-                <Button asChild size="sm" variant="secondary" className="rounded-full">
-                  <a href={tel}>
-                    <Phone className="h-3.5 w-3.5" aria-hidden />
-                    Call
-                  </a>
+              {phone ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={() => setChannel("sms")}
+                >
+                  <Phone className="h-3.5 w-3.5" aria-hidden />
+                  Text
+                </Button>
+              ) : null}
+              {shown.email ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={() => setChannel("email")}
+                >
+                  <Mail className="h-3.5 w-3.5" aria-hidden />
+                  Email
                 </Button>
               ) : null}
               <Button
@@ -738,8 +760,11 @@ export function ConversationInbox({
             <ContactPanel
               lead={shown}
               phone={phone}
-              tel={tel}
               owner={owner}
+              onChannel={(next) => {
+                setChannel(next);
+                setDetailsOpen(false);
+              }}
               onClose={() => setDetailsOpen(false)}
             />
           </div>
@@ -748,7 +773,12 @@ export function ConversationInbox({
 
       {shown ? (
         <aside className="hidden w-[19.5rem] shrink-0 flex-col border-l border-[var(--border)] xl:flex">
-          <ContactPanel lead={shown} phone={phone} tel={tel} owner={owner} />
+          <ContactPanel
+            lead={shown}
+            phone={phone}
+            owner={owner}
+            onChannel={setChannel}
+          />
         </aside>
       ) : null}
 
@@ -840,14 +870,14 @@ export function ConversationInbox({
 function ContactPanel({
   lead,
   phone,
-  tel,
   owner,
+  onChannel,
   onClose,
 }: {
   lead: Lead;
   phone: string;
-  tel: string;
   owner: string;
+  onChannel: (channel: Channel) => void;
   onClose?: () => void;
 }) {
   const facts: { label: string; value: string }[] = [
@@ -889,19 +919,24 @@ function ContactPanel({
               {fact.label}
             </dt>
             <dd className="mt-0.5 break-words">
-              {fact.label === "Phone" && tel ? (
-                <a className="inline-flex items-center gap-1.5 hover:underline" href={tel}>
+              {fact.label === "Phone" && phone ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-left hover:underline"
+                  onClick={() => onChannel("sms")}
+                >
                   <Phone className="h-3.5 w-3.5 text-[var(--muted)]" aria-hidden />
                   {fact.value}
-                </a>
+                </button>
               ) : fact.label === "Email" && lead.email ? (
-                <a
-                  className="inline-flex items-center gap-1.5 hover:underline"
-                  href={`mailto:${lead.email}`}
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-left hover:underline"
+                  onClick={() => onChannel("email")}
                 >
                   <Mail className="h-3.5 w-3.5 text-[var(--muted)]" aria-hidden />
                   {fact.value}
-                </a>
+                </button>
               ) : (
                 fact.value
               )}

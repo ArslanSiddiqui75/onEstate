@@ -243,7 +243,7 @@ interface AppState {
   promoteContactToLead: (
     contactId: string,
     input: { type: Lead["type"]; source?: string },
-  ) => Promise<void>;
+  ) => Promise<string | undefined>;
   addListing: (
     listing: Omit<Listing, "id" | "createdAt" | "portals" | "imageUrl" | "market" | "currency"> & {
       imageUrl?: string;
@@ -1444,6 +1444,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         });
       }
       await refresh();
+      return created.id;
     },
     [contacts, fireAutomationTrigger, leads, members, org, refresh, user],
   );
