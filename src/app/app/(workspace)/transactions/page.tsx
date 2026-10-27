@@ -3,32 +3,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  FileText,
-  CheckSquare,
   AlertTriangle,
   Plus,
   Download,
   X,
   Copy,
-  PenLine,
   Trash2,
 } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { StatCard } from "@/components/ui/stat-card";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-function humanLabel(value: string) {
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toast";
 import {
@@ -39,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDate, formatMoney } from "@/lib/utils";
-import { fadeUp, staggerContainer } from "@/lib/motion";
+import { fadeUp } from "@/lib/motion";
 import type { Market, TransactionDeal, TransactionEsignDocument } from "@/types";
 import { useAgencyBook } from "@/components/agency/use-agency-book";
 import {
@@ -63,7 +53,7 @@ function progressionStages(market: Market, current: string) {
   return base.includes(current) ? base : [current, ...base];
 }
 
-export default function AppTransactionsPage() {
+export function DealsBoard() {
   const {
     user,
     org,
@@ -90,6 +80,7 @@ export default function AppTransactionsPage() {
     Record<string, { name: string; email: string; documentName: string }>
   >({});
   const [busyDeal, setBusyDeal] = useState<string | null>(null);
+  const [openDealId, setOpenDealId] = useState<string | null>(null);
 
   const canEdit = user && org ? hasModuleAccess(user.role, org.plan, "transactions", "edit") : false;
 
@@ -166,17 +157,20 @@ Generated on ${new Date().toLocaleString()} by ${brand.name}.
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xl font-semibold">Transactions & Conveyancing</h2>
+          <div>
+            <h2 className="text-lg font-semibold">Deals</h2>
+            <p className="text-sm text-[var(--muted)]">A deal is a listing that is moving toward close.</p>
+          </div>
           {canEdit ? (
             <Button onClick={() => setShowNewDealModal(true)} className="gap-1.5">
               <Plus className="h-4 w-4" />
-              Add transaction
+              New deal
             </Button>
           ) : null}
         </div>
         <EmptyState
-          title="No active transactions"
-          description="Deals are created when a listing moves to Under Offer, when a lead is marked Won, or when you add one here."
+          title="No deals yet"
+          description="A deal appears when a listing goes under offer, a lead is marked won, or you add one here."
         />
         {showNewDealModal ? (
           <NewDealModal
@@ -199,77 +193,53 @@ Generated on ${new Date().toLocaleString()} by ${brand.name}.
     );
   }
 
+  const selected = marketDeals.find((deal) => deal.id === openDealId) || marketDeals[0];
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xl font-semibold">Transactions & Conveyancing</h2>
+    <div className="space-y-4">
+      <div className="flex items-end justify-between gap-2">
+        <p className="text-sm text-[var(--muted)]">
+          {marketDeals.length} open {marketDeals.length === 1 ? "deal" : "deals"}. Open one, then work the checklist, signature, or money.
+        </p>
         {canEdit ? (
           <Button onClick={() => setShowNewDealModal(true)} className="gap-1.5">
             <Plus className="h-4 w-4" />
-            Add transaction
+            New deal
           </Button>
         ) : null}
       </div>
 
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        animate="show"
-        className="grid gap-4 md:grid-cols-4"
-      >
-        <StatCard label="Open deals" value={marketDeals.length} icon={FileText} tone="accent" />
-        <StatCard
-          label="Attention required"
-          value={marketDeals.filter((deal) => deal.complianceStatus === "attention").length}
-          icon={CheckSquare}
-          tone="warning"
-        />
-        <StatCard
-          label="E-sign sent / signed"
-          value={
-            marketDeals.filter(
-              (deal) => deal.eSignStatus === "sent" || deal.eSignStatus === "signed",
-            ).length
-          }
-          icon={PenLine}
-          tone="success"
-        />
-        <StatCard
-          label="Deal value"
-          value={formatMoney(marketDeals.reduce((sum, deal) => sum + deal.value, 0), market)}
-          icon={FileText}
-          tone="neutral"
-        />
-      </motion.div>
+      <div className="grid items-start gap-4 lg:grid-cols-[17rem_1fr]">
+        <aside className="space-y-2">
+          {marketDeals.map((deal) => {
+            const done = deal.checklist.filter((item) => item.done).length;
+            const total = deal.checklist.length;
+            const active = selected?.id === deal.id;
+            return (
+              <button
+                key={deal.id}
+                type="button"
+                onClick={() => setOpenDealId(deal.id)}
+                className={`w-full rounded-[1rem] border px-3 py-3 text-left ${
+                  active
+                    ? "border-[var(--accent)] bg-[var(--surface)]"
+                    : "border-[var(--border)] bg-[var(--surface-muted)]"
+                }`}
+              >
+                <p className="truncate font-medium">{deal.listingTitle}</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  {formatMoney(deal.value, market)} · {deal.stage}
+                </p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  {done}/{total || 0} checklist
+                </p>
+              </button>
+            );
+          })}
+        </aside>
 
-      {agency.offers.length ? (
-        <Card>
-          <h2 className="font-semibold">Offers</h2>
-          <ul className="mt-3 divide-y divide-[var(--border)] text-sm">
-            {agency.offers.map((offer) => (
-              <li key={offer.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-                <span>
-                  {offer.buyerName} · {formatMoney(offer.amount, offer.currency === "USD" ? "us" : "uk")} · {offer.address}
-                  <span className="block text-xs text-[var(--muted)]">{offer.status}{offer.notes ? ` · ${offer.notes}` : ""}</span>
-                </span>
-                {canEdit && offer.status === "submitted" ? (
-                  <span className="flex gap-2">
-                    <Button size="sm" onClick={() => commitAgency(setOfferStatus(agency, offer.id, "accepted"))}>
-                      Accept
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => commitAgency(setOfferStatus(agency, offer.id, "declined"))}>
-                      Decline
-                    </Button>
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
-
-      <motion.div variants={staggerContainer} initial="hidden" animate="show" className="space-y-4">
-        {marketDeals.map((deal) => {
+        <div className="min-w-0">
+        {selected ? [selected].map((deal) => {
           const form = esignForm[deal.id] || {
             name: deal.parties[0] || "",
             email: "",
@@ -374,38 +344,6 @@ Generated on ${new Date().toLocaleString()} by ${brand.name}.
                     );
                   })}
                 </ol>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge tone="accent">{humanLabel(deal.stage)}</Badge>
-                  <Badge
-                    tone={
-                      deal.eSignStatus === "signed"
-                        ? "success"
-                        : deal.eSignStatus === "sent"
-                          ? "warning"
-                          : deal.eSignStatus === "voided"
-                            ? "danger"
-                            : "neutral"
-                    }
-                  >
-                    E-Sign:{" "}
-                    {deal.eSignStatus
-                      ? deal.eSignStatus.replace("_", " ")
-                      : "not started"}
-                  </Badge>
-                  <Badge
-                    tone={
-                      deal.complianceStatus === "blocked"
-                        ? "danger"
-                        : deal.complianceStatus === "attention"
-                          ? "warning"
-                          : "success"
-                    }
-                  >
-                    Compliance: {humanLabel(deal.complianceStatus || "on_track")}
-                  </Badge>
-                  <Badge>Ledger: {humanLabel(deal.ledgerStatus || "not_started")}</Badge>
-                </div>
 
                 <Tabs defaultValue="checklist" className="mt-5">
                   <TabsList>
@@ -723,8 +661,9 @@ Generated on ${new Date().toLocaleString()} by ${brand.name}.
               </Card>
             </motion.article>
           );
-        })}
-      </motion.div>
+        }) : null}
+        </div>
+      </div>
 
       {showNewDealModal ? (
         <NewDealModal
@@ -745,6 +684,10 @@ Generated on ${new Date().toLocaleString()} by ${brand.name}.
       ) : null}
     </div>
   );
+}
+
+export default function AppTransactionsPage() {
+  return <DealsBoard />;
 }
 
 function DealMoney({

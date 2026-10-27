@@ -19,7 +19,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: "/app/deals", destination: "/app/transactions", permanent: false },
+      { source: "/app/deals", destination: "/app/opportunities?view=deals", permanent: false },
+      { source: "/app/transactions", destination: "/app/opportunities?view=deals", permanent: false },
+      { source: "/app/crm", destination: "/app/conversations", permanent: false },
       { source: "/app/support", destination: "/app/tickets", permanent: false },
     ];
   },

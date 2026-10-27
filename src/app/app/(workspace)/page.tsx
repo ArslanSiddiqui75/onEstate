@@ -65,7 +65,7 @@ export default function AppDashboardPage() {
         <div className="flex flex-wrap gap-2">
           {canAddLead ? (
           <Button asChild size="sm">
-            <Link href="/app/crm">Add lead</Link>
+            <Link href="/app/opportunities">Add lead</Link>
           </Button>
           ) : null}
           {canAddListing ? (
@@ -88,12 +88,11 @@ export default function AppDashboardPage() {
                 <h2 className="font-semibold">Your workspace is ready</h2>
                 <p className="mt-1.5 max-w-2xl text-sm text-[var(--muted)]">
                   This is the live product, not a demo. Start by adding a lead or
-                  listing — CRM messaging, portal sync, and transactions will build
-                  from your real records.
+                  listing. Conversations, the pipeline, and deals build from those records.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button asChild>
-                    <Link href="/app/crm">Open CRM</Link>
+                    <Link href="/app/opportunities">Open opportunities</Link>
                   </Button>
                   <Button asChild variant="secondary">
                     <Link href="/app/listings">Open listings</Link>
@@ -199,8 +198,8 @@ export default function AppDashboardPage() {
             <CardHeader
               title="Recent leads"
               action={
-                <Link href="/app/crm" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--accent)] hover:underline">
-                  CRM <ArrowUpRight className="h-3.5 w-3.5" />
+                <Link href="/app/opportunities" className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--accent)] hover:underline">
+                  Pipeline <ArrowUpRight className="h-3.5 w-3.5" />
                 </Link>
               }
             />

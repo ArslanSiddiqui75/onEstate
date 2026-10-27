@@ -9,15 +9,17 @@ import {
   CreditCard,
   FolderOpen,
   Globe2,
+  BookUser,
   Inbox,
   KeyRound,
   LayoutDashboard,
   LifeBuoy,
   ListChecks,
+  MessagesSquare,
   Share2,
-  Users,
+  Target,
   UsersRound,
-  FileText,
+  Workflow,
   Menu,
   X,
   Lock,
@@ -29,7 +31,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { hasModuleAccess } from "@/lib/access";
-import { MODULE_LABELS, ROLE_LABELS } from "@/lib/rbac/matrix";
+import { ROLE_LABELS } from "@/lib/rbac/matrix";
 import { PLANS } from "@/lib/plans/catalog";
 import type { ModuleId, PlanId, Role } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -41,17 +43,19 @@ import { useBrand } from "@/components/brand/brand-provider";
 import { useTheme } from "@/lib/theme/provider";
 
 const NAV: {
-  id: ModuleId | "dashboard" | "settings";
-  label: string;
+  id: string;
+  /** Plan lock. Dashboard and Settings are always available. */
+  module?: ModuleId;
+  href: string;
   short: string;
   eyebrow: string;
   title: string;
   description: string;
-  icon: typeof Users;
+  icon: typeof Inbox;
 }[] = [
   {
     id: "dashboard",
-    label: "Dashboard",
+    href: "/app",
     short: "Home",
     eyebrow: "Overview",
     title: "Dashboard",
@@ -59,18 +63,39 @@ const NAV: {
     icon: LayoutDashboard,
   },
   {
-    id: "crm",
-    label: MODULE_LABELS.crm,
-    short: "CRM",
-    eyebrow: "Operator CRM",
-    title: "CRM & Contacts",
-    description:
-      "One workspace for the whole relationship lifecycle: pipeline, address book, SMS, calls, and sequences.",
-    icon: Users,
+    id: "conversations",
+    module: "crm",
+    href: "/app/conversations",
+    short: "Conversations",
+    eyebrow: "Communications",
+    title: "Conversations",
+    description: "Texts, email, and calls for each person, in one thread.",
+    icon: MessagesSquare,
+  },
+  {
+    id: "opportunities",
+    module: "crm",
+    href: "/app/opportunities",
+    short: "Opportunities",
+    eyebrow: "Pipeline",
+    title: "Opportunities",
+    description: "The lead pipeline, and the deals moving toward close.",
+    icon: Target,
+  },
+  {
+    id: "contacts",
+    module: "crm",
+    href: "/app/contacts",
+    short: "Contacts",
+    eyebrow: "Address book",
+    title: "Contacts",
+    description: "Everyone you work with, whether or not they are in a live thread.",
+    icon: BookUser,
   },
   {
     id: "listings",
-    label: MODULE_LABELS.listings,
+    module: "listings",
+    href: "/app/listings",
     short: "Listings",
     eyebrow: "Inventory",
     title: "Listings & Portals",
@@ -78,17 +103,19 @@ const NAV: {
     icon: Building2,
   },
   {
-    id: "transactions",
-    label: MODULE_LABELS.transactions,
-    short: "Deals",
-    eyebrow: "Deal flow",
-    title: "Transactions & Compliance",
-    description: "Checklists, e-sign, and compliance through close.",
-    icon: FileText,
+    id: "automations",
+    module: "crm",
+    href: "/app/automations",
+    short: "Automations",
+    eyebrow: "Follow-up",
+    title: "Automations",
+    description: "When something happens, the next message or task runs itself.",
+    icon: Workflow,
   },
   {
     id: "website",
-    label: MODULE_LABELS.website,
+    module: "website",
+    href: "/app/website",
     short: "Website",
     eyebrow: "Public presence",
     title: "Website",
@@ -97,7 +124,8 @@ const NAV: {
   },
   {
     id: "social",
-    label: MODULE_LABELS.social,
+    module: "social",
+    href: "/app/social",
     short: "Social",
     eyebrow: "Distribution",
     title: "Social",
@@ -106,7 +134,8 @@ const NAV: {
   },
   {
     id: "billing",
-    label: MODULE_LABELS.billing,
+    module: "billing",
+    href: "/app/billing",
     short: "Billing",
     eyebrow: "Plans",
     title: "Billing & Plans",
@@ -115,11 +144,11 @@ const NAV: {
   },
   {
     id: "settings",
-    label: "Settings",
+    href: "/app/settings",
     short: "Settings",
     eyebrow: "Workspace",
     title: "Settings",
-    description: "Profile, brokerage details, workspace ID, and team members.",
+    description: "Profile, brokerage, team access, and how new leads are assigned.",
     icon: Settings,
   },
 ];
@@ -130,7 +159,7 @@ const WORKSPACE_NAV: {
   eyebrow: string;
   title: string;
   description: string;
-  icon: typeof Users;
+  icon: typeof Inbox;
   markets?: readonly string[];
 }[] = [
   { href: "/app/enquiries", short: "Enquiries", eyebrow: "Pipeline", title: "Enquiry centre", description: "Every lead, with source, property interest, and the next step.", icon: Inbox, markets: ["uk", "us"] },
@@ -182,12 +211,10 @@ export function AppShell({
   }, [pathname]);
 
   const items = NAV.map((item) => {
-    const href =
-      item.id === "dashboard" ? basePath : `${basePath}/${item.id}`;
-    const locked =
-      item.id !== "dashboard" &&
-      item.id !== "settings" &&
-      !hasModuleAccess(role, plan, item.id as ModuleId, "view");
+    const href = item.id === "dashboard" ? basePath : item.href;
+    const locked = item.module
+      ? !hasModuleAccess(role, plan, item.module, "view")
+      : false;
     return { ...item, href, locked };
   });
 

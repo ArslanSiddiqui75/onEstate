@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/components/ui/toast";
 import { Alert } from "@/components/ui/alert";
 import { useAppSession } from "@/lib/app/session";
@@ -13,7 +14,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { buildPhoneContactMethod, formatDate, formatMoney, asErrorMessage } from "@/lib/utils";
 import { toTelHref } from "@/lib/phone/e164";
 import { PhoneField } from "@/components/crm/phone-field";
-import { SequenceCatalog, SequenceProgress } from "@/components/crm/sequence-panel";
+import { SequenceProgress } from "@/components/crm/sequence-panel";
 import { findSequenceByKind } from "@/lib/sequences/catalog";
 import type {
   AutomationRun,
@@ -30,18 +31,16 @@ import type {
 import { PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 import { Switch } from "@/components/ui/switch";
 import { Table, TBody, TD, TH, THead, TR, TableShell } from "@/components/ui/table";
-import { Tabs, TabsBar, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AutomationBuilder } from "@/components/crm/automation-builder";
 import { LeadRoutingPanel } from "@/components/crm/lead-routing-panel";
 import { scoreLead } from "@/lib/crm/scoring";
 import {
-  Contact as ContactIcon,
   Download,
   Eye,
   FileSpreadsheet,
   Inbox as InboxIcon,
-  ListChecks,
   Mail,
   Pencil,
   Phone,
@@ -49,8 +48,6 @@ import {
   Sparkles,
   Trash2,
   Upload,
-  UserPlus,
-  Workflow,
   X,
 } from "lucide-react";
 
@@ -111,7 +108,19 @@ const CATEGORY_TONE: Record<
   other: "neutral",
 };
 
-export default function AppCrmPage() {
+export type CrmView = "conversations" | "pipeline" | "contacts" | "automations" | "routing";
+
+const VIEW_TAB: Record<CrmView, string> = {
+  conversations: "inbox",
+  pipeline: "pipeline",
+  contacts: "contacts",
+  automations: "automations",
+  routing: "routing",
+};
+
+export function CrmDesk({ view }: { view: CrmView }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     user,
     org,
@@ -152,7 +161,7 @@ export default function AppCrmPage() {
     market,
     persistence,
   } = useAppSession();
-  const [tab, setTab] = useState("pipeline");
+  const [tab, setTab] = useState(VIEW_TAB[view]);
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [stageFilter, setStageFilter] = useState<LeadStage | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -221,6 +230,11 @@ export default function AppCrmPage() {
       .then(setLeadActivities)
       .catch(() => setLeadActivities([]));
   }, [detailLeadId, listLeadActivities]);
+
+  useEffect(() => {
+    const lead = searchParams.get("lead");
+    if (lead) setSelectedLeadId(lead);
+  }, [searchParams]);
 
   async function refreshAutomationRuns() {
     const runs = await listAutomationRuns().catch(() => []);
@@ -297,10 +311,32 @@ export default function AppCrmPage() {
   const flags = PLAN_FEATURE_FLAGS[org.plan];
 
   if (!allowed) {
+    const lockedCopy: Record<CrmView, { title: string; reason: string }> = {
+      conversations: {
+        title: "Conversations locked",
+        reason: "Your role cannot open conversations.",
+      },
+      pipeline: {
+        title: "Opportunities locked",
+        reason: "Your role cannot open the pipeline.",
+      },
+      contacts: {
+        title: "Contacts locked",
+        reason: "Your role cannot open contacts.",
+      },
+      automations: {
+        title: "Automations locked",
+        reason: "Your role cannot open automations.",
+      },
+      routing: {
+        title: "Routing locked",
+        reason: "Your role cannot change lead routing.",
+      },
+    };
     return (
       <LockedModule
-        title="CRM locked"
-        reason="Your role cannot access CRM."
+        title={lockedCopy[view].title}
+        reason={lockedCopy[view].reason}
         role={user.role}
         plan={org.plan}
       />
@@ -352,6 +388,10 @@ export default function AppCrmPage() {
 
   function goToLeadThread(leadId: string) {
     setSelectedLeadId(leadId);
+    if (view !== "conversations") {
+      router.push(`/app/conversations?lead=${encodeURIComponent(leadId)}`);
+      return;
+    }
     setTab("inbox");
   }
 
@@ -362,73 +402,7 @@ export default function AppCrmPage() {
       ) : null}
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsBar>
-          <TabsList>
-            <TabsTrigger value="pipeline">
-              <ListChecks className="h-3.5 w-3.5" />
-              Pipeline
-            </TabsTrigger>
-            <TabsTrigger value="contacts">
-              <ContactIcon className="h-3.5 w-3.5" />
-              Contacts
-            </TabsTrigger>
-            <TabsTrigger value="inbox">
-              <InboxIcon className="h-3.5 w-3.5" />
-              Inbox
-            </TabsTrigger>
-            <TabsTrigger value="calls">
-              <Phone className="h-3.5 w-3.5" />
-              Calls
-            </TabsTrigger>
-            <TabsTrigger value="automations">
-              <Workflow className="h-3.5 w-3.5" />
-              Automations
-            </TabsTrigger>
-            <TabsTrigger value="routing">
-              <UserPlus className="h-3.5 w-3.5" />
-              Routing
-            </TabsTrigger>
-          </TabsList>
-        </TabsBar>
-
-        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-          <Kpi label="Pipeline leads" value={String(allMarketLeads.length)} />
-          <Kpi label="Contacts" value={String(marketContacts.length)} />
-          <Kpi
-            label="Open tasks"
-            value={String(
-              tasks.filter(
-                (t) =>
-                  t.status === "open" &&
-                  allMarketLeads.some((l) => l.id === t.leadId),
-              ).length,
-            )}
-          />
-          <Kpi
-            label="SMS threads"
-            value={String(
-              new Set(
-                messages
-                  .filter(
-                    (m) =>
-                      (m.channel || "sms") === "sms" &&
-                      allMarketLeads.some((l) => l.id === m.leadId),
-                  )
-                  .map((m) => m.leadId),
-              ).size,
-            )}
-          />
-          <Kpi
-            label="Calls logged"
-            value={String(
-              callLogs.filter((c) =>
-                allMarketLeads.some((l) => l.id === c.leadId),
-              ).length,
-            )}
-          />
-        </div>
-
-        <TabsContent value="pipeline" className="mt-4 space-y-4">
+        <TabsContent value="pipeline" className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             {/* Search bar */}
             <div className="relative flex-1 min-w-[180px]">
@@ -808,10 +782,9 @@ export default function AppCrmPage() {
             <div className="border-b border-[var(--border)] px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h2 className="font-semibold">Inbox</h2>
+                  <h2 className="font-semibold">Communications</h2>
                   <p className="text-sm text-[var(--muted)]">
-                    SMS and email are separate threads. Switch SMS / Email above the composer
-                    to open the matching thread. Sends use Twilio or Resend when those are configured.
+                    Texts, email, and calls for the person you have open. Switch SMS or Email above the composer. Dial uses your phone, and the outcome is logged on this thread.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -839,6 +812,13 @@ export default function AppCrmPage() {
               </div>
             </div>
 
+            {marketLeads.length === 0 ? (
+              <EmptyState
+                title="No conversations yet"
+                description="People appear here once a lead has a phone number or email. Calls, texts, and email stay on the same thread."
+              />
+            ) : null}
+            {marketLeads.length === 0 ? null : (
             <div className="grid min-h-[30rem] lg:grid-cols-[18rem_1fr]">
               <aside className="border-r border-[var(--border)] bg-[var(--surface-muted)] p-3">
                 <div className="space-y-2">
@@ -887,6 +867,29 @@ export default function AppCrmPage() {
                               .join(" \u00b7 ") || activeLead.phone || "no number"}`
                           : ""}
                       </p>
+                      {view === "conversations" ? (
+                        <CallStrip
+                          lead={activeLead}
+                          logs={callLogs.filter((call) => call.leadId === activeLead.id)}
+                          market={market}
+                          canEdit={canEdit}
+                          onLog={(outcome) => {
+                            void logCall({ leadId: activeLead.id, outcome })
+                              .then(() =>
+                                toast.success(
+                                  outcome === "voicemail"
+                                    ? `Voicemail logged for ${activeLead.name}`
+                                    : `Call logged for ${activeLead.name}`,
+                                ),
+                              )
+                              .catch((err) =>
+                                toast.error(
+                                  err instanceof Error ? err.message : "Could not log call",
+                                ),
+                              );
+                          }}
+                        />
+                      ) : null}
                     </div>
 
                     <div className="flex-1 space-y-3 bg-[var(--surface-muted)] px-4 py-4">
@@ -1088,6 +1091,7 @@ export default function AppCrmPage() {
                 )}
               </div>
             </div>
+            )}
           </section>
         </TabsContent>
 
@@ -1170,21 +1174,16 @@ export default function AppCrmPage() {
           </section>
         </TabsContent>
 
-        <TabsContent value="automations" className="mt-4 space-y-4">
-          <section className="hero-card rounded-[2rem] p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-semibold">Sequences</h2>
-              <Badge tone="neutral">
-                {persistence === "supabase"
-                  ? "Saved in this workspace"
-                  : "Preview only — connect a hosted workspace to run"}
-              </Badge>
-            </div>
-            <p className="text-sm text-[var(--muted)]">
-              Playbooks you enroll a lead onto. Turning a toggle on sends the next
-              step now. Timed drips stay on Automations below.
+        <TabsContent value="automations" className="space-y-4">
+          <section className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
+            <p className="text-sm text-[var(--foreground)]">
+              A workflow is a list of steps that starts when something happens, such as a new lead or a quiet thread.
             </p>
-            <SequenceCatalog sequences={sequences} />
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              {persistence === "supabase"
+                ? "Changes save to this workspace."
+                : "This workspace is local, so workflows can be drafted here and run once the workspace is hosted."}
+            </p>
           </section>
 
           <AutomationBuilder
@@ -1888,17 +1887,6 @@ function ScoreBreakdown({ lead }: { lead: Lead }) {
   );
 }
 
-function Kpi({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="data-card data-card-hover p-4">
-      <p className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
-        {label}
-      </p>
-      <p className="mt-2 font-display text-2xl">{value}</p>
-    </div>
-  );
-}
-
 function WorkflowRow({
   title,
   description,
@@ -2439,5 +2427,66 @@ function ContactForm({
         ) : null}
       </div>
     </form>
+  );
+}
+
+function CallStrip({
+  lead,
+  logs,
+  market,
+  canEdit,
+  onLog,
+}: {
+  lead: Lead;
+  logs: { id: string; outcome: string; createdAt: string; phoneNumber: string }[];
+  market: Market;
+  canEdit: boolean;
+  onLog: (outcome: "connected" | "voicemail") => void;
+}) {
+  const phone =
+    lead.phones?.find((item) => item.preferred)?.number ||
+    lead.phones?.[0]?.number ||
+    lead.phone;
+  const tel = phone ? toTelHref(phone) : "";
+  const recent = [...logs].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <span className="text-sm text-[var(--foreground)]">{phone || "No number on file"}</span>
+      {tel ? (
+        <Button asChild size="sm">
+          <a href={tel}>
+            <Phone className="h-3.5 w-3.5" aria-hidden />
+            Call
+          </a>
+        </Button>
+      ) : (
+        <Button size="sm" disabled>
+          Call
+        </Button>
+      )}
+      {canEdit ? (
+        <>
+          <Button size="sm" variant="secondary" onClick={() => onLog("connected")}>
+            Log connected
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => onLog("voicemail")}>
+            Log voicemail
+          </Button>
+        </>
+      ) : null}
+      <span className="text-xs text-[var(--muted)]">
+        {recent.length
+          ? `Last: ${recent.map((call) => `${call.outcome.replaceAll("_", " ")} ${formatDate(call.createdAt, market)}`).join(" · ")}`
+          : "No calls logged yet"}
+      </span>
+    </div>
+  );
+}
+
+export default function AppCrmPage() {
+  return (
+    <Suspense fallback={null}>
+      <CrmDesk view="conversations" />
+    </Suspense>
   );
 }

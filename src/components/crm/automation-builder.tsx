@@ -441,12 +441,12 @@ export function AutomationBuilder({
                 </span>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
-                    Trigger
+                    Starts when
                   </p>
                   <p className="text-sm font-medium">
-                    {TRIGGERS.find((t) => t.value === selected.trigger)?.label}
+                    {TRIGGERS.find((t) => t.value === selected.trigger)?.hint}
                     {selected.trigger === "stage_changed" && selected.triggerStage
-                      ? ` → ${selected.triggerStage}`
+                      ? ` The stage becomes ${selected.triggerStage.replaceAll("_", " ")}.`
                       : ""}
                   </p>
                 </div>
@@ -496,21 +496,31 @@ export function AutomationBuilder({
 
             <div>
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold">Action steps</h3>
+                <div>
+                  <h3 className="text-sm font-semibold">Then do this, in order</h3>
+                  <p className="text-sm text-[var(--muted)]">Each step runs after the one above it.</p>
+                </div>
                 {canEdit ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {ACTION_TYPES.map((action) => (
-                      <Button
-                        key={action.value}
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => void addStep(action.value)}
-                      >
-                        <action.icon className="h-3.5 w-3.5" />
-                        {action.label}
-                      </Button>
-                    ))}
-                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <span className="sr-only">Add a step</span>
+                    <select
+                      className="h-9 rounded-[1rem] border border-[var(--border)] bg-[var(--surface)] px-3"
+                      defaultValue=""
+                      onChange={(event) => {
+                        const value = event.target.value as AutomationActionType;
+                        if (!value) return;
+                        void addStep(value);
+                        event.target.value = "";
+                      }}
+                    >
+                      <option value="">Add a step…</option>
+                      {ACTION_TYPES.map((action) => (
+                        <option key={action.value} value={action.value}>
+                          {action.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 ) : null}
               </div>
 

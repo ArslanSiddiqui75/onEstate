@@ -90,7 +90,11 @@ export default function AppSettingsPage() {
             <Link href="/app/teams" className="text-[var(--accent)] hover:underline">
               Teams
             </Link>
-            . CRM stays shared.
+            . Lead assignment lives in{" "}
+            <Link href="/app/settings/routing" className="text-[var(--accent)] hover:underline">
+              Routing
+            </Link>
+            .
           </p>
         </div>
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
@@ -146,6 +150,18 @@ export default function AppSettingsPage() {
             Owner if this needs updating.
           </p>
         )}
+      </Card>
+
+      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="font-semibold">Lead routing</h2>
+          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
+            Choose who receives the next enquiry. This used to live inside CRM.
+          </p>
+        </div>
+        <Button asChild variant="secondary">
+          <Link href="/app/settings/routing">Open routing</Link>
+        </Button>
       </Card>
 
       {error ? <Alert tone="danger">{error}</Alert> : null}

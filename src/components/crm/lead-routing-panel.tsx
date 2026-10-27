@@ -6,7 +6,6 @@ import { Switch } from "@/components/ui/switch";
 import { LockedModule } from "@/components/ui/locked-module";
 import {
   DEFAULT_LEAD_ROUTING,
-  ROUTING_MODE_LABELS,
   eligibleAssignees,
   hydrateLeadRouting,
   routeLead,
@@ -14,7 +13,28 @@ import {
 import type { Lead, LeadRoutingMode, LeadRoutingSettings, OrgMember, PlanId, Role } from "@/types";
 import { PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 
-const MODES: LeadRoutingMode[] = ["creator", "round_robin", "territory", "least_open"];
+const MODES: { id: LeadRoutingMode; title: string; body: string }[] = [
+  {
+    id: "creator",
+    title: "Whoever adds the lead",
+    body: "The person who types it in keeps it. Best for a one-person desk.",
+  },
+  {
+    id: "round_robin",
+    title: "Take turns",
+    body: "Each new lead goes to the next person in the pool.",
+  },
+  {
+    id: "least_open",
+    title: "Fewest open leads",
+    body: "The person with the lightest pipeline gets the next one.",
+  },
+  {
+    id: "territory",
+    title: "By area",
+    body: "Match the enquiry’s area first. If nobody covers it, take turns.",
+  },
+];
 const ROLE_OPTIONS: { id: Role; label: string }[] = [
   { id: "agent", label: "Agents" },
   { id: "team_lead", label: "Team leads" },
@@ -69,34 +89,39 @@ export function LeadRoutingPanel({
   const previewName = members.find((m) => m.id === preview.assignedTo)?.name || "Nobody yet";
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm text-[var(--muted)]">
-        Website enquiries and new leads are assigned by these rules. Scoring is automatic from
-        source, completeness, type, and priority.
-      </p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold">Who gets the next lead?</h2>
+        <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
+          Website enquiries and leads you add follow this one rule. Pick a rule, then choose who is allowed to receive them.
+        </p>
+      </div>
 
-      <label className="block space-y-1 text-sm">
-        <span className="text-xs font-medium text-[var(--muted)]">Assignment mode</span>
-        <select
-          className={`h-10 w-full max-w-md rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm ${
-            canEdit ? "" : "cursor-not-allowed opacity-70"
-          }`}
-          disabled={!canEdit}
-          value={draft.mode}
-          onChange={(e) =>
-            setDraft({ ...draft, mode: e.target.value as LeadRoutingMode })
-          }
-        >
-          {MODES.map((mode) => (
-            <option key={mode} value={mode}>
-              {ROUTING_MODE_LABELS[mode]}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="grid gap-3 md:grid-cols-2">
+        {MODES.map((mode) => {
+          const selected = draft.mode === mode.id;
+          return (
+            <button
+              key={mode.id}
+              type="button"
+              disabled={!canEdit}
+              onClick={() => setDraft({ ...draft, mode: mode.id })}
+              className={`rounded-[1rem] border px-4 py-4 text-left ${
+                selected
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                  : "border-[var(--border)] bg-[var(--surface)]"
+              } ${canEdit ? "" : "cursor-not-allowed opacity-70"}`}
+            >
+              <p className="font-semibold">{mode.title}</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">{mode.body}</p>
+            </button>
+          );
+        })}
+      </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-[var(--muted)]">Who can receive leads</p>
+        <p className="text-sm font-semibold">Who is allowed to receive leads</p>
+        <p className="text-sm text-[var(--muted)]">Untick a role to keep those people out of the pool.</p>
         <div className="flex flex-wrap gap-3">
           {ROLE_OPTIONS.map((role) => {
             const checked = draft.includeRoles.includes(role.id);
