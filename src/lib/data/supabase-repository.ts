@@ -333,6 +333,14 @@ export function createSupabaseRepository(
       throw new Error("Use the team invite API in hosted mode");
     },
 
+    async updateMemberRole() {
+      throw new Error("Use the team API in hosted mode");
+    },
+
+    async removeMember() {
+      throw new Error("Use the team API in hosted mode");
+    },
+
     async listLeads() {
       const { data, error } = await supabase
         .from("leads")

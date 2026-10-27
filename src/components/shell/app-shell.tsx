@@ -17,7 +17,6 @@ import {
   MessagesSquare,
   Share2,
   Target,
-  UsersRound,
   Workflow,
   Menu,
   X,
@@ -137,7 +136,7 @@ const NAV: {
     short: "Settings",
     eyebrow: "Workspace",
     title: "Settings",
-    description: "Profile, brokerage, team access, lead routing, social accounts, and billing.",
+    description: "Profile, brokerage, team, lead routing, social accounts, and billing.",
     icon: Settings,
   },
 ];
@@ -153,7 +152,6 @@ const WORKSPACE_NAV: {
 }[] = [
   { href: "/app/diary", short: "Diary", eyebrow: "Diary", title: "Diary", description: "Viewings and valuations, including requests from the public booking link.", icon: CalendarDays, markets: ["uk", "us"] },
   { href: "/app/lettings", short: "Lettings", eyebrow: "Landlords", title: "Lettings", description: "Open repairs, this month's rent, and the file for each let.", icon: KeyRound, markets: ["uk"] },
-  { href: "/app/teams", short: "Teams", eyebrow: "Roster", title: "Teams", description: "Office groups. CRM stays shared.", icon: UsersRound },
   { href: "/app/tasks", short: "Tasks", eyebrow: "Follow-ups", title: "Tasks", description: "Open and done lead tasks.", icon: ListChecks },
   { href: "/app/reports", short: "Reports", eyebrow: "Snapshot", title: "Reports", description: "Live pipeline and inventory counts.", icon: BarChart3 },
   { href: "/app/documents", short: "Documents", eyebrow: "Files", title: "Documents", description: "Uploads, e-sign, and listing media.", icon: FolderOpen },

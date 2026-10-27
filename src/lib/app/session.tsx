@@ -240,6 +240,8 @@ interface AppState {
     email: string;
     role: Role;
   }) => Promise<void>;
+  updateMemberRole: (id: string, role: Role) => Promise<void>;
+  removeMember: (id: string) => Promise<void>;
   queuePortalSync: (listingId: string) => Promise<string>;
   listPortalConnections: () => PortalConnection[];
   savePortalConnection: (connection: PortalConnection & { apiKey?: string }) => Promise<void>;
@@ -889,6 +891,48 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
     },
     [authMode, getAuthToken, members.length, org, refresh],
+  );
+
+  const updateMemberRole = useCallback(
+    async (id: string, role: Role) => {
+      if (!repoRef.current) throw new Error("Workspace not ready");
+      if (authMode === "supabase") {
+        const token = await getAuthToken();
+        const res = await fetch(`/api/team/members/${id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ role }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Could not change that role");
+      } else {
+        await repoRef.current.updateMemberRole(id, role);
+      }
+      await refresh();
+    },
+    [authMode, getAuthToken, refresh],
+  );
+
+  const removeMember = useCallback(
+    async (id: string) => {
+      if (!repoRef.current) throw new Error("Workspace not ready");
+      if (authMode === "supabase") {
+        const token = await getAuthToken();
+        const res = await fetch(`/api/team/members/${id}`, {
+          method: "DELETE",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Could not remove that person");
+      } else {
+        await repoRef.current.removeMember(id);
+      }
+      await refresh();
+    },
+    [authMode, getAuthToken, refresh],
   );
 
   // The automation engine runs server-side against the service role, so local
@@ -2312,6 +2356,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       updateListing,
       archiveListing,
       inviteMember,
+      updateMemberRole,
+      removeMember,
       queuePortalSync,
       listPortalConnections,
       savePortalConnection,
@@ -2389,6 +2435,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       updateListing,
       archiveListing,
       inviteMember,
+      updateMemberRole,
+      removeMember,
       queuePortalSync,
       listPortalConnections,
       savePortalConnection,

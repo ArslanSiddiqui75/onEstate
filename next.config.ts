@@ -24,6 +24,8 @@ const nextConfig: NextConfig = {
       { source: "/app/crm", destination: "/app/conversations", permanent: false },
       { source: "/app/enquiries", destination: "/app/opportunities", permanent: false },
       { source: "/app/billing", destination: "/app/settings/billing", permanent: false },
+      { source: "/app/teams", destination: "/app/settings/team", permanent: false },
+      { source: "/app/settings/members", destination: "/app/settings/team", permanent: false },
       { source: "/app/support", destination: "/app/tickets", permanent: false },
     ];
   },

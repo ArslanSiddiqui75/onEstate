@@ -30,7 +30,7 @@ export default function AppSettingsPage() {
           Workspace profile, brokerage details, and team access.
         </p>
         <Button asChild size="sm" variant="secondary">
-          <Link href="/app/settings/members">Team members</Link>
+          <Link href="/app/settings/team">Team</Link>
         </Button>
       </div>
 
@@ -86,9 +86,9 @@ export default function AppSettingsPage() {
         <div>
           <h2 className="font-semibold">Workspace</h2>
           <p className="text-sm text-[var(--muted)]">
-            Workspace ID is used for support and billing. Groups live on{" "}
-            <Link href="/app/teams" className="text-[var(--accent)] hover:underline">
-              Teams
+            Workspace ID is used for support and billing. People and groups live in{" "}
+            <Link href="/app/settings/team" className="text-[var(--accent)] hover:underline">
+              Team
             </Link>
             . Lead assignment lives in{" "}
             <Link href="/app/settings/routing" className="text-[var(--accent)] hover:underline">
@@ -158,6 +158,18 @@ export default function AppSettingsPage() {
             Owner if this needs updating.
           </p>
         )}
+      </Card>
+
+      <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="font-semibold">Team</h2>
+          <p className="mt-1 max-w-xl text-sm text-[var(--muted)]">
+            See everyone in the workspace. The owner changes roles and removes people.
+          </p>
+        </div>
+        <Button asChild variant="secondary">
+          <Link href="/app/settings/team">Manage team</Link>
+        </Button>
       </Card>
 
       <Card className="flex flex-wrap items-center justify-between gap-3 p-5">

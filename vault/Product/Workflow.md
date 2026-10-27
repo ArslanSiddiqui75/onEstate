@@ -3,7 +3,7 @@
 ## Brokerage host flow (happy path)
 
 1. Owner signs up → org created → onboarding (`/app/onboarding`).
-2. Invite team (`/app/settings/members`); roles gated server-side.
+2. Invite team (`/app/settings/team`); roles gated server-side.
 3. Add or import leads → CRM pipeline; routing/scoring on Team+ plans.
 4. Optional: website publish with live listings → public `/site/{slug}` → contact form → `POST /api/public/leads` → `lead_created` automations.
 5. SMS/email from inbox (Twilio/Resend or simulated); calls via device `tel:` + log.

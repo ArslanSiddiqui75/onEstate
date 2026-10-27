@@ -201,7 +201,7 @@ src/
 │   │   ├── transactions/   # Transactions module
 │   │   ├── website/        # Website builder module
 │   │   ├── social/         # Social media module
-│   │   ├── settings/       # Profile, routing, accounts, billing
+│   │   ├── settings/       # Profile, team, routing, accounts, billing
 │   │   ├── login/
 │   │   └── signup/
 │   └── api/                # API routes (Stripe, Twilio, Social OAuth)

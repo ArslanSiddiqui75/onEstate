@@ -49,6 +49,8 @@ export interface WorkspaceRepository {
     email: string;
     role: Role;
   }): Promise<OrgMember>;
+  updateMemberRole(id: string, role: Role): Promise<OrgMember>;
+  removeMember(id: string): Promise<void>;
   listLeads(): Promise<Lead[]>;
   createLead(lead: Omit<Lead, "id" | "createdAt" | "updatedAt">): Promise<Lead>;
   updateLeadStage(id: string, stage: LeadStage): Promise<Lead>;

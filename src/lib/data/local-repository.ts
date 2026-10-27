@@ -242,6 +242,28 @@ export function createLocalRepository(
       return member;
     },
 
+    async updateMemberRole(id, role) {
+      const snap = requireSnapshot();
+      const member = snap.members.find((item) => item.id === id);
+      if (!member) throw new Error("That person is not on the team");
+      if (member.id === snap.user.id) throw new Error("You can't change your own role");
+      if (member.role === "owner") throw new Error("The owner role stays put");
+      if (role === "owner") throw new Error("Choose a role other than owner");
+      member.role = role;
+      commit(snap);
+      return member;
+    },
+
+    async removeMember(id) {
+      const snap = requireSnapshot();
+      const member = snap.members.find((item) => item.id === id);
+      if (!member) throw new Error("That person is not on the team");
+      if (member.id === snap.user.id) throw new Error("You can't remove yourself");
+      if (member.role === "owner") throw new Error("The owner stays on the team");
+      snap.members = snap.members.filter((item) => item.id !== id);
+      commit(snap);
+    },
+
     async listLeads() {
       return requireSnapshot().leads.filter(isActiveRecord);
     },
