@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAppSession } from "@/lib/app/session";
@@ -207,7 +209,7 @@ function AddTaskDialog({
             </label>
             <label className="block text-sm font-medium">
               Lead
-              <select name="leadId" className={`${selectClass} mt-1.5`} defaultValue="" required>
+              <MenuSelect name="leadId" className={`${selectClass} mt-1.5`} defaultValue="" required>
                 <option value="" disabled>
                   Choose a lead
                 </option>
@@ -216,16 +218,16 @@ function AddTaskDialog({
                     {lead.name}
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm font-medium">
                 How
-                <select name="channel" className={`${selectClass} mt-1.5`} defaultValue="Call">
+                <MenuSelect name="channel" className={`${selectClass} mt-1.5`} defaultValue="Call">
                   <option value="Call">Call</option>
                   <option value="SMS">Text</option>
                   <option value="Email">Email</option>
-                </select>
+                </MenuSelect>
               </label>
               <label className="block text-sm font-medium">
                 Due

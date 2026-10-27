@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useState } from "react";
 import type { CSSProperties } from "react";
 
@@ -148,9 +150,10 @@ export function PublicContactForm({
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
-        <select
+        <MenuSelect
           className="rounded-2xl px-4 py-3 text-sm outline-none sm:col-span-2"
           style={fieldStyle}
+          menuStyle={fieldStyle}
           value={type}
           onChange={(e) => setType(e.target.value as EnquiryInput["type"])}
         >
@@ -158,7 +161,7 @@ export function PublicContactForm({
           <option value="seller">I want to sell</option>
           <option value="landlord">I want to let a property</option>
           <option value="tenant">I want to rent</option>
-        </select>
+        </MenuSelect>
       </div>
 
       <textarea

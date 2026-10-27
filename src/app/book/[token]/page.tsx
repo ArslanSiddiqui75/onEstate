@@ -1,3 +1,4 @@
+import { MenuSelect } from "@/components/ui/select";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
@@ -101,20 +102,20 @@ export default async function BookPage({
             <>
               <label className="block text-sm font-medium">
                 What do you need
-                <select name="kind" className="mt-1.5 h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm" defaultValue="viewing">
+                <MenuSelect name="kind" className="mt-1.5 h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm" defaultValue="viewing">
                   <option value="viewing">Viewing</option>
                   <option value="valuation">Valuation</option>
-                </select>
+                </MenuSelect>
               </label>
               <label className="block text-sm font-medium">
                 Property
-                <select name="address" required className="mt-1.5 h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm" defaultValue={BOOKING_ADDRESSES[0]}>
+                <MenuSelect name="address" required className="mt-1.5 h-11 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm" defaultValue={BOOKING_ADDRESSES[0]}>
                   {BOOKING_ADDRESSES.map((address) => (
                     <option key={address} value={address}>
                       {address}
                     </option>
                   ))}
-                </select>
+                </MenuSelect>
               </label>
             </>
           )}

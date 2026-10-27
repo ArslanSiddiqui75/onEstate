@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useModuleSection } from "@/lib/nav/module-section";
 import { Alert } from "@/components/ui/alert";
@@ -698,7 +700,7 @@ function LogReportDialog({
           }}
         >
           <Field label="Property">
-            <select
+            <MenuSelect
               className={selectClass}
               value={propertyId}
               onChange={(event) => {
@@ -712,24 +714,24 @@ function LogReportDialog({
                   {item.address}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
           </Field>
           <Field label="Room">
-            <select className={selectClass} value={roomId} onChange={(event) => setRoomId(event.target.value)}>
+            <MenuSelect className={selectClass} value={roomId} onChange={(event) => setRoomId(event.target.value)}>
               {rooms.map((room) => (
                 <option key={room.id} value={room.id}>
                   {room.name} · {room.tenantName}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
           </Field>
           <Field label="How it arrived">
-            <select name="channel" className={selectClass} defaultValue="whatsapp">
+            <MenuSelect name="channel" className={selectClass} defaultValue="whatsapp">
               <option value="whatsapp">WhatsApp</option>
               <option value="text">Text</option>
               <option value="link">Link</option>
               <option value="qr">QR code</option>
-            </select>
+            </MenuSelect>
           </Field>
           <Field label="What they said">
             <Textarea name="body" required minLength={8} placeholder="The kitchen tap keeps dripping." />
@@ -763,13 +765,13 @@ function TenantLinkDialog({ book, onClose }: { book: LettingsBook; onClose: () =
         </DialogHeader>
         <div className="mt-4 grid gap-3">
           <Field label="Property">
-            <select className={selectClass} value={property.reportToken} onChange={(event) => setToken(event.target.value)}>
+            <MenuSelect className={selectClass} value={property.reportToken} onChange={(event) => setToken(event.target.value)}>
               {book.properties.map((item) => (
                 <option key={item.id} value={item.reportToken}>
                   {item.address}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
           </Field>
           <Field label="Link">
             <Input readOnly value={url || `/report/${property.reportToken}`} aria-label="Tenant report link" />
@@ -867,7 +869,7 @@ function RentView({
                     </p>
                   </div>
                   {canEdit ? (
-                    <select
+                    <MenuSelect
                       aria-label={`Rent for ${room.tenantName}`}
                       className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm sm:w-36"
                       value={room.rentStatus}
@@ -878,7 +880,7 @@ function RentView({
                           {status.label}
                         </option>
                       ))}
-                    </select>
+                    </MenuSelect>
                   ) : (
                     <Badge
                       tone={room.rentStatus === "received" ? "success" : room.rentStatus === "late" ? "danger" : "warning"}
@@ -966,11 +968,11 @@ function AddLetDialog({
             <Input name="postcode" />
           </Field>
           <Field label="Nation">
-            <select name="jurisdiction" className={selectClass} defaultValue="england">
+            <MenuSelect name="jurisdiction" className={selectClass} defaultValue="england">
               <option value="england">England</option>
               <option value="wales">Wales</option>
               <option value="scotland">Scotland</option>
-            </select>
+            </MenuSelect>
           </Field>
           <Field label="Flat or room">
             <Input name="room" />
@@ -1124,7 +1126,7 @@ function PropertyDialog({
         </DialogHeader>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           {canEdit ? (
-            <select
+            <MenuSelect
               aria-label="Tenancy stage"
               className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm"
               value={property.tenancyStage || "active"}
@@ -1135,7 +1137,7 @@ function PropertyDialog({
                   {stage.label}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
           ) : (
             <Badge>{STAGES.find((stage) => stage.id === property.tenancyStage)?.label || "Active"}</Badge>
           )}
@@ -1171,7 +1173,7 @@ function PropertyDialog({
                 {canEdit ? (
                   <label className="grid w-full gap-1 text-xs text-[var(--muted)] sm:flex sm:w-auto sm:items-center sm:gap-2">
                     <span className="whitespace-nowrap">Right to Rent</span>
-                    <select
+                    <MenuSelect
                       aria-label={`Right to Rent for ${room.tenantName}`}
                       className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm text-[var(--foreground)] sm:w-32"
                       value={room.rightToRent || "pending"}
@@ -1182,7 +1184,7 @@ function PropertyDialog({
                       <option value="clear">Clear</option>
                       <option value="pending">Pending</option>
                       <option value="expired">Expired</option>
-                    </select>
+                    </MenuSelect>
                   </label>
                 ) : (
                   <Badge tone={room.rightToRent === "clear" ? "success" : room.rightToRent === "expired" ? "danger" : "warning"}>
@@ -1307,13 +1309,13 @@ function PropertyDialog({
                 }
               }}
             >
-              <select name="kind" className={selectClass} aria-label="Certificate" defaultValue="gas_safety">
+              <MenuSelect name="kind" className={selectClass} aria-label="Certificate" defaultValue="gas_safety">
                 {(Object.keys(COMPLIANCE_LABELS) as ComplianceKind[]).map((kind) => (
                   <option key={kind} value={kind}>
                     {COMPLIANCE_LABELS[kind]}
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
               <Input name="due" type="date" aria-label="Due date" required />
               <Input name="detail" placeholder="Note" aria-label="Note" className="sm:col-span-2" />
               <Button type="submit" variant="secondary" className="sm:col-span-2">
@@ -1396,13 +1398,13 @@ function PropertyDialog({
               }}
             >
               <div className="grid gap-2 sm:grid-cols-2">
-                <select name="kind" className={selectClass} aria-label="Inspection type" defaultValue="check_in">
+                <MenuSelect name="kind" className={selectClass} aria-label="Inspection type" defaultValue="check_in">
                   {(Object.keys(INSPECTION_LABELS) as InspectionKind[]).map((kind) => (
                     <option key={kind} value={kind}>
                       {INSPECTION_LABELS[kind]}
                     </option>
                   ))}
-                </select>
+                </MenuSelect>
                 <Input name="at" type="date" aria-label="Inspection date" required />
               </div>
               <Textarea name="notes" placeholder="What you saw" aria-label="Notes" />

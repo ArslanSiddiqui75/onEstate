@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/components/ui/toast";
@@ -429,7 +431,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
               />
             </div>
             {/* Stage filter */}
-            <select
+            <MenuSelect
               className="h-10 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
               value={stageFilter}
               onChange={(e) => { setStageFilter(e.target.value as LeadStage | "all"); setCurrentPage(1); }}
@@ -440,7 +442,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
                   {humanLabel(stage)}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
             {/* Result count */}
             <span className="text-sm text-[var(--muted)]">
               {allMarketLeads.length} lead{allMarketLeads.length !== 1 ? "s" : ""}
@@ -538,7 +540,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
               <Input name="name" placeholder="Name" required />
               <Input name="email" type="email" placeholder="Email (or phone below)" />
               <PhoneField name="phone" market={market} className="sm:col-span-1" />
-              <select
+              <MenuSelect
                 name="phoneSource"
                 className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
                 defaultValue="manual"
@@ -548,9 +550,9 @@ export function CrmDesk({ view }: { view: CrmView }) {
                     {humanLabel(source)}
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
               <Input name="source" placeholder="Source (Website, Portal, Phone)" />
-              <select
+              <MenuSelect
                 name="listingId"
                 aria-label="Property"
                 className="h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
@@ -562,8 +564,8 @@ export function CrmDesk({ view }: { view: CrmView }) {
                     {listing.title}
                   </option>
                 ))}
-              </select>
-              <select
+              </MenuSelect>
+              <MenuSelect
                 name="type"
                 className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
                 defaultValue="buyer"
@@ -572,10 +574,10 @@ export function CrmDesk({ view }: { view: CrmView }) {
                 <option value="seller">Seller</option>
                 <option value="landlord">Landlord</option>
                 <option value="tenant">Tenant</option>
-              </select>
+              </MenuSelect>
               <Input name="budget" type="number" placeholder="Budget" />
               <Input name="nextAction" placeholder="Next action" />
-              <select
+              <MenuSelect
                 name="phoneConsent"
                 className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
                 defaultValue="unknown"
@@ -583,8 +585,8 @@ export function CrmDesk({ view }: { view: CrmView }) {
                 <option value="unknown">Consent unknown</option>
                 <option value="opted_in">Opted in</option>
                 <option value="opted_out">Opted out</option>
-              </select>
-              <select
+              </MenuSelect>
+              <MenuSelect
                 name="priority"
                 className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
                 defaultValue="medium"
@@ -593,8 +595,8 @@ export function CrmDesk({ view }: { view: CrmView }) {
                 <option value="medium">Medium priority</option>
                 <option value="high">High priority</option>
                 <option value="urgent">Urgent</option>
-              </select>
-              <select
+              </MenuSelect>
+              <MenuSelect
                 name="phoneVerification"
                 className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
                 defaultValue="unverified"
@@ -602,10 +604,10 @@ export function CrmDesk({ view }: { view: CrmView }) {
                 <option value="unverified">Unverified number</option>
                 <option value="valid">Verified valid</option>
                 <option value="invalid">Marked invalid</option>
-              </select>
+              </MenuSelect>
               <Input name="territory" placeholder="Territory (city or postcode area)" />
               {flags.leadRouting ? (
-                <select
+                <MenuSelect
                   name="assignedTo"
                   className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
                   defaultValue=""
@@ -616,7 +618,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
                       {member.name}
                     </option>
                   ))}
-                </select>
+                </MenuSelect>
               ) : null}
               {flags.leadScoring ? (
                 <p className="text-xs text-[var(--muted)] sm:col-span-2">
@@ -694,7 +696,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
                       </TD>
                       <TD>
                         {canEdit ? (
-                          <select
+                          <MenuSelect
                             className="h-8 rounded-md border border-[var(--border)] bg-transparent px-2 text-xs"
                             value={lead.stage}
                             onChange={(e) =>
@@ -709,7 +711,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
                                 {humanLabel(s)}
                               </option>
                             ))}
-                          </select>
+                          </MenuSelect>
                         ) : (
                           <Badge className="capitalize">{lead.stage}</Badge>
                         )}
@@ -1720,7 +1722,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
                 <div>
                   <span className="text-xs text-[var(--muted)] font-medium block">Owner / Assigned Agent</span>
                   {canEdit ? (
-                    <select
+                    <MenuSelect
                       className="mt-1 h-9 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-sm"
                       value={viewDetailLead.assignedTo || ""}
                       onChange={(e) => {
@@ -1735,7 +1737,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
                           {member.name}
                         </option>
                       ))}
-                    </select>
+                    </MenuSelect>
                   ) : (
                     <span>{members.find((m) => m.id === viewDetailLead.assignedTo)?.name || "Unassigned"}</span>
                   )}
@@ -2066,7 +2068,7 @@ function ContactsDirectory({
               className="pl-9"
             />
           </div>
-          <select
+          <MenuSelect
             className="h-10 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value as ContactCategory | "all")}
@@ -2077,7 +2079,7 @@ function ContactsDirectory({
                 {CATEGORY_LABELS[c]}
               </option>
             ))}
-          </select>
+          </MenuSelect>
         </div>
         {canEdit ? (
           <Button
@@ -2202,7 +2204,7 @@ function ContactsDirectory({
                     {!linkedLead ? (
                       isPromoting ? (
                         <div className="flex items-center gap-1.5">
-                          <select
+                          <MenuSelect
                             className="h-8 rounded-md border border-[var(--border)] bg-transparent px-2 text-xs"
                             value={promoteType}
                             onChange={(e) => setPromoteType(e.target.value as LeadType)}
@@ -2211,7 +2213,7 @@ function ContactsDirectory({
                             <option value="seller">Seller</option>
                             <option value="landlord">Landlord</option>
                             <option value="tenant">Tenant</option>
-                          </select>
+                          </MenuSelect>
                           <Button
                             size="sm"
                             disabled={busy}
@@ -2312,7 +2314,7 @@ function LeadEditForm({
       <Input name="email" type="email" placeholder="Email" defaultValue={lead.email} required />
       <PhoneField name="phone" market={market} defaultValue={lead.phone} />
       <Input name="source" placeholder="Lead source" defaultValue={lead.source} />
-      <select
+      <MenuSelect
         name="type"
         className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
         defaultValue={lead.type}
@@ -2321,8 +2323,8 @@ function LeadEditForm({
         <option value="seller">Seller</option>
         <option value="landlord">Landlord</option>
         <option value="tenant">Tenant</option>
-      </select>
-      <select
+      </MenuSelect>
+      <MenuSelect
         name="stage"
         className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
         defaultValue={lead.stage}
@@ -2332,7 +2334,7 @@ function LeadEditForm({
             {humanLabel(s)}
           </option>
         ))}
-      </select>
+      </MenuSelect>
       <Input
         name="budget"
         type="number"
@@ -2340,7 +2342,7 @@ function LeadEditForm({
         defaultValue={lead.budget || ""}
       />
       <Input name="nextAction" placeholder="Next action" defaultValue={lead.nextAction} />
-      <select
+      <MenuSelect
         name="priority"
         className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
         defaultValue={lead.priority || "medium"}
@@ -2349,8 +2351,8 @@ function LeadEditForm({
         <option value="medium">Medium priority</option>
         <option value="high">High priority</option>
         <option value="urgent">Urgent</option>
-      </select>
-      <select
+      </MenuSelect>
+      <MenuSelect
         name="assignedTo"
         className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
         defaultValue={lead.assignedTo || ""}
@@ -2361,8 +2363,8 @@ function LeadEditForm({
             {member.name}
           </option>
         ))}
-      </select>
-      <select
+      </MenuSelect>
+      <MenuSelect
         name="listingId"
         className="h-10 rounded-md border border-[var(--border)] px-3 text-sm sm:col-span-2"
         defaultValue={lead.listingId || ""}
@@ -2373,7 +2375,7 @@ function LeadEditForm({
             {listing.title}
           </option>
         ))}
-      </select>
+      </MenuSelect>
       {showTerritory ? (
         <Input
           name="territory"
@@ -2426,7 +2428,7 @@ function ContactForm({
       <Input name="company" placeholder="Company (optional)" defaultValue={contact?.company} />
       <Input name="email" type="email" placeholder="Email" defaultValue={contact?.email} />
       <PhoneField name="phone" market={market} defaultValue={contact?.phone} />
-      <select
+      <MenuSelect
         name="category"
         className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
         defaultValue={contact?.category || "other"}
@@ -2436,7 +2438,7 @@ function ContactForm({
             {CATEGORY_LABELS[c]}
           </option>
         ))}
-      </select>
+      </MenuSelect>
       <Input
         name="tags"
         placeholder="Tags, comma separated"

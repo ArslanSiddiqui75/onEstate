@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useMemo, useState } from "react";
 import {
   ArrowDown,
@@ -332,7 +334,7 @@ export function AutomationBuilder({
               onChange={(e) => setDraftDescription(e.target.value)}
               placeholder="Short description"
             />
-            <select
+            <MenuSelect
               className="h-10 w-full rounded-md border border-[var(--border)] bg-transparent px-3 text-sm"
               value={draftTrigger}
               onChange={(e) => setDraftTrigger(e.target.value as AutomationTrigger)}
@@ -342,9 +344,9 @@ export function AutomationBuilder({
                   {t.label}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
             {draftTrigger === "stage_changed" ? (
-              <select
+              <MenuSelect
                 className="h-10 w-full rounded-md border border-[var(--border)] bg-transparent px-3 text-sm"
                 value={draftTriggerStage}
                 onChange={(e) => setDraftTriggerStage(e.target.value as LeadStage)}
@@ -354,7 +356,7 @@ export function AutomationBuilder({
                     When stage becomes {s}
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
             ) : null}
             <div className="flex gap-2">
               <Button disabled={busy || !draftName.trim()} onClick={() => void handleCreate()}>
@@ -453,7 +455,7 @@ export function AutomationBuilder({
               </div>
               {canEdit ? (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <select
+                  <MenuSelect
                     className="h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
                     value={selected.trigger}
                     onChange={(e) => {
@@ -472,9 +474,9 @@ export function AutomationBuilder({
                         {t.label}
                       </option>
                     ))}
-                  </select>
+                  </MenuSelect>
                   {selected.trigger === "stage_changed" ? (
-                    <select
+                    <MenuSelect
                       className="h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
                       value={selected.triggerStage || "qualified"}
                       onChange={(e) =>
@@ -488,7 +490,7 @@ export function AutomationBuilder({
                           Stage: {s}
                         </option>
                       ))}
-                    </select>
+                    </MenuSelect>
                   ) : null}
                 </div>
               ) : null}
@@ -503,7 +505,7 @@ export function AutomationBuilder({
                 {canEdit ? (
                   <label className="flex items-center gap-2 text-sm">
                     <span className="sr-only">Add a step</span>
-                    <select
+                    <MenuSelect
                       className="h-9 rounded-[1rem] border border-[var(--border)] bg-[var(--surface)] px-3"
                       defaultValue=""
                       onChange={(event) => {
@@ -519,7 +521,7 @@ export function AutomationBuilder({
                           {action.label}
                         </option>
                       ))}
-                    </select>
+                    </MenuSelect>
                   </label>
                 ) : null}
               </div>
@@ -707,7 +709,7 @@ function StepEditor({
             }
             placeholder="Task title"
           />
-          <select
+          <MenuSelect
             className="h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
             value={step.config.channel || "Call"}
             onChange={(e) =>
@@ -723,11 +725,11 @@ function StepEditor({
             <option value="Call">Call</option>
             <option value="SMS">SMS</option>
             <option value="Email">Email</option>
-          </select>
+          </MenuSelect>
         </div>
       ) : null}
       {step.type === "update_stage" ? (
-        <select
+        <MenuSelect
           className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
           value={step.config.stage || "contacted"}
           onChange={(e) =>
@@ -742,7 +744,7 @@ function StepEditor({
               {s}
             </option>
           ))}
-        </select>
+        </MenuSelect>
       ) : null}
       {step.type === "add_tag" ? (
         <Input

@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useEffect, useMemo, useState } from "react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
@@ -96,7 +98,7 @@ function ReportView({ report }: { report: WorkspaceReport }) {
         <div>
           <label className="block lg:hidden">
             <span className="sr-only">Report section</span>
-            <select
+            <MenuSelect
               className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm"
               value={section.id}
               onChange={(event) => openSection(event.target.value)}
@@ -106,7 +108,7 @@ function ReportView({ report }: { report: WorkspaceReport }) {
                   {item.title} ({recordCount(item.groups)})
                 </option>
               ))}
-            </select>
+            </MenuSelect>
           </label>
           <nav className="hidden lg:flex lg:flex-col lg:gap-0.5" aria-label="Report sections">
             {report.sections.map((item) => {

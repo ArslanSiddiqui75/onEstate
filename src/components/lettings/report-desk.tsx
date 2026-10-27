@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useEffect, useMemo, useState } from "react";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { Badge } from "@/components/ui/badge";
@@ -236,13 +238,13 @@ export function ReportDesk({
             {property.rooms.length > 1 ? (
               <label className="block text-sm font-medium">
                 Which room?
-                <select className={`${selectClass} mt-1.5`} name="roomId" value={roomId} onChange={(event) => setRoomId(event.target.value)}>
+                <MenuSelect className={`${selectClass} mt-1.5`} name="roomId" value={roomId} onChange={(event) => setRoomId(event.target.value)}>
                   {property.rooms.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name} · {item.tenantName}
                     </option>
                   ))}
-                </select>
+                </MenuSelect>
               </label>
             ) : null}
             <label className="block text-sm font-medium">

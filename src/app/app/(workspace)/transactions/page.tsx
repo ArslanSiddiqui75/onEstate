@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toast";
 import {
+  MenuSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -924,7 +925,7 @@ function NewDealModal({
           }}
         >
           {listings.length ? (
-            <select
+            <MenuSelect
               name="listingId"
               className="h-10 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
               defaultValue=""
@@ -945,7 +946,7 @@ function NewDealModal({
                   {listing.title}
                 </option>
               ))}
-            </select>
+            </MenuSelect>
           ) : null}
           <Input name="title" placeholder="Property / Deal Title" required />
           <Input name="value" type="number" placeholder="Deal Value" required />

@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
@@ -180,7 +182,7 @@ export default function AdminTicketsPage() {
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
-        <select
+        <MenuSelect
           className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm font-medium"
           value={filter}
           data-ticket-filter-select
@@ -193,8 +195,8 @@ export default function AdminTicketsPage() {
           <option value="unassigned">Unassigned</option>
           <option value="breached">SLA breached</option>
           <option value="resolved">Resolved and closed</option>
-        </select>
-        <select
+        </MenuSelect>
+        <MenuSelect
           className="h-10 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm font-medium"
           value={priority}
           data-ticket-priority-filter
@@ -204,7 +206,7 @@ export default function AdminTicketsPage() {
           <option value="high">High</option>
           <option value="normal">Normal</option>
           <option value="low">Low</option>
-        </select>
+        </MenuSelect>
         <p className="text-sm font-medium text-[var(--muted)]">
           {visible.length} ticket{visible.length === 1 ? "" : "s"}
         </p>

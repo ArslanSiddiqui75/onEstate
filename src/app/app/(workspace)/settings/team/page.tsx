@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAppSession } from "@/lib/app/session";
@@ -140,7 +142,7 @@ export default function TeamSettingsPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                 {manageable ? (
-                  <select
+                  <MenuSelect
                     aria-label={`Role for ${member.name}`}
                     className={selectClass}
                     value={member.role}
@@ -156,7 +158,7 @@ export default function TeamSettingsPage() {
                         {ROLE_LABELS[role]}
                       </option>
                     ))}
-                  </select>
+                  </MenuSelect>
                 ) : (
                   <Badge>{ROLE_LABELS[member.role]}</Badge>
                 )}
@@ -296,7 +298,7 @@ export default function TeamSettingsPage() {
                   })}
                 </div>
                 {canManageGroups ? (
-                  <select
+                  <MenuSelect
                     aria-label={`Add someone to ${group.name}`}
                     className="h-10 w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm"
                     defaultValue=""
@@ -317,7 +319,7 @@ export default function TeamSettingsPage() {
                           {member.name}
                         </option>
                       ))}
-                  </select>
+                  </MenuSelect>
                 ) : null}
               </Card>
             ))}

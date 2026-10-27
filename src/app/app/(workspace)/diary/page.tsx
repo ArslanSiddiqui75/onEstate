@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { Suspense, useState } from "react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
@@ -174,10 +176,10 @@ function DiaryDesk() {
                 <Input name="clientName" placeholder="Client" aria-label="Client" required />
                 <Input name="address" placeholder="Address" aria-label="Address" required />
                 <Input name="at" type="datetime-local" aria-label="Time" required />
-                <select name="kind" aria-label="Kind" className="h-11 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm" defaultValue="viewing">
+                <MenuSelect name="kind" aria-label="Kind" className="h-11 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm" defaultValue="viewing">
                   <option value="viewing">{market === "us" ? "Showing" : "Viewing"}</option>
                   <option value="valuation">Valuation</option>
-                </select>
+                </MenuSelect>
                 <Input name="notes" placeholder="Note" aria-label="Note" />
                 <Button type="submit">Add</Button>
               </form>
@@ -237,12 +239,12 @@ function DiaryDesk() {
               >
                 <Input name="name" placeholder="Client name" aria-label="Client name" required />
                 <Input name="address" placeholder="Address" aria-label="Address" required />
-                <select name="role" aria-label="Role" className="h-11 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm" defaultValue="vendor">
+                <MenuSelect name="role" aria-label="Role" className="h-11 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-elevated)] px-3 text-sm" defaultValue="vendor">
                   <option value="vendor">{market === "us" ? "Seller" : "Vendor"}</option>
                   <option value="buyer">Buyer</option>
                   <option value="landlord">Landlord</option>
                   <option value="tenant">{market === "us" ? "Resident" : "Tenant"}</option>
-                </select>
+                </MenuSelect>
                 <Input name="lettingsToken" placeholder="Repair token, if a let" aria-label="Repair token" />
                 <Button type="submit" variant="secondary" disabled={busy}>
                   Create client link

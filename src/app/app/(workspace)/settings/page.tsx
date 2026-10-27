@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useState } from "react";
 import { useAppSession } from "@/lib/app/session";
 import { ROLE_LABELS } from "@/lib/rbac/matrix";
@@ -119,14 +121,14 @@ export default function AppSettingsPage() {
               placeholder="Brokerage name"
               required
             />
-            <select
+            <MenuSelect
               className="h-10 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm"
               value={orgMarket}
               onChange={(e) => setOrgMarket(e.target.value as "uk" | "us")}
             >
               <option value="uk">United Kingdom</option>
               <option value="us">United States</option>
-            </select>
+            </MenuSelect>
             <Button type="submit" className="sm:col-span-2" disabled={busy === "org"}>
               {busy === "org" ? "Saving…" : "Save workspace"}
             </Button>

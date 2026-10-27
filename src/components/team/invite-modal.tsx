@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useState } from "react";
 import { UserPlus, Sparkles } from "lucide-react";
 import Link from "next/link";
@@ -126,7 +128,7 @@ export function InviteModal({
 
             <div>
               <label className="text-xs font-semibold text-[var(--muted)]">Role</label>
-              <select
+              <MenuSelect
                 name="role"
                 defaultValue="agent"
                 className="mt-1 h-10 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm focus:ring-2 focus:ring-[var(--ring)]"
@@ -136,7 +138,7 @@ export function InviteModal({
                     {ROLE_LABELS[r]}
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
             </div>
 
             <div className="flex gap-2 pt-2">

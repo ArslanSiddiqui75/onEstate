@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -338,7 +340,7 @@ export default function AdminTicketDetailPage() {
 
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Status</span>
-              <select
+              <MenuSelect
                 className={fieldClass}
                 data-ticket-status
                 disabled={busy}
@@ -349,12 +351,12 @@ export default function AdminTicketDetailPage() {
                 <option value="pending">Waiting on customer</option>
                 <option value="resolved">Resolved</option>
                 <option value="closed">Closed</option>
-              </select>
+              </MenuSelect>
             </label>
 
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Priority</span>
-              <select
+              <MenuSelect
                 className={fieldClass}
                 data-ticket-priority
                 disabled={busy}
@@ -364,12 +366,12 @@ export default function AdminTicketDetailPage() {
                 <option value="high">High</option>
                 <option value="normal">Normal</option>
                 <option value="low">Low</option>
-              </select>
+              </MenuSelect>
             </label>
 
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">Assignee</span>
-              <select
+              <MenuSelect
                 className={fieldClass}
                 data-ticket-assignee
                 disabled={busy}
@@ -382,7 +384,7 @@ export default function AdminTicketDetailPage() {
                     {account.name}
                   </option>
                 ))}
-              </select>
+              </MenuSelect>
             </label>
             <Button
               type="button"

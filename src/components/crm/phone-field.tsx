@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,7 +41,7 @@ export function PhoneField({
   return (
     <div className={className}>
       <div className="flex gap-2">
-        <select
+        <MenuSelect
           aria-label="Country code"
           className="h-10 w-[8.5rem] shrink-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-sm"
           value={dialCode}
@@ -50,7 +52,7 @@ export function PhoneField({
               {row.label}
             </option>
           ))}
-        </select>
+        </MenuSelect>
         <Input
           inputMode="tel"
           autoComplete="tel-national"

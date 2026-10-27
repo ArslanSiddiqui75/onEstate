@@ -1,5 +1,7 @@
 "use client";
 
+import { MenuSelect } from "@/components/ui/select";
+
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -289,14 +291,14 @@ function ListingsDesk() {
               placeholder={market === "uk" ? "Floor area (sq m)" : "Floor area (sq ft)"}
             />
             {market === "uk" ? (
-              <select
+              <MenuSelect
                 name="tenure"
                 className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
                 defaultValue="freehold"
               >
                 <option value="freehold">Freehold</option>
                 <option value="leasehold">Leasehold</option>
-              </select>
+              </MenuSelect>
             ) : (
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="mlsDisclosureComplete" />
@@ -392,7 +394,7 @@ function ListingsDesk() {
                     >
                       <Edit className="h-3.5 w-3.5" />
                     </Button>
-                    <select
+                    <MenuSelect
                       className="h-8 rounded-md border border-[var(--border)] px-2 text-xs capitalize"
                       value={listing.status}
                       onChange={(e) =>
@@ -414,7 +416,7 @@ function ListingsDesk() {
                           {s.replace("_", " ")}
                         </option>
                       ))}
-                    </select>
+                    </MenuSelect>
                   </div>
                 ) : (
                   <Badge className="capitalize">
