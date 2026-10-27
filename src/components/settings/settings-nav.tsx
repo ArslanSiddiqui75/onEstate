@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { SectionPillLinks } from "@/components/ui/section-pills";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
-import { SETTINGS_SECTIONS } from "@/lib/nav/settings-sections";
+import { SETTINGS_SECTIONS, settingsSectionMatches } from "@/lib/nav/settings-sections";
 
 export function SettingsSectionNav() {
   const pathname = usePathname();
@@ -27,11 +27,7 @@ export function SettingsSectionNav() {
     <SectionPillLinks
       label="Settings"
       items={items.map((section) => ({ href: section.href, label: section.short }))}
-      isActive={(href) =>
-        href === "/app/settings"
-          ? pathname === href
-          : pathname === href || pathname.startsWith(`${href}/`)
-      }
+      isActive={(href) => settingsSectionMatches(pathname, href)}
     />
   );
 }

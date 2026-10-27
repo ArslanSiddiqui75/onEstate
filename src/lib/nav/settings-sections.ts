@@ -26,26 +26,11 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     description: "Everyone in the workspace. The owner changes roles and removes people.",
   },
   {
-    href: "/app/settings/phone",
-    short: "Phone number",
-    eyebrow: "Calling",
-    title: "Phone number",
-    description: "Search Twilio and buy the number this brokerage texts from.",
-  },
-  {
-    href: "/app/settings/email",
-    short: "Email domain",
-    eyebrow: "Mail",
-    title: "Email domain",
-    description: "Connect the brokerage domain with DNS and send mail from it.",
-  },
-  {
-    href: "/app/settings/routing",
-    short: "Lead routing",
-    eyebrow: "Assignment",
-    title: "Lead routing",
-    description: "Choose who receives the next enquiry.",
-    module: "crm",
+    href: "/app/settings/phone-system",
+    short: "Phone System",
+    eyebrow: "Phone System",
+    title: "Phone System",
+    description: "The number you text from, the domain you send from, and who receives the next enquiry.",
   },
   {
     href: "/app/settings/social",
@@ -88,11 +73,26 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   },
 ];
 
+const PHONE_SYSTEM_PATHS = [
+  "/app/settings/phone-system",
+  "/app/settings/phone",
+  "/app/settings/email",
+  "/app/settings/routing",
+];
+
+export function settingsSectionMatches(pathname: string, href: string) {
+  if (href === "/app/settings") return pathname === href;
+  if (href === "/app/settings/phone-system") {
+    return PHONE_SYSTEM_PATHS.some(
+      (path) => pathname === path || pathname.startsWith(`${path}/`),
+    );
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function settingsSectionFor(pathname: string) {
   const nested = SETTINGS_SECTIONS.find(
-    (section) =>
-      section.href !== "/app/settings" &&
-      (pathname === section.href || pathname.startsWith(`${section.href}/`)),
+    (section) => section.href !== "/app/settings" && settingsSectionMatches(pathname, section.href),
   );
   if (nested) return nested;
   if (pathname === "/app/settings") return SETTINGS_SECTIONS[0];
