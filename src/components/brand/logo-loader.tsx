@@ -16,7 +16,7 @@ export function LogoLoader({
       aria-live="polite"
       className={cn(
         "relative flex flex-col items-center justify-center",
-        layout === "screen" && "min-h-dvh bg-[var(--canvas)]",
+        layout === "screen" && "fixed inset-0 z-[300] bg-[var(--canvas)]",
         layout === "pane" && "min-h-[70vh]",
         layout === "compact" && "py-10",
       )}
@@ -27,17 +27,19 @@ export function LogoLoader({
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(12,110,99,0.09),transparent_58%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(23,186,168,0.12),transparent_58%)]"
         />
       ) : null}
-      <div className="logo-loader-mark relative">
+      <div
+        className={cn(
+          "logo-loader-mark relative",
+          layout === "compact" ? "h-24 w-24" : "h-[11.25rem] w-[9.5rem]",
+        )}
+      >
         <img
           src="/brand/loader-mark-light.webp"
           alt=""
           width={512}
           height={601}
           draggable={false}
-          className={cn(
-            "relative h-auto w-[9.5rem] dark:hidden",
-            layout === "compact" && "w-24",
-          )}
+          className="absolute inset-0 h-full w-full object-contain dark:hidden"
         />
         <img
           src="/brand/loader-mark-dark.webp"
@@ -45,10 +47,7 @@ export function LogoLoader({
           width={524}
           height={706}
           draggable={false}
-          className={cn(
-            "relative hidden h-auto w-[9.5rem] dark:block",
-            layout === "compact" && "w-24",
-          )}
+          className="absolute inset-0 hidden h-full w-full object-contain dark:block"
         />
       </div>
       {label ? (
