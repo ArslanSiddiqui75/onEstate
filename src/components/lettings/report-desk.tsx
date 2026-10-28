@@ -104,7 +104,11 @@ export function ReportDesk({
         setRepair(json.repair);
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
-        if (/can't receive|sentence|recognised|room|photo/i.test(message)) throw err;
+        // Only the local demo book may keep a report on this device. A live
+        // workspace must never tell a tenant the office has it when it doesn't.
+        if (process.env.NODE_ENV === "production" || /can't receive|sentence|recognised|room|photo/i.test(message)) {
+          throw err;
+        }
         const result = submitPublicReport(token, { roomId: room, body, channel, photo });
         setRepair(result.repair);
         setProperty(result.property);
@@ -132,6 +136,10 @@ export function ReportDesk({
         return;
       }
       if (!res.ok) {
+        if (process.env.NODE_ENV === "production") {
+          setError("We couldn’t reach the office. Try again in a moment.");
+          return;
+        }
         confirmPublicRepair(token, confirmRef, tenantName);
       }
       setConfirmNote(`${confirmRef.trim().toUpperCase()} is with the office. It attaches once the repair is marked fixed.`);
@@ -155,7 +163,13 @@ export function ReportDesk({
         setError("The office can't receive this yet.");
         return;
       }
-      if (!res.ok) signPublicInspection(token, inspection.id, tenantName);
+      if (!res.ok) {
+        if (process.env.NODE_ENV === "production") {
+          setError("We couldn’t reach the office. Try again in a moment.");
+          return;
+        }
+        signPublicInspection(token, inspection.id, tenantName);
+      }
       setInspections((current) =>
         current.map((item) =>
           item.id === inspection.id ? { ...item, signedOffBy: tenantName, signedOffAt: new Date().toISOString() } : item,

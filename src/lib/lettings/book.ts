@@ -951,10 +951,16 @@ export function addProperty(
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "")
       .slice(0, 32) || "let";
+  // The token is the only thing protecting a public repair link, so an address
+  // alone (which anyone can guess) is not enough.
   const taken = new Set(book.properties.map((property) => property.reportToken));
-  let reportToken = base;
-  let n = 2;
-  while (taken.has(reportToken)) reportToken = `${base}-${n++}`;
+  const randomPart = () => {
+    const bytes = new Uint8Array(6);
+    globalThis.crypto.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => (byte % 36).toString(36)).join("");
+  };
+  let reportToken = `${base}-${randomPart()}`;
+  while (taken.has(reportToken)) reportToken = `${base}-${randomPart()}`;
   const property: Property = {
     id: newLettingsId("p"),
     address,

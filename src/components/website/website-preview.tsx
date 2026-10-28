@@ -552,7 +552,7 @@ function ListingsBlock({
         />
         <p className="max-w-sm text-sm leading-relaxed" style={{ color: tc.muted }}>
           {activeListings.length} published{" "}
-          {activeListings.length === 1 ? "home" : "homes"}. Drafts stay off the public site.
+          {activeListings.length === 1 ? "home" : "homes"}.{editable ? " Drafts stay off the public site." : ""}
         </p>
       </div>
       {themeId === "classic-agency" ? (
@@ -619,7 +619,9 @@ function ListingsBlock({
         ))}
         {activeListings.length === 0 ? (
           <p className="text-sm" style={{ color: tc.muted }}>
-            Active and under-offer listings appear here. Drafts stay off the public site.
+            {editable
+              ? "Active and under-offer listings appear here. Drafts stay off the public site."
+              : "New homes are coming soon. Get in touch to hear first."}
           </p>
         ) : null}
       </div>
