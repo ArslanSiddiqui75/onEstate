@@ -6,9 +6,5 @@ export async function GET() {
   return NextResponse.json({
     mode: caps.mode,
     outbound: caps.outbound,
-    resendConfigured: caps.resendConfigured,
-    inboundWebhook: caps.inboundWebhook,
-    inboundAddress: caps.inboundAddress || null,
-    configError: caps.configError || null,
   });
 }

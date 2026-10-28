@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { triggerAndProcess } from "@/lib/automations/engine";
-import { normalizeHost } from "@/lib/website/slug";
+import { findWebsiteRecord } from "@/lib/website/public-site";
 import { normalizePhoneNumber } from "@/lib/utils";
 import { hydrateLeadRouting, ownerId, prepareNewLead } from "@/lib/crm/routing";
 import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
@@ -62,15 +62,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Capture unavailable" }, { status: 503 });
   }
 
-  const candidate = parsed.data.site.trim();
-  const host = normalizeHost(candidate);
-  const { data: siteRows } = await supabase
-    .from("websites")
-    .select("org_id, slug, published")
-    .or(`slug.eq.${candidate},custom_domain.eq.${host}`)
-    .limit(1);
-
-  const siteRow = siteRows?.[0];
+  const siteRow = await findWebsiteRecord(
+    supabase,
+    parsed.data.site,
+    "org_id, slug, published",
+  );
   if (!siteRow || !siteRow.published) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }

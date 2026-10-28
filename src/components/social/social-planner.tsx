@@ -1059,7 +1059,7 @@ DM us or click the link to schedule a private tour today! ✨
 
 type SocialStatus = {
   supabaseConfigured: boolean;
-  platforms: Record<SocialPlatform, { configured: boolean; hint: string }>;
+  platforms: Record<SocialPlatform, { configured: boolean }>;
 };
 
 export function AccountsPanel({
@@ -1299,7 +1299,7 @@ export function AccountsPanel({
               {canEdit ? (
                 needsSetup ? (
                   <div className="mt-3 rounded-md border border-dashed border-[var(--border-strong)] bg-[var(--surface-muted)]/40 p-3 text-xs text-[var(--muted)]">
-                    Needs setup — {platformStatus?.hint}
+                    This network isn’t available to connect yet.
                   </div>
                 ) : (
                   <Button

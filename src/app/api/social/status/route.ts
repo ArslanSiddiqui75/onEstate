@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { isSupabaseConfigured } from "@/lib/supabase/client";
 import { SOCIAL_PROVIDERS } from "@/lib/social/providers";
 
-// Public, no-secrets status check so the Accounts tab can show real "Connect"
-// buttons only for platforms that actually have server credentials configured.
+// Whether each network can be connected. No setup instructions — those stay on the server.
 export async function GET() {
   const platforms = Object.fromEntries(
     Object.entries(SOCIAL_PROVIDERS).map(([platform, provider]) => [
       platform,
-      { configured: provider.isConfigured(), hint: provider.missingEnvHint() },
+      { configured: provider.isConfigured() },
     ]),
   );
   return NextResponse.json({

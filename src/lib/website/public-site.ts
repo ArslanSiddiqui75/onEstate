@@ -32,6 +32,36 @@ function mapPublicListing(row: Record<string, any>): Listing {
   };
 }
 
+type WebsiteDb = NonNullable<ReturnType<typeof createServiceSupabaseClient>>;
+
+/**
+ * Match a site by slug or custom domain using bound parameters.
+ * A single `.or()` string would let a visitor break the filter with commas.
+ */
+export async function findWebsiteRecord(
+  supabase: WebsiteDb,
+  slugOrHost: string,
+  columns: string,
+): Promise<Record<string, any> | null> {
+  const candidate = slugOrHost.trim();
+  if (!candidate) return null;
+  const host = normalizeHost(candidate);
+  const { data: bySlug } = await supabase
+    .from("websites")
+    .select(columns)
+    .eq("slug", candidate)
+    .limit(1);
+  const slugRow = bySlug?.[0] as Record<string, any> | undefined;
+  if (slugRow) return slugRow;
+  if (!host) return null;
+  const { data: byHost } = await supabase
+    .from("websites")
+    .select(columns)
+    .eq("custom_domain", host)
+    .limit(1);
+  return (byHost?.[0] as Record<string, any> | undefined) ?? null;
+}
+
 /**
  * Resolve a published tenant site from a slug or a custom domain.
  * Runs as the service role: public visitors have no Supabase session, and the
@@ -43,17 +73,11 @@ export async function getPublicSite(
   const supabase = createServiceSupabaseClient();
   if (!supabase) return null;
 
-  const candidate = slugOrHost.trim();
-  if (!candidate) return null;
-  const host = normalizeHost(candidate);
-
-  const { data: rows } = await supabase
-    .from("websites")
-    .select("org_id, payload, slug, custom_domain, published, updated_at")
-    .or(`slug.eq.${candidate},custom_domain.eq.${host}`)
-    .limit(1);
-
-  const row = rows?.[0];
+  const row = await findWebsiteRecord(
+    supabase,
+    slugOrHost,
+    "org_id, payload, slug, custom_domain, published, updated_at",
+  );
   // Unpublished sites stay private even if someone guesses the slug.
   if (!row || !row.published) return null;
 
@@ -93,7 +117,7 @@ export async function getPublicSite(
     orgId: String(row.org_id),
     orgName: String(org.name || ""),
     market,
-    slug: String(row.slug || candidate),
+    slug: String(row.slug || slugOrHost),
     site,
     listings: (listingRows || []).map(mapPublicListing),
   };

@@ -6,13 +6,30 @@ import {
   adminSessionCookieOptions,
   issueAdminSessionToken,
 } from "@/lib/admin/session-token";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 
 const bodySchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
 
+const isRateLimited = createSlidingWindowLimiter({
+  windowMs: 15 * 60_000,
+  max: 8,
+});
+
+function clientIp(request: Request) {
+  const forwarded = request.headers.get("x-forwarded-for") || "";
+  return forwarded.split(",")[0].trim() || "unknown";
+}
+
 export async function POST(request: Request) {
+  if (isRateLimited(clientIp(request))) {
+    return NextResponse.json(
+      { error: "Too many attempts. Try again shortly." },
+      { status: 429 },
+    );
+  }
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {

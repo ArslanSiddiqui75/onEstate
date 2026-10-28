@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   const provider = getProvider(platform);
   if (!provider.isConfigured()) {
     return NextResponse.json(
-      { error: `${platform} isn't configured yet. ${provider.missingEnvHint()}` },
+      { error: "This network isn’t available to connect yet." },
       { status: 400 },
     );
   }
