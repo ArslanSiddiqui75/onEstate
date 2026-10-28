@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BOOKING_SLOTS, seedAgencyBook } from "@/lib/agency/book";
+import { bookingSlots, seedAgencyBook } from "@/lib/agency/book";
 import { PORTAL_ROLE_LABELS } from "@/lib/agency/types";
 import { readAgencyInbox, serverPortal } from "@/lib/agency/server-inbox";
 import { seedBook, seedPropertyByToken } from "@/lib/lettings/book";
@@ -132,7 +132,7 @@ export default async function PortalPage({
                 <fieldset>
                   <legend className="text-sm font-medium">Time</legend>
                   <div className="mt-2 grid gap-2">
-                    {BOOKING_SLOTS.map((slot) => (
+                    {bookingSlots().map((slot) => (
                       <label key={slot.value} className="flex items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2 text-sm">
                         <input type="radio" name="at" value={slot.value} required className="accent-[var(--accent)]" />
                         {slot.label}

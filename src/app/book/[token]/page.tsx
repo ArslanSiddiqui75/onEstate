@@ -5,9 +5,10 @@ import Link from "next/link";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BOOKING_ADDRESSES, BOOKING_SLOTS } from "@/lib/agency/book";
+import { BOOKING_ADDRESSES, bookingSlots } from "@/lib/agency/book";
 import { readAgencyInbox, serverRecognisesToken } from "@/lib/agency/server-inbox";
 import { defaultMarket, marketFromHost } from "@/lib/brand/host";
+import { demoInboxEnabled } from "@/lib/server/demo-inbox";
 import { formatWhen } from "@/lib/lettings/format";
 import type { Market } from "@/types";
 
@@ -39,7 +40,8 @@ export default async function BookPage({
   const { token } = await params;
   const { sent, error } = await searchParams;
   const us = marketFromHeaders(await headers()) === "us";
-  const recognised = serverRecognisesToken(token);
+  const available = demoInboxEnabled();
+  const recognised = available && serverRecognisesToken(token);
   const inbox = readAgencyInbox();
   const appointment = sent ? inbox.appointments.find((item) => item.id === sent) : null;
   const fixedAddress = token === "elm-grove" ? "14 Elm Grove" : null;
@@ -57,7 +59,11 @@ export default async function BookPage({
         The office confirms the slot on the {us ? "calendar" : "diary"}. You don’t need an account.
       </p>
 
-      {!recognised ? (
+      {!available ? (
+        <p className="mt-8 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-elevated)] p-5 text-sm" role="status">
+          This office isn’t taking online requests yet. Please call them to arrange a time.
+        </p>
+      ) : !recognised ? (
         <p className="mt-8 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-elevated)] p-5 text-sm" role="status">
           This booking link is not recognised. Ask the office for a fresh one.
         </p>
@@ -127,7 +133,7 @@ export default async function BookPage({
           <fieldset>
             <legend className="text-sm font-medium">Time</legend>
             <div className="mt-2 grid gap-2">
-              {BOOKING_SLOTS.map((slot) => (
+              {bookingSlots().map((slot) => (
                 <label key={slot.value} className="flex items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2 text-sm">
                   <input type="radio" name="at" value={slot.value} required className="accent-[var(--accent)]" />
                   {slot.label}

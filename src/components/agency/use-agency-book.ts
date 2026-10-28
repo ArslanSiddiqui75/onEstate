@@ -17,7 +17,11 @@ export function useAgencyBook(orgId: string) {
         try {
           const res = await fetch("/api/agency");
           if (res.ok) {
-            const json = (await res.json()) as Partial<AgencyInbox>;
+            const json = (await res.json()) as Partial<AgencyInbox> & { available?: boolean };
+            if (json.available === false) {
+              if (!cancel) setBook(next);
+              return;
+            }
             const merged = applyAgencyInbox(next, {
               appointments: json.appointments ?? [],
               offers: json.offers ?? [],
@@ -32,11 +36,9 @@ export function useAgencyBook(orgId: string) {
               next.portals,
               (json.portals ?? []).map((portal) => portal.token),
             );
-          } else {
-            void publishMissingPortals(next.portals, []);
           }
         } catch {
-          void publishMissingPortals(next.portals, []);
+          // The office inbox is optional; keep the local book as it is.
         }
         if (!cancel) setBook(next);
       })();

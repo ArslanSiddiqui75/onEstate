@@ -28,11 +28,23 @@ export default function AppDocumentsPage() {
 
   const load = useCallback(async () => {
     const token = await getAuthToken();
-    const res = await fetch("/api/documents", {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    const json = (await res.json()) as { documents?: Doc[] };
-    setDocs(json.documents || []);
+    if (!token) {
+      setDocs([]);
+      return;
+    }
+    try {
+      const res = await fetch("/api/documents", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        setDocs([]);
+        return;
+      }
+      const json = (await res.json()) as { documents?: Doc[] };
+      setDocs(json.documents || []);
+    } catch {
+      setDocs([]);
+    }
   }, [getAuthToken]);
 
   useEffect(() => {

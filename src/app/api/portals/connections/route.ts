@@ -11,10 +11,10 @@ const PORTALS = ["rightmove", "zoopla", "onthemarket", "mls"] as const;
 const saveSchema = z.object({
   portal: z.enum(PORTALS),
   connected: z.boolean(),
-  branchId: z.string().optional(),
-  networkId: z.string().optional(),
-  apiKey: z.string().optional(),
-  notes: z.string().optional(),
+  branchId: z.string().trim().max(64).regex(/^[\w .\-/]*$/, "Invalid branch ID").optional(),
+  networkId: z.string().trim().max(64).regex(/^[\w .\-/]*$/, "Invalid network ID").optional(),
+  apiKey: z.string().trim().max(512).optional(),
+  notes: z.string().trim().max(500).optional(),
 });
 
 function rowToConnection(row: {
@@ -76,7 +76,17 @@ export async function PUT(request: Request) {
   const json = await request.json().catch(() => null);
   const parsed = saveSchema.safeParse(json);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message || "Invalid payload" },
+      { status: 400 },
+    );
+  }
+  const input = parsed.data;
+  if (input.connected && !input.branchId) {
+    return NextResponse.json(
+      { error: "Enter your branch ID to connect this portal." },
+      { status: 400 },
+    );
   }
 
   const now = new Date().toISOString();
@@ -102,7 +112,7 @@ export async function PUT(request: Request) {
     network_id: parsed.data.connected ? parsed.data.networkId?.trim() || null : null,
     notes: parsed.data.notes || null,
     updated_at: now,
-    last_verified_at: parsed.data.connected ? now : null,
+    last_verified_at: null,
     connected_at: parsed.data.connected ? now : null,
   };
   if (ciphertext !== undefined) {

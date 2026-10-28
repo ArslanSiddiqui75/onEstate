@@ -220,3 +220,12 @@ npm install
 cp .env.example .env.local   # Configure brand + optional integrations
 npm run dev                   # → http://localhost:3000
 ```
+
+## Tests
+
+```bash
+npm test            # unit tests (vitest)
+npm run test:e2e    # browser tests (Playwright, uses installed Chrome)
+```
+
+The browser tests start `next dev` on port 43123 (or reuse one that is already running). They sign in with the seeded local owner account, open every module, and fail on uncaught errors, server errors, CSP violations or horizontal overflow, then run the add-lead and add-task flows. To test a production build, run `next start` and set `E2E_BASE_URL`; the flows that need the seeded dev workspace are skipped there. Set `E2E_CHROME_PATH` to use a specific Chrome binary.

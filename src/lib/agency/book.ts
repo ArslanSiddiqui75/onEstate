@@ -119,12 +119,38 @@ export function emptyAgencyInbox(): AgencyInbox {
   return { appointments: [], offers: [], approvals: [], portals: [] };
 }
 
-export const BOOKING_SLOTS = [
-  { value: "2026-10-22T15:00", label: "Thu 22 Oct, 3:00pm" },
-  { value: "2026-10-23T10:30", label: "Fri 23 Oct, 10:30am" },
-  { value: "2026-10-23T16:00", label: "Fri 23 Oct, 4:00pm" },
-  { value: "2026-10-24T11:00", label: "Sat 24 Oct, 11:00am" },
+const SLOT_TIMES = [
+  { hour: 10, minute: 0 },
+  { hour: 13, minute: 0 },
+  { hour: 16, minute: 0 },
 ] as const;
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * Upcoming request slots: three per weekday for the next five weekdays,
+ * starting at least a day out so the office has time to confirm.
+ */
+export function bookingSlots(from: Date = new Date()): { value: string; label: string }[] {
+  const out: { value: string; label: string }[] = [];
+  const day = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  let weekdays = 0;
+  while (weekdays < 5) {
+    day.setDate(day.getDate() + 1);
+    const dow = day.getDay();
+    if (dow === 0 || dow === 6) continue;
+    weekdays += 1;
+    for (const { hour, minute } of SLOT_TIMES) {
+      const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute);
+      const date = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+      const label = `${at.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}, ${at
+        .toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true })
+        .replace(" ", "")}`;
+      out.push({ value: `${date}T${pad(hour)}:${pad(minute)}`, label });
+    }
+  }
+  return out;
+}
 
 export const BOOKING_ADDRESSES = ["14 Elm Grove", "Flat 2, Quay Walk", "8 Harbour Street"] as const;
 
@@ -172,6 +198,14 @@ export function createAppointment(input: {
   if (clientName.length < 2) throw new Error("Add your name.");
   if (!input.address.trim()) throw new Error("Choose the property.");
   if (!input.at) throw new Error("Choose a time.");
+  const when = new Date(input.at);
+  if (Number.isNaN(when.getTime())) throw new Error("Choose a time.");
+  if (when.getTime() < Date.now()) throw new Error("Choose a time in the future.");
+  if (clientName.length > 120 || input.address.length > 200 || (input.notes?.length ?? 0) > 1000) {
+    throw new Error("That request is too long.");
+  }
+  const email = input.email?.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Check your email address.");
   return {
     id: newAgencyId("apt"),
     kind: input.kind,

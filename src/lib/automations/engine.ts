@@ -735,9 +735,12 @@ async function processRun(
  */
 export async function processAutomationRuns(
   supabase: SupabaseClient,
-  options: { orgId?: string; limit?: number } = {},
+  options: { orgId?: string; limit?: number; budgetMs?: number } = {},
 ): Promise<ProcessSummary> {
   const limit = options.limit ?? DEFAULT_RUN_BATCH;
+  // Stop claiming new runs well before the function limit so nothing is left
+  // half-run; unclaimed runs stay due and go out on the next tick.
+  const deadline = Date.now() + (options.budgetMs ?? 200_000);
   try {
     await enqueueNoReplyTriggers(supabase, { orgId: options.orgId });
   } catch {
@@ -782,6 +785,7 @@ export async function processAutomationRuns(
   };
 
   for (const row of runs) {
+    if (Date.now() > deadline) break;
     const run = row as RunRow;
     // Compare-and-set: the cron, the CRM page and trigger calls can overlap, and
     // only the caller that flips the status may send this run's messages.

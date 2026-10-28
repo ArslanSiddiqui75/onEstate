@@ -11,6 +11,9 @@ function redirectTo(request: Request, path: string, query: Record<string, string
 }
 
 export async function GET() {
+  if (!demoInboxEnabled()) {
+    return NextResponse.json({ available: false, appointments: [], offers: [], approvals: [], portals: [] });
+  }
   return demoInboxJson(readAgencyInbox());
 }
 

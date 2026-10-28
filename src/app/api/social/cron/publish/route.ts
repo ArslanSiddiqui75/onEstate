@@ -6,17 +6,17 @@ import { unauthorizedCronResponse } from "@/lib/server/cron-auth";
 // waitForContainerReady in providers.ts), which can take tens of seconds per
 // post. Give the function room instead of letting the platform kill it mid-
 // batch. Raise this further on plans that allow longer function durations.
-export const maxDuration = 60;
+export const maxDuration = 300;
 
-/** One due post per cron tick — external schedulers (cron-job.org) often time out ~30s. */
-const DEFAULT_CRON_BATCH = 1;
+/** Due posts per tick. The route answers immediately and publishes in the background, so external schedulers do not time out. */
+const DEFAULT_CRON_BATCH = 3;
 
 function cronBatchLimit(): number {
   const raw = process.env.SOCIAL_CRON_BATCH_SIZE;
   if (!raw) return DEFAULT_CRON_BATCH;
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n) || n < 1) return DEFAULT_CRON_BATCH;
-  return Math.min(n, 5);
+  return Math.min(n, 10);
 }
 
 // Point Vercel Cron (vercel.json) or an external scheduler at this route every

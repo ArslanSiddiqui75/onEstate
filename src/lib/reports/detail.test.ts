@@ -286,4 +286,41 @@ describe("workspace report", () => {
     expect(report.sections.some((section) => section.id === "calendar")).toBe(true);
     expect(report.overview.map((item) => item.label)).toContain("Calls");
   });
+
+  it("counts only open opportunities and unsold stock in the headline figures", () => {
+    const listing = (id: string, status: "active" | "sold" | "draft", price: number) =>
+      ({
+        id,
+        title: id,
+        address: id,
+        city: "Leeds",
+        market: "uk",
+        status,
+        price,
+        currency: "GBP",
+        beds: 1,
+        baths: 1,
+        sqft: 1,
+        agentId: "dev_owner",
+        portals: [],
+        createdAt: "2026-10-20T10:00:00.000Z",
+      }) as unknown as WorkspaceReportInput["listings"][number];
+    const report = buildWorkspaceReport(
+      base({
+        leads: [
+          lead({ id: "a", name: "A", createdAt: "2026-10-20T10:00:00.000Z", budget: 100 }),
+          lead({ id: "b", name: "B", createdAt: "2026-10-20T10:00:00.000Z", budget: 900, stage: "won" }),
+          lead({ id: "c", name: "C", createdAt: "2026-10-20T10:00:00.000Z", budget: 900, stage: "lost" }),
+        ],
+        listings: [listing("on", "active", 200_000), listing("done", "sold", 300_000), listing("d", "draft", 50_000)],
+      }),
+    );
+    const opp = report.overview.find((item) => item.label === "Opportunities");
+    expect(opp?.value).toBe("1");
+    expect(opp?.hint).toContain("100");
+    expect(opp?.hint).not.toContain("1,000");
+    const listings = report.overview.find((item) => item.label === "Listings");
+    expect(listings?.hint).toContain("200,000");
+    expect(listings?.hint).not.toContain("550,000");
+  });
 });

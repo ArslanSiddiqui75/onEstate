@@ -187,7 +187,17 @@ function WebsiteEditor() {
         sslStatus: nextSsl,
       };
       setDraft(next);
-      await saveWebsite(next);
+      try {
+        await saveWebsite(next);
+      } catch (err) {
+        setDirty(true);
+        toast.error(
+          err instanceof Error
+            ? `Couldn’t save the domain: ${err.message}`
+            : "Couldn’t save the domain. Try again.",
+        );
+        return;
+      }
       setDirty(false);
       if (nextStatus === "connected") toast.success(data.message || "Domain connected");
       else toast.info(data.message || "Domain not yet verified.");

@@ -30,6 +30,21 @@ export function WebsiteDomainConnect() {
     setDirty(true);
   }
 
+  async function persist(next: WebsiteSite): Promise<boolean> {
+    try {
+      await saveWebsite(next);
+      return true;
+    } catch (err) {
+      setDirty(true);
+      toast.error(
+        err instanceof Error
+          ? `Couldn’t save the domain: ${err.message}`
+          : "Couldn’t save the domain. Try again.",
+      );
+      return false;
+    }
+  }
+
   async function handleVerify(domainOverride?: string) {
     const domain = (domainOverride || site.customDomain || "").trim();
     if (!canEdit || !domain) return;
@@ -61,8 +76,9 @@ export function WebsiteDomainConnect() {
         };
         setDraft(failed);
         setDirty(false);
-        await saveWebsite(failed);
-        toast.error(data.error || data.message || "Domain verification failed.");
+        if (await persist(failed)) {
+          toast.error(data.error || data.message || "Domain verification failed.");
+        }
         return;
       }
       const nextStatus: DomainStatus =
@@ -86,7 +102,7 @@ export function WebsiteDomainConnect() {
       };
       setDraft(next);
       setDirty(false);
-      await saveWebsite(next);
+      if (!(await persist(next))) return;
       if (nextStatus === "connected") toast.success(data.message || "Domain connected");
       else toast.info(data.message || "Domain not yet verified.");
     } catch {
@@ -98,8 +114,9 @@ export function WebsiteDomainConnect() {
       };
       setDraft(failed);
       setDirty(false);
-      await saveWebsite(failed);
-      toast.error("Domain verification failed. Please try again.");
+      if (await persist(failed)) {
+        toast.error("Domain verification failed. Please try again.");
+      }
     } finally {
       setVerifying(false);
     }

@@ -3,7 +3,7 @@ import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { processAutomationRuns } from "@/lib/automations/engine";
 import { unauthorizedCronResponse } from "@/lib/server/cron-auth";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 /**
  * Point an external scheduler (cron-job.org) or Vercel Cron here every few
@@ -22,7 +22,7 @@ async function handle(request: Request) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
   }
 
-  const summary = await processAutomationRuns(supabase, { limit: 50 });
+  const summary = await processAutomationRuns(supabase, { limit: 200 });
   return NextResponse.json(summary);
 }
 

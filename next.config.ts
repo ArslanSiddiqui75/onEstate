@@ -1,5 +1,41 @@
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === "production";
+
+function supabaseOrigins(): string[] {
+  const out = ["https://*.supabase.co", "wss://*.supabase.co"];
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (raw) {
+    try {
+      const url = new URL(raw);
+      out.push(url.origin, `${url.protocol === "https:" ? "wss" : "ws"}://${url.host}`);
+    } catch {
+      // A malformed URL is reported by the Supabase client itself.
+    }
+  }
+  return out;
+}
+
+// Next injects small inline bootstrap scripts, so 'unsafe-inline' stays for
+// scripts; everything else is pinned to this site and the services it calls.
+function contentSecurityPolicy(): string {
+  const directives = [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "media-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    `connect-src 'self' ${supabaseOrigins().join(" ")}${isProd ? "" : " ws://127.0.0.1:* ws://localhost:*"}`,
+    "frame-ancestors 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "form-action 'self'",
+  ];
+  if (isProd) directives.push("upgrade-insecure-requests");
+  return directives.join("; ");
+}
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   // The dev server is opened at 127.0.0.1. Without this, Next blocks the
@@ -14,10 +50,7 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          {
-            key: "Content-Security-Policy",
-            value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'",
-          },
+          { key: "Content-Security-Policy", value: contentSecurityPolicy() },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },

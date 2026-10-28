@@ -90,9 +90,20 @@ function DiaryDesk() {
           variant="secondary"
           onClick={() => {
             const url = `${window.location.origin}/book/${book.bookingToken}`;
-            void copyToClipboard(url).then((ok) =>
-              ok ? toast.success("Booking link copied") : toast.info(`Copy this link: ${url}`),
-            );
+            void (async () => {
+              const open = await fetch("/api/agency", { cache: "no-store" })
+                .then(async (res) =>
+                  res.ok ? ((await res.json()) as { available?: boolean }).available !== false : false,
+                )
+                .catch(() => false);
+              if (!open) {
+                toast.info("Online booking requests aren’t open yet, so there’s no link to share.");
+                return;
+              }
+              const ok = await copyToClipboard(url);
+              if (ok) toast.success("Booking link copied");
+              else toast.info(`Copy this link: ${url}`);
+            })();
           }}
         >
           Copy booking link

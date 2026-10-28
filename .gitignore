@@ -46,3 +46,7 @@ vault/.obsidian/workspace-mobile.json
 vault/.obsidian/graph.json
 vault/.obsidian/cache
 supabase/.temp/
+
+# Playwright
+/test-results/
+/playwright-report/

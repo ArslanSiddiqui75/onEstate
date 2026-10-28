@@ -361,18 +361,24 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
   const rangedLeads = marketLeads.filter((lead) => dated(lead.createdAt));
   const openLeads = rangedLeads.filter((lead) => !lead.archivedAt);
   const archivedLeads = rangedLeads.filter((lead) => lead.archivedAt);
-  const budget = openLeads.reduce((sum, lead) => sum + (lead.budget || 0), 0);
+  const activeLeads = openLeads.filter((lead) => lead.stage !== "won" && lead.stage !== "lost");
+  const budget = activeLeads.reduce((sum, lead) => sum + (lead.budget || 0), 0);
   const liveLeads = marketLeads.filter((lead) => !lead.archivedAt && lead.stage !== "won" && lead.stage !== "lost");
 
   const rangedListings = input.listings.filter(
     (listing) => listing.market === market && dated(listing.createdAt),
   );
   const liveListings = rangedListings.filter((listing) => !listing.archivedAt);
-  const stock = liveListings.reduce((sum, listing) => sum + (listing.price || 0), 0);
+  const stock = liveListings
+    .filter((listing) => listing.status === "active" || listing.status === "under_offer")
+    .reduce((sum, listing) => sum + (listing.price || 0), 0);
 
   const rangedDeals = input.deals.filter((deal) => deal.market === market && dated(deal.updatedAt));
   const liveDeals = rangedDeals.filter((deal) => !deal.archivedAt);
-  const pipeline = liveDeals.reduce((sum, deal) => sum + (deal.value || 0), 0);
+  const completedDealStages = new Set(["closed", "exchanged", "completed"]);
+  const pipeline = liveDeals
+    .filter((deal) => !completedDealStages.has((deal.stage || "").trim().toLowerCase()))
+    .reduce((sum, deal) => sum + (deal.value || 0), 0);
 
   const bookTasks = input.tasks.filter((task) => onThisBook(task.leadId));
   const rangedTasks = bookTasks.filter((task) => {
@@ -403,7 +409,7 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
   const overview: ReportOverview[] = [
     {
       label: "Opportunities",
-      value: String(openLeads.length),
+      value: String(activeLeads.length),
       hint: budget > 0 ? `${money(budget, market)} stated budget` : archivedLeads.length ? `${archivedLeads.length} archived` : "No budgets set",
     },
     {
@@ -414,7 +420,7 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
     {
       label: "Deals",
       value: String(liveDeals.length),
-      hint: pipeline > 0 ? `${money(pipeline, market)} pipeline` : "No deal value",
+      hint: pipeline > 0 ? `${money(pipeline, market)} open pipeline` : "No deal value",
     },
     {
       label: "Open tasks",
@@ -468,7 +474,7 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
       "opportunities",
       "Opportunities",
       join([
-        `${openLeads.length} open`,
+        `${activeLeads.length} open`,
         budget > 0 ? `${money(budget, market)} of stated budget` : "",
         archivedLeads.length ? `${archivedLeads.length} archived` : "",
         "Website, portal, and office enquiries are in this list.",
@@ -595,7 +601,7 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
       "Deals",
       join([
         `${liveDeals.length} live`,
-        pipeline > 0 ? `${money(pipeline, market)} pipeline` : "",
+        pipeline > 0 ? `${money(pipeline, market)} open pipeline` : "",
         rangedDeals.length - liveDeals.length ? `${rangedDeals.length - liveDeals.length} archived` : "",
       ]),
       tally(liveDeals.map((deal) => deal.stage || "No stage")),
