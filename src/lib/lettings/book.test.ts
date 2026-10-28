@@ -27,6 +27,18 @@ describe("repair triage", () => {
     expect(result.fixBy).toBe(new Date(NOW.getTime() + 14 * 86_400_000).toISOString());
   });
 
+  it("catches common ways of reporting a gas leak", () => {
+    for (const text of [
+      "The kitchen smells like gas",
+      "gas is leaking from the hob",
+      "leaking gas near the boiler",
+      "there is a smell of burning gas",
+    ]) {
+      expect(triageReport(text, NOW).emergency, text).toBe("gas");
+    }
+    expect(triageReport("The gas safety certificate is due next month", NOW).emergency).toBeNull();
+  });
+
   it("routes a gas smell as an emergency and names the national line", () => {
     const result = triageReport("I can smell gas in the hallway outside room 2.", NOW);
     expect(result.emergency).toBe("gas");

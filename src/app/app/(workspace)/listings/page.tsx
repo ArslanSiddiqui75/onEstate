@@ -468,7 +468,7 @@ function ListingsDesk() {
                       }
                       className="cursor-pointer hover:opacity-80 capitalize"
                     >
-                      {PORTAL_LABEL[p.portal] || p.portal} · {p.status.replace("_", " ")}
+                      {PORTAL_LABEL[p.portal] || p.portal} · {p.status === "synced" ? "feed ready" : p.status.replace("_", " ")}
                     </Badge>
                   </button>
                 ))}
@@ -611,7 +611,7 @@ function ListingsDesk() {
                         </p>
                         <p className="text-xs text-[var(--muted)]">
                           {p.lastSyncedAt
-                            ? `Last sync: ${new Date(p.lastSyncedAt).toLocaleString()}`
+                            ? `Feed prepared: ${new Date(p.lastSyncedAt).toLocaleString()}`
                             : portalLogListing.lastSyncAt
                               ? `Last attempt: ${new Date(portalLogListing.lastSyncAt).toLocaleString()}`
                               : "Not synced yet"}
@@ -627,7 +627,7 @@ function ListingsDesk() {
                         }
                         className="capitalize"
                       >
-                        {p.status.replace("_", " ")}
+                        {p.status === "synced" ? "feed ready" : p.status.replace("_", " ")}
                       </Badge>
                     </div>
                     {p.lastMessage || p.lastError ? (

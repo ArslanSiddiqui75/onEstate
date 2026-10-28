@@ -150,12 +150,12 @@ export async function requestEsign(
   let emailed = false;
   if (caps.canEmailInvite) {
     try {
-      await sendResendEmail({
+      const sent = await sendResendEmail({
         to: signerEmail,
         subject: `Signature requested: ${name}`,
         body: `Hi ${signerName},\n\n${summary}\n\nSign here:\n${signUrl}\n\n— 0neStreet`,
       });
-      emailed = true;
+      emailed = sent.mode === "live";
     } catch {
       emailed = false;
     }
@@ -220,11 +220,21 @@ export async function completeEsignByToken(
     return { ok: false, error: error?.message || "Failed to mark signed" };
   }
 
-  await supabase
-    .from("transactions")
-    .update({ e_sign_status: "signed", updated_at: signedAt })
-    .eq("id", current.dealId)
-    .eq("org_id", current.orgId);
+  // The deal is only "signed" once nothing is still waiting on a signature.
+  const { data: stillOpen } = await supabase
+    .from("transaction_documents")
+    .select("id")
+    .eq("org_id", current.orgId)
+    .eq("transaction_id", current.dealId)
+    .eq("status", "sent")
+    .limit(1);
+  if (!stillOpen?.length) {
+    await supabase
+      .from("transactions")
+      .update({ e_sign_status: "signed", updated_at: signedAt })
+      .eq("id", current.dealId)
+      .eq("org_id", current.orgId);
+  }
 
   // Mark the first unfinished e-sign checklist item done when present.
   const { data: items } = await supabase
@@ -256,17 +266,18 @@ export async function voidEsignDocument(
     .eq("id", input.documentId)
     .eq("org_id", input.orgId)
     .eq("transaction_id", input.dealId)
+    .eq("status", "sent")
     .select("id")
     .maybeSingle();
   if (error) return { ok: false, error: error.message };
-  if (!data) return { ok: false, error: "Document not found" };
+  if (!data) return { ok: false, error: "Only a request that is still waiting for a signature can be voided." };
 
   const { data: open } = await supabase
     .from("transaction_documents")
     .select("id")
     .eq("org_id", input.orgId)
     .eq("transaction_id", input.dealId)
-    .eq("status", "sent")
+    .in("status", ["sent", "signed"])
     .limit(1);
   if (!open?.length) {
     await supabase

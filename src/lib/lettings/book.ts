@@ -1050,13 +1050,23 @@ export function replyWasMet(repair: Repair) {
   return new Date(ack.at).getTime() <= new Date(repair.replyBy).getTime();
 }
 
+/** A certificate that has passed its date is overdue even if nobody updated the flag. */
+export function complianceStatus(item: ComplianceItem, now = new Date()): ComplianceItem["status"] {
+  if (item.status === "ok" || item.status === "due") {
+    const due = new Date(`${item.dueAt.slice(0, 10)}T23:59:59`).getTime();
+    if (Number.isFinite(due) && due < now.getTime()) return "overdue";
+  }
+  return item.status;
+}
+
 export function complianceReminders(book: LettingsBook, now = new Date()) {
   const horizon = now.getTime() + 45 * 86_400_000;
   return book.compliance
     .filter((item) => {
-      if (item.status === "proof_held" || item.status === "ok") return false;
+      const status = complianceStatus(item, now);
+      if (status === "proof_held" || status === "ok") return false;
       const due = new Date(item.dueAt).getTime();
-      return item.status === "overdue" || due <= horizon;
+      return status === "overdue" || due <= horizon;
     })
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
 }
@@ -1102,7 +1112,7 @@ export function buildDisputePack(book: LettingsBook, propertyId: string, generat
   const complianceRows = compliance
     .map(
       (item) =>
-        `<tr><td>${escapeHtml(item.title)}</td><td>${escapeHtml(formatDay(item.dueAt))}</td><td>${escapeHtml(item.status.replace("_", " "))}</td><td>${escapeHtml(item.detail)}</td><td>${item.proofName ? escapeHtml(item.proofName) : "—"}</td></tr>`,
+        `<tr><td>${escapeHtml(item.title)}</td><td>${escapeHtml(formatDay(item.dueAt))}</td><td>${escapeHtml(complianceStatus(item).replace("_", " "))}</td><td>${escapeHtml(item.detail)}</td><td>${item.proofName ? escapeHtml(item.proofName) : "—"}</td></tr>`,
     )
     .join("");
   const inspectionBlocks = inspections

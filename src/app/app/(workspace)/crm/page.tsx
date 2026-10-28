@@ -1714,12 +1714,12 @@ function ContactsDirectory({
         .filter(Boolean);
       const payload = {
         name: String(form.get("name")),
-        email: String(form.get("email") || "") || undefined,
-        phone: String(form.get("phone") || "") || undefined,
-        company: String(form.get("company") || "") || undefined,
+        email: String(form.get("email") || "").trim(),
+        phone: String(form.get("phone") || "").trim(),
+        company: String(form.get("company") || "").trim(),
         category: String(form.get("category") || "other") as ContactCategory,
         tags,
-        notes: String(form.get("notes") || "") || undefined,
+        notes: String(form.get("notes") || "").trim(),
       };
       if (existing) {
         await updateContact(existing.id, payload);

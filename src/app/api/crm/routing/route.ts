@@ -11,6 +11,9 @@ export async function POST(request: Request) {
   }
   const denied = forbiddenIfNoModule(profile, "crm", "edit");
   if (denied) return denied;
+  if (!["owner", "broker", "team_lead"].includes(profile.role)) {
+    return NextResponse.json({ error: "Only owners, brokers and team leads can change lead routing." }, { status: 403 });
+  }
 
   const json = await request.json().catch(() => null);
   if (!json || typeof json !== "object") {

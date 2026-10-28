@@ -38,6 +38,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
 
+  if (profile.role !== "owner") {
+    return NextResponse.json({ error: "Only the workspace owner can link a subscription." }, { status: 403 });
+  }
   const json = await request.json().catch(() => null);
   const parsed = schema.safeParse(json);
   if (!parsed.success) {
@@ -70,6 +73,18 @@ export async function POST(request: Request) {
     });
     if (!verdict.ok) {
       return NextResponse.json({ error: verdict.error }, { status: 402 });
+    }
+    const { data: current } = await supabase
+      .from("organizations")
+      .select("stripe_subscription_id, subscription_status")
+      .eq("id", profile.orgId)
+      .maybeSingle();
+    if (
+      current?.stripe_subscription_id &&
+      current.stripe_subscription_id !== subscriptionId &&
+      ["active", "trialing", "past_due"].includes(String(current.subscription_status))
+    ) {
+      return NextResponse.json({ error: "This workspace already has a subscription." }, { status: 409 });
     }
     const paidEmail = (session.customer_details?.email || session.customer_email || metadata.email || "").toLowerCase();
     if (paidEmail && paidEmail !== profile.email.toLowerCase()) {

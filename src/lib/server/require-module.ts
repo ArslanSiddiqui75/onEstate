@@ -48,6 +48,20 @@ export function forbiddenIfNoModule(
   );
 }
 
+/**
+ * Changing a plan or opening the card portal moves money, so a `billing: true`
+ * override on another role is not enough: only the owner or accountant may act.
+ */
+export function forbiddenUnlessBillingAdmin(profile: RequestProfile): NextResponse | null {
+  const denied = forbiddenIfNoModule(profile, "billing", "view");
+  if (denied) return denied;
+  if (profile.role === "owner" || profile.role === "accountant") return null;
+  return NextResponse.json(
+    { error: "Only the owner or accountant can change billing." },
+    { status: 403 },
+  );
+}
+
 export function forbiddenIfNoAnyModule(
   profile: RequestProfile,
   checks: Array<[ModuleId, AccessLevel]>,

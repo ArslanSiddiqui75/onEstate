@@ -197,7 +197,7 @@ export async function findLeadForInboundEmail(
       .from("leads")
       .select("id")
       .eq("org_id", orgId)
-      .ilike("email", from)
+      .ilike("email", from.replace(/[\\%_]/g, "\\$&"))
       .limit(20);
     if (!leads?.length) return null;
     if (leads.length === 1) return { leadId: String(leads[0].id), orgId };

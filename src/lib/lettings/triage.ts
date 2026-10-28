@@ -14,7 +14,7 @@ const EMERGENCY_RULES: { kind: EmergencyKind; pattern: RegExp }[] = [
   {
     kind: "gas",
     pattern:
-      /\b(gas leak|smell of gas|smells of gas|smelling gas|smell gas|gas smell|whiff of gas|hissing gas)\b/i,
+      /\b(gas leaks?|leak(?:ing|s)? gas|gas (?:is |was |keeps )?(?:leaking|escaping|hissing)|smell(?:s|ing|ed)? (?:of |like )?(?:\w+ ){0,2}gas|gas (?:smell|odou?r)|whiff of gas|hissing gas)\b/i,
   },
   {
     kind: "co",

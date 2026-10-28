@@ -60,14 +60,37 @@ function dataUrlToBlob(dataUrl: string, fallbackMime: string): Blob {
   return new Blob([new Uint8Array(buffer)], { type: mime });
 }
 
+const MAX_REMOTE_MEDIA_BYTES = 50 * 1024 * 1024;
+
 async function mediaToBlob(media: SocialMediaItem): Promise<Blob> {
   if (media.dataUrl.startsWith("data:")) {
     return dataUrlToBlob(media.dataUrl, media.mimeType);
   }
   if (/^https?:\/\//.test(media.dataUrl)) {
-    const res = await fetch(media.dataUrl);
+    // Media URLs are written by workspace members, so only our own storage may
+    // be fetched server-side. Anything else would let a member probe the network.
+    const allowedHost = (() => {
+      try {
+        return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "").host;
+      } catch {
+        return "";
+      }
+    })();
+    let target: URL;
+    try {
+      target = new URL(media.dataUrl);
+    } catch {
+      throw new Error("Unsupported media reference");
+    }
+    if (!allowedHost || target.protocol !== "https:" || target.host !== allowedHost) {
+      throw new Error("Media must be uploaded through the app before it can be published");
+    }
+    const res = await fetch(target, { redirect: "error", signal: AbortSignal.timeout(30_000) });
     if (!res.ok) throw new Error("Could not download attached media for upload");
+    const declared = Number(res.headers.get("content-length") || 0);
+    if (declared > MAX_REMOTE_MEDIA_BYTES) throw new Error("Attached media is too large to publish");
     const buffer = await res.arrayBuffer();
+    if (buffer.byteLength > MAX_REMOTE_MEDIA_BYTES) throw new Error("Attached media is too large to publish");
     return new Blob([buffer], { type: media.mimeType || "application/octet-stream" });
   }
   throw new Error("Unsupported media reference");

@@ -49,7 +49,11 @@ export default async function PortalPage({
     ? seedBook().repairs.filter((item) => item.propertyId === property.id && item.status !== "tenant_confirmed")
     : [];
   const offers = portal
-    ? [...seedAgencyBook().offers, ...inbox.offers].filter((item) => item.address === portal.address)
+    ? [...seedAgencyBook().offers, ...inbox.offers].filter(
+        (item) =>
+          item.address === portal.address &&
+          item.buyerName.trim().toLowerCase() === portal.name.trim().toLowerCase(),
+      )
     : [];
 
   return (

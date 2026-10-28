@@ -449,19 +449,8 @@ export function createSupabaseRepository(
         });
       }
 
-      if (lead.email?.trim() || lead.phone?.trim()) {
-        await supabase.from("contacts").insert({
-          org_id: ctx.org.id,
-          name: lead.name,
-          email: lead.email?.trim() || null,
-          phone: lead.phone?.trim() || null,
-          category: "lead",
-          lead_id: data.id,
-          assigned_to: lead.assignedTo || ctx.user.id,
-          market: lead.market,
-        });
-      }
-
+      // The contact link is made once, by the session layer, which can match an
+      // existing contact. Inserting one here as well produced duplicates.
       return mapLead(data, lead.phones);
     },
 
@@ -614,12 +603,12 @@ export function createSupabaseRepository(
         .insert({
           org_id: ctx.org.id,
           name: contact.name,
-          email: contact.email,
-          phone: contact.phone,
-          company: contact.company,
+          email: contact.email || null,
+          phone: contact.phone || null,
+          company: contact.company || null,
           category: contact.category,
           tags: contact.tags,
-          notes: contact.notes,
+          notes: contact.notes || null,
           lead_id: contact.leadId,
           assigned_to: contact.assignedTo || ctx.user.id,
           market: contact.market,
@@ -651,12 +640,12 @@ export function createSupabaseRepository(
         .from("contacts")
         .update({
           name: patch.name,
-          email: patch.email,
-          phone: patch.phone,
-          company: patch.company,
+          email: patch.email === "" ? null : patch.email,
+          phone: patch.phone === "" ? null : patch.phone,
+          company: patch.company === "" ? null : patch.company,
           category: patch.category,
           tags: patch.tags,
-          notes: patch.notes,
+          notes: patch.notes === "" ? null : patch.notes,
           lead_id: patch.leadId,
           assigned_to: patch.assignedTo,
           last_contacted_at: patch.lastContactedAt,

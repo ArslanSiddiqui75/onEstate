@@ -28,15 +28,27 @@ export function hydrateLeadRouting(
     data.mode === "least_open"
       ? data.mode
       : DEFAULT_LEAD_ROUTING.mode;
-  const includeRoles =
-    Array.isArray(data.includeRoles) && data.includeRoles.length
-      ? data.includeRoles
-      : DEFAULT_LEAD_ROUTING.includeRoles;
+  const ROLES: Role[] = ["owner", "broker", "team_lead", "agent", "assistant", "accountant"];
+  const cleanRoles = Array.isArray(data.includeRoles)
+    ? data.includeRoles.filter((role): role is Role => ROLES.includes(role as Role))
+    : [];
+  const includeRoles = cleanRoles.length ? cleanRoles : DEFAULT_LEAD_ROUTING.includeRoles;
+  const territories: Record<string, string[]> = {};
+  if (data.territories && typeof data.territories === "object" && !Array.isArray(data.territories)) {
+    for (const [memberId, tokens] of Object.entries(data.territories).slice(0, 200)) {
+      if (!Array.isArray(tokens)) continue;
+      territories[memberId.slice(0, 64)] = tokens
+        .filter((token): token is string => typeof token === "string")
+        .map((token) => token.trim().slice(0, 40))
+        .filter(Boolean)
+        .slice(0, 50);
+    }
+  }
   return {
     mode,
     includeRoles,
     includeOwner: Boolean(data.includeOwner),
-    territories: data.territories && typeof data.territories === "object" ? data.territories : {},
+    territories,
   };
 }
 

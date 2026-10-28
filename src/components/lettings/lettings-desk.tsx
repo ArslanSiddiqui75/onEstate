@@ -26,6 +26,7 @@ import {
   attachProof,
   bookTradesperson,
   buildDisputePack,
+  complianceStatus,
   createRepair,
   insuranceExpired,
   markFixed,
@@ -174,7 +175,7 @@ function propertySignal(book: LettingsBook, propertyId: string) {
   const certificates = book.compliance
     .filter((item) => item.propertyId === propertyId)
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
-  const overdue = certificates.find((item) => item.status === "overdue");
+  const overdue = certificates.find((item) => complianceStatus(item) === "overdue");
   if (overdue) return `${overdue.title} overdue`;
   const emergency = book.repairs.find(
     (repair) => repair.propertyId === propertyId && repair.urgency === "emergency" && repair.status !== "tenant_confirmed",
@@ -280,6 +281,7 @@ export function LettingsDesk({ orgId, canEdit }: { orgId: string; canEdit: boole
             variant="ghost"
             size="sm"
             onClick={() => {
+              if (!window.confirm("Replace this book with the sample book? Anything you added here will be lost.")) return;
               commit(seedBook());
               toast.success("Sample book restored.");
             }}
@@ -1253,8 +1255,18 @@ function PropertyDialog({
                       {item.proofName ? ` · ${item.proofName}` : ""}
                     </p>
                   </div>
-                  <Badge tone={item.status === "overdue" ? "danger" : item.status === "due" ? "warning" : "success"}>
-                    {item.status === "proof_held" ? "On file" : item.status === "ok" ? "In date" : item.status === "due" ? "Due" : "Overdue"}
+                  <Badge
+                    tone={
+                      complianceStatus(item) === "overdue" ? "danger" : complianceStatus(item) === "due" ? "warning" : "success"
+                    }
+                  >
+                    {complianceStatus(item) === "proof_held"
+                      ? "On file"
+                      : complianceStatus(item) === "ok"
+                        ? "In date"
+                        : complianceStatus(item) === "due"
+                          ? "Due"
+                          : "Overdue"}
                   </Badge>
                 </div>
                 {canEdit && !item.proofName ? (

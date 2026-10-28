@@ -4,7 +4,7 @@ import { getStripe, getStripePriceId, isStripeConfigured } from "@/lib/stripe/co
 import type { Market } from "@/types";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
-import { forbiddenIfNoModule } from "@/lib/server/require-module";
+import { forbiddenUnlessBillingAdmin } from "@/lib/server/require-module";
 import { sameOriginUrl } from "@/lib/http/same-origin";
 
 const schema = z.object({
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     if (!profile) {
       return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     }
-    const denied = forbiddenIfNoModule(profile, "billing", "view");
+    const denied = forbiddenUnlessBillingAdmin(profile);
     if (denied) return denied;
     orgId = profile.orgId;
     email = profile.email || email;

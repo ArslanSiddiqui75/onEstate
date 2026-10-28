@@ -1,3 +1,4 @@
+import { verifiedThreadId } from "@/lib/messaging/service";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   checkDomainDns,
@@ -81,7 +82,7 @@ export async function sendOutboundEmail(
   }
 
   const sentAt = new Date().toISOString();
-  let threadId = input.threadId;
+  let threadId = await verifiedThreadId(supabase, input);
   if (!threadId) {
     const thread = await ensureThread(supabase, {
       orgId: input.orgId,

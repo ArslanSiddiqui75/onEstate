@@ -1561,9 +1561,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         lastSyncAt: new Date().toISOString(),
         nextMilestone:
           results.find((r) => r.nextAction)?.nextAction || readiness.nextMilestone,
-        status: listing.status === "draft" && results.some((r) => r.status === "synced")
-          ? "active"
-          : listing.status,
+        status: listing.status,
       });
       await refresh();
       return summary;

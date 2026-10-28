@@ -205,6 +205,22 @@ export interface OutboundMessageResult {
  * Send an SMS and persist it on the lead's thread. Shared by the CRM send
  * route and the automation engine so both paths log identically.
  */
+/** A client-supplied thread id is only used when it belongs to this lead in this workspace. */
+export async function verifiedThreadId(
+  supabase: SupabaseClient,
+  input: { orgId: string; leadId: string; threadId?: string },
+): Promise<string | undefined> {
+  if (!input.threadId) return undefined;
+  const { data } = await supabase
+    .from("conversation_threads")
+    .select("id")
+    .eq("id", input.threadId)
+    .eq("org_id", input.orgId)
+    .eq("lead_id", input.leadId)
+    .maybeSingle();
+  return data ? String(data.id) : undefined;
+}
+
 export async function sendOutboundSms(
   supabase: SupabaseClient,
   input: OutboundMessageInput,
@@ -233,7 +249,7 @@ export async function sendOutboundSms(
   }
 
   const sentAt = new Date().toISOString();
-  let threadId = input.threadId;
+  let threadId = await verifiedThreadId(supabase, input);
   if (!threadId) {
     const thread = await ensureThread(supabase, {
       orgId: input.orgId,

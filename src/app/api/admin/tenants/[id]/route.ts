@@ -51,7 +51,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Billing permission required" }, { status: 403 });
     }
   }
-  if (parsed.data.lifecycleStatus === "suspended" && !adminCanSuspendTenants(admin.role)) {
+  if (parsed.data.lifecycleStatus && !adminCanSuspendTenants(admin.role)) {
     return NextResponse.json({ error: "Suspend permission required" }, { status: 403 });
   }
   if (parsed.data.notes != null && !adminCanEditNotes(admin.role)) {
