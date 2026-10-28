@@ -3,6 +3,9 @@ import { decryptToken, encryptToken } from "@/lib/social/crypto";
 import { getProvider } from "@/lib/social/providers";
 import type { SocialMediaItem, SocialPlatform } from "@/types";
 
+const PUBLISH_LEASE_PREFIX = "publishing:";
+const PUBLISH_LEASE_MS = 5 * 60 * 1000;
+
 export type PublishSummary = {
   ok: boolean;
   message: string;
@@ -29,12 +32,43 @@ export async function publishSocialPost(postId: string, orgId: string): Promise<
     return { ok: false, message: "Post not found.", results: [] };
   }
 
+  if (post.status === "published") {
+    return { ok: true, message: "This post is already published.", results: [] };
+  }
+
   const accountIds: string[] = Array.isArray(post.account_ids) ? post.account_ids.map(String) : [];
   if (accountIds.length === 0) {
     return { ok: false, message: "This post has no connected accounts to publish to.", results: [] };
   }
 
-  const { data: accounts } = await supabase.from("social_accounts").select("*").in("id", accountIds);
+  // The status column only allows draft/scheduled/published/failed, so a short
+  // lease in `last_error` plus a compare-and-set on `updated_at` stops the
+  // composer, the Social page flusher and cron from publishing the same post twice.
+  const leaseHeld =
+    typeof post.last_error === "string" &&
+    post.last_error.startsWith(PUBLISH_LEASE_PREFIX) &&
+    Date.now() - Date.parse(post.last_error.slice(PUBLISH_LEASE_PREFIX.length)) < PUBLISH_LEASE_MS;
+  const alreadyPublishing: PublishSummary = {
+    ok: false,
+    message: "This post is already being published.",
+    results: [],
+  };
+  if (leaseHeld) return alreadyPublishing;
+  const claimedAt = new Date().toISOString();
+  let claim = supabase
+    .from("social_posts")
+    .update({ last_error: `${PUBLISH_LEASE_PREFIX}${claimedAt}`, updated_at: claimedAt })
+    .eq("id", postId)
+    .eq("org_id", orgId);
+  claim = post.updated_at ? claim.eq("updated_at", post.updated_at) : claim.is("updated_at", null);
+  const { data: claimed } = await claim.select("id");
+  if (!claimed?.length) return alreadyPublishing;
+
+  const { data: accounts } = await supabase
+    .from("social_accounts")
+    .select("*")
+    .eq("org_id", orgId)
+    .in("id", accountIds);
 
   const results: PublishSummary["results"] = [];
 
@@ -49,56 +83,64 @@ export async function publishSocialPost(postId: string, orgId: string): Promise<
       continue;
     }
 
-    const { data: secret } = await supabase
-      .from("social_account_secrets")
-      .select("*")
-      .eq("account_id", accountId)
-      .maybeSingle();
-    if (!secret) {
-      results.push({ accountId, ok: false, error: "No stored credentials — reconnect this account" });
-      continue;
-    }
-
-    const provider = getProvider(account.platform as SocialPlatform);
-    let accessToken = decryptToken(String(secret.access_token));
-    let refreshToken = secret.refresh_token ? decryptToken(String(secret.refresh_token)) : undefined;
-
-    const expiresAt = secret.expires_at ? new Date(String(secret.expires_at)).getTime() : null;
-    if (expiresAt && expiresAt - Date.now() < 5 * 60 * 1000 && provider.refresh) {
-      const refreshed = await provider.refresh({
-        externalAccountId: String(account.external_account_id),
-        accessToken,
-        refreshToken,
-      });
-      if (refreshed) {
-        accessToken = refreshed.accessToken;
-        refreshToken = refreshed.refreshToken || refreshToken;
-        await supabase
-          .from("social_account_secrets")
-          .update({
-            access_token: encryptToken(accessToken),
-            refresh_token: refreshToken ? encryptToken(refreshToken) : null,
-            expires_at: refreshed.expiresAt || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("account_id", accountId);
+    try {
+      const { data: secret } = await supabase
+        .from("social_account_secrets")
+        .select("*")
+        .eq("account_id", accountId)
+        .maybeSingle();
+      if (!secret) {
+        results.push({ accountId, ok: false, error: "No stored credentials — reconnect this account" });
+        continue;
       }
+
+      const provider = getProvider(account.platform as SocialPlatform);
+      let accessToken = decryptToken(String(secret.access_token));
+      let refreshToken = secret.refresh_token ? decryptToken(String(secret.refresh_token)) : undefined;
+
+      const expiresAt = secret.expires_at ? new Date(String(secret.expires_at)).getTime() : null;
+      if (expiresAt && expiresAt - Date.now() < 5 * 60 * 1000 && provider.refresh) {
+        const refreshed = await provider.refresh({
+          externalAccountId: String(account.external_account_id),
+          accessToken,
+          refreshToken,
+        });
+        if (refreshed) {
+          accessToken = refreshed.accessToken;
+          refreshToken = refreshed.refreshToken || refreshToken;
+          await supabase
+            .from("social_account_secrets")
+            .update({
+              access_token: encryptToken(accessToken),
+              refresh_token: refreshToken ? encryptToken(refreshToken) : null,
+              expires_at: refreshed.expiresAt || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("account_id", accountId);
+        }
+      }
+
+      const result = await provider.publish(
+        { externalAccountId: String(account.external_account_id), accessToken, refreshToken },
+        {
+          caption: String(post.caption || ""),
+          media: Array.isArray(post.media) ? (post.media as SocialMediaItem[]) : [],
+          linkUrl: post.link_url ? String(post.link_url) : undefined,
+        },
+      );
+      results.push({ accountId, ok: result.ok, error: result.error });
+
+      await supabase
+        .from("social_accounts")
+        .update({ last_error: result.ok ? null : result.error, updated_at: new Date().toISOString() })
+        .eq("id", accountId);
+    } catch (error) {
+      results.push({
+        accountId,
+        ok: false,
+        error: error instanceof Error ? error.message : "Could not publish to this account",
+      });
     }
-
-    const result = await provider.publish(
-      { externalAccountId: String(account.external_account_id), accessToken, refreshToken },
-      {
-        caption: String(post.caption || ""),
-        media: Array.isArray(post.media) ? (post.media as SocialMediaItem[]) : [],
-        linkUrl: post.link_url ? String(post.link_url) : undefined,
-      },
-    );
-    results.push({ accountId, ok: result.ok, error: result.error });
-
-    await supabase
-      .from("social_accounts")
-      .update({ last_error: result.ok ? null : result.error, updated_at: new Date().toISOString() })
-      .eq("id", accountId);
   }
 
   const allOk = results.every((r) => r.ok);

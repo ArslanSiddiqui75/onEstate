@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { findLeadByPhone, findOrgIdsByPhone, recordInboundMessage } from "@/lib/messaging/service";
+import { applyLeadOptOut, isOptOutMessage } from "@/lib/messaging/opt-out";
 import { cancelNoReplyRuns } from "@/lib/automations/engine";
 import {
   assertTwilioSignature,
@@ -37,6 +38,9 @@ export async function POST(request: Request) {
         orgId: match.orgId,
         leadId: match.leadId,
       });
+      if (isOptOutMessage(body)) {
+        await applyLeadOptOut(supabase, { orgId: match.orgId, leadId: match.leadId });
+      }
     }
   }
 

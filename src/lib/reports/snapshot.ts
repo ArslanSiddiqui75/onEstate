@@ -1,3 +1,4 @@
+import { toCsv } from "@/lib/csv";
 export type SnapshotRange = "7d" | "30d" | "90d" | "all";
 
 export const SNAPSHOT_RANGES: { id: SnapshotRange; label: string }[] = [
@@ -39,15 +40,5 @@ export function countBy(
 }
 
 export function rowsToCsv(rows: string[][]): string {
-  return rows
-    .map((row) =>
-      row
-        .map((cell) => {
-          const s = String(cell ?? "");
-          if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-          return s;
-        })
-        .join(","),
-    )
-    .join("\n");
+  return toCsv(rows);
 }

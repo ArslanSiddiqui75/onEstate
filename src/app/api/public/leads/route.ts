@@ -17,7 +17,7 @@ const bodySchema = z.object({
   message: z.string().max(2000).optional(),
   type: z.enum(["buyer", "seller", "landlord", "tenant"]).optional(),
   /** Hidden field real users never fill in */
-  honeypot: z.string().max(0).optional(),
+  honeypot: z.string().max(200).optional(),
 });
 
 // Public endpoint, so keep a coarse per-IP ceiling. Resets on cold start, which
@@ -25,6 +25,13 @@ const bodySchema = z.object({
 const isRateLimited = createSlidingWindowLimiter({
   windowMs: 60_000,
   max: 5,
+});
+
+// Each submission can trigger an automated text or email, so cap a single
+// workspace as well as a single visitor.
+const isSiteRateLimited = createSlidingWindowLimiter({
+  windowMs: 60 * 60_000,
+  max: 60,
 });
 
 function clientIp(request: Request): string {
@@ -71,6 +78,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Site not found" }, { status: 404 });
   }
   const orgId = String(siteRow.org_id);
+  if (isSiteRateLimited(orgId)) {
+    return NextResponse.json(
+      { error: "This form is receiving a lot of enquiries — try again shortly" },
+      { status: 429 },
+    );
+  }
 
   const { data: org } = await supabase
     .from("organizations")
@@ -150,7 +163,7 @@ export async function POST(request: Request) {
 
   const { data: existingContacts } = await supabase
     .from("contacts")
-    .select("id, email, phone")
+    .select("id, email, phone, lead_id")
     .eq("org_id", orgId)
     .limit(400);
   const emailKey = (parsed.data.email || "").trim().toLowerCase();
@@ -162,18 +175,15 @@ export async function POST(request: Request) {
   });
 
   if (matched) {
-    await supabase
-      .from("contacts")
-      .update({
-        name: parsed.data.name.trim(),
-        email: parsed.data.email || matched.email,
-        phone: phone || matched.phone,
-        category: "lead",
-        lead_id: leadId,
-        notes: enquiryNote,
-        assigned_to: prepared.assignedTo || null,
-      })
-      .eq("id", matched.id);
+    // A public form must never rewrite an existing client's record: only fill
+    // blanks and link the new lead. The enquiry itself is kept on the lead.
+    const fill: Record<string, string> = {};
+    if (!matched.email && parsed.data.email) fill.email = parsed.data.email;
+    if (!matched.phone && phone) fill.phone = phone;
+    if (!matched.lead_id) fill.lead_id = leadId;
+    if (Object.keys(fill).length > 0) {
+      await supabase.from("contacts").update(fill).eq("id", matched.id);
+    }
   } else {
     const { data: contact } = await supabase
       .from("contacts")

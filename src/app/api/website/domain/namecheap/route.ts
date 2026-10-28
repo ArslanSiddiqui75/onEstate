@@ -15,6 +15,7 @@ import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { attachVercelDomain, checkCustomDomain } from "@/lib/website/domain";
 import { persistDomain } from "@/lib/website/persist-domain";
+import { normalizeHost } from "@/lib/website/slug";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -74,6 +75,7 @@ const postSchema = z.object({
   legalType: z.enum(["IND", "FIND", "LTD", "PLC", "LLP", "STRA", "OTHER", "RCHAR"]).optional(),
   companyId: z.string().max(32).optional(),
   contact: contactSchema.optional(),
+  expectedPrice: z.number().positive().max(10000).optional(),
 });
 
 async function contactFor(
@@ -127,6 +129,14 @@ async function finishConnection(orgId: string | undefined, domain: string) {
   return check;
 }
 
+async function orgClaimsDomain(orgId: string, domain: string) {
+  const supabase = createServiceSupabaseClient();
+  if (!supabase) return false;
+  const { data } = await supabase.from("websites").select("custom_domain").eq("org_id", orgId).maybeSingle();
+  const claimed = data?.custom_domain ? normalizeHost(String(data.custom_domain)) : "";
+  return Boolean(claimed) && claimed === normalizeHost(domain);
+}
+
 export async function POST(request: Request) {
   const { profile, denied } = await assertOwner(request);
   if (denied) return denied;
@@ -139,6 +149,14 @@ export async function POST(request: Request) {
   }
   try {
     if (parsed.data.action === "connect") {
+      // Domains live in the shared registrar account, so only the workspace that
+      // bought a domain may repoint it.
+      if (profile && !(await orgClaimsDomain(profile.orgId, parsed.data.domain))) {
+        return NextResponse.json(
+          { error: "That domain isn’t linked to your workspace. Buy it here first, or point your own domain with the records below." },
+          { status: 403 },
+        );
+      }
       const domain = await pointDomainAtWebsite(parsed.data.domain);
       const check = await finishConnection(profile?.orgId, domain);
       return NextResponse.json({
@@ -153,7 +171,14 @@ export async function POST(request: Request) {
     const bought = await buyDomain(contact, parsed.data.domain, {
       legalType: parsed.data.legalType,
       companyId: parsed.data.companyId,
+      expectedPrice: parsed.data.expectedPrice,
     });
+    // Record the purchase against this workspace before the slower connect steps,
+    // so a failure after the charge can be resumed instead of looking unpaid.
+    if (profile) {
+      const claimError = await persistDomain(profile.orgId, await checkCustomDomain(bought.domain), "namecheap");
+      if (claimError) console.error("Could not record domain purchase", bought.domain, claimError);
+    }
     const check = await finishConnection(profile?.orgId, bought.domain);
     return NextResponse.json({
       ok: true,
@@ -171,7 +196,7 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? publicNamecheapError(error.message) : "That domain request didn’t go through.";
     const status = /available yet/i.test(message)
       ? 503
-      : /before buying|company number|enter a |enter the domain|isn.t available|premium price/i.test(message)
+      : /before buying|company number|enter a |enter the domain|isn.t available|premium|price/i.test(message)
         ? 400
         : 502;
     return NextResponse.json({ error: message }, { status });

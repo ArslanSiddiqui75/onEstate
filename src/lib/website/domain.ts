@@ -222,6 +222,12 @@ export async function attachVercelDomain(host: string): Promise<{
     verified?: boolean;
     error?: { message?: string };
   };
+  if (!get.ok) {
+    return {
+      attached: false,
+      detail: getJson.error?.message || "That domain is already in use by another project.",
+    };
+  }
   return {
     attached: true,
     verified: Boolean(getJson.verified ?? addJson.verified),

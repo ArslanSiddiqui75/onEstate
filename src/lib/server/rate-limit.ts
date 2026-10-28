@@ -13,6 +13,11 @@ export function createSlidingWindowLimiter(input: {
     );
     hits.push(now);
     hitsByKey.set(key, hits);
+    if (hitsByKey.size > 5000) {
+      for (const [k, list] of hitsByKey) {
+        if (!list.some((at) => now - at < input.windowMs)) hitsByKey.delete(k);
+      }
+    }
     return hits.length > input.max;
   };
 }

@@ -10,6 +10,7 @@ describe("safeReturnTo", () => {
     expect(safeReturnTo("https://evil.example")).toBe("/app/settings/social");
     expect(safeReturnTo("//evil.example")).toBe("/app/settings/social");
     expect(safeReturnTo("/\\evil.example")).toBe("/app/settings/social");
+    expect(safeReturnTo("/\t/evil.example")).toBe("/app/settings/social");
   });
 });
 

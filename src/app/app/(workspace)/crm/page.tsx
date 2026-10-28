@@ -13,7 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
+import { downloadCsv, parseCsv, toCsv } from "@/lib/csv";
 import { findDuplicateLead } from "@/lib/crm/duplicates";
+import { isE164 } from "@/lib/phone/e164";
 import { buildPhoneContactMethod, formatDate, formatMoney, asErrorMessage } from "@/lib/utils";
 import { PhoneField } from "@/components/crm/phone-field";
 import { SequenceProgress } from "@/components/crm/sequence-panel";
@@ -235,25 +237,18 @@ export function CrmDesk({ view }: { view: CrmView }) {
     const headers = ["ID", "Name", "Email", "Phone", "Type", "Stage", "Score", "Source", "Budget", "Priority", "Created At"];
     const rows = leadsToExport.map((l) => [
       l.id,
-      `"${l.name.replace(/"/g, '""')}"`,
+      l.name,
       l.email || "",
       l.phone || "",
       l.type,
       l.stage,
       l.score,
-      `"${(l.source || "").replace(/"/g, '""')}"`,
+      l.source || "",
       l.budget || 0,
       l.priority || "medium",
       l.createdAt,
     ]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `leads_export_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadCsv(`leads_export_${new Date().toISOString().slice(0, 10)}.csv`, toCsv([headers, ...rows]));
     toast.success(`Exported ${leadsToExport.length} leads to CSV`);
   }
 
@@ -1514,19 +1509,41 @@ export function CrmDesk({ view }: { view: CrmView }) {
                 onClick={async () => {
                   setBusy(true);
                   try {
-                    const lines = csvText.trim().split("\n");
+                    const parsedRows = parseCsv(csvText);
+                    const hasHeader = parsedRows[0]?.[0]?.toLowerCase().includes("name");
+                    const dataLines = hasHeader ? parsedRows.slice(1) : parsedRows;
+                    const knownTypes: LeadType[] = ["buyer", "seller", "landlord", "tenant"];
                     let importedCount = 0;
-                    const hasHeader = lines[0].toLowerCase().includes("name");
-                    const dataLines = hasHeader ? lines.slice(1) : lines;
+                    const skipped: string[] = [];
+                    const known = [...leads];
 
-                    for (const line of dataLines) {
-                      const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-                      if (!cols[0]) continue;
+                    for (const cols of dataLines) {
+                      const name = cols[0];
+                      if (!name) continue;
+                      const email = (cols[1] || "").toLowerCase();
+                      const phone = cols[2] || "";
+                      if (!email && !phone) {
+                        skipped.push(`${name} (no email or phone)`);
+                        continue;
+                      }
+                      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        skipped.push(`${name} (invalid email)`);
+                        continue;
+                      }
+                      if (phone && !isE164(phone)) {
+                        skipped.push(`${name} (phone needs a country code)`);
+                        continue;
+                      }
+                      if (findDuplicateLead(known, { email, phone })) {
+                        skipped.push(`${name} (already a lead)`);
+                        continue;
+                      }
+                      const typeText = (cols[3] || "buyer").toLowerCase() as LeadType;
                       await addLead({
-                        name: cols[0],
-                        email: cols[1] || `imported_${Date.now()}@lead.com`,
-                        phone: cols[2] || "",
-                        type: (cols[3] as LeadType) || "buyer",
+                        name,
+                        email,
+                        phone,
+                        type: knownTypes.includes(typeText) ? typeText : "buyer",
                         stage: "new",
                         score: 0,
                         assignedTo: "",
@@ -1535,9 +1552,15 @@ export function CrmDesk({ view }: { view: CrmView }) {
                         budget: Number(cols[4]) || undefined,
                         nextAction: "Initial contact after import",
                       });
+                      known.push({ email, phone } as (typeof leads)[number]);
                       importedCount++;
                     }
-                    toast.success(`Successfully imported ${importedCount} leads`);
+                    if (skipped.length) {
+                      toast.warning(
+                        `Skipped ${skipped.length}: ${skipped.slice(0, 3).join(", ")}${skipped.length > 3 ? "…" : ""}`,
+                      );
+                    }
+                    toast.success(`Imported ${importedCount} lead${importedCount === 1 ? "" : "s"}`);
                     setCsvText("");
                     setShowCsvImport(false);
                   } catch (err) {

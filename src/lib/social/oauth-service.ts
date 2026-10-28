@@ -23,7 +23,7 @@ export function buildRedirectUri(origin: string, platform: SocialPlatform) {
 export function safeReturnTo(path: unknown) {
   if (typeof path !== "string") return "/app/settings/social";
   if (!path.startsWith("/") || path.startsWith("//")) return "/app/settings/social";
-  if (/[\r\n\\]/.test(path) || path.includes("://")) return "/app/settings/social";
+  if (/[\u0000-\u001f\u007f\\]/.test(path) || path.includes("://")) return "/app/settings/social";
   return path;
 }
 

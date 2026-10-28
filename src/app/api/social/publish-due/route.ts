@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
-  const denied = forbiddenIfNoModule(profile, "social", "view");
+  const denied = forbiddenIfNoModule(profile, "social", "edit");
   if (denied) return denied;
 
   const summary = await publishDuePosts(25, profile.orgId);

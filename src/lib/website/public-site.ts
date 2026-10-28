@@ -47,6 +47,18 @@ export async function findWebsiteRecord(
   const candidate = slugOrHost.trim();
   if (!candidate) return null;
   const host = normalizeHost(candidate);
+  // A host with a dot can only be a custom domain; slugs never contain dots.
+  // Resolve it first so a forged slug can never shadow a connected domain.
+  if (host.includes(".")) {
+    const { data: byHostFirst } = await supabase
+      .from("websites")
+      .select(columns)
+      .eq("custom_domain", host)
+      .limit(1);
+    const hostRow = byHostFirst?.[0] as Record<string, any> | undefined;
+    if (hostRow) return hostRow;
+    return null;
+  }
   const { data: bySlug } = await supabase
     .from("websites")
     .select(columns)

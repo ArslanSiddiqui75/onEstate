@@ -584,7 +584,7 @@ async function processRun(
 
   const { data: leadRow } = await supabase
     .from("leads")
-    .select("id, org_id, name, email, phone, stage, source, assigned_to, tags")
+    .select("id, org_id, name, email, phone, stage, source, assigned_to, tags, archived_at")
     .eq("id", run.lead_id)
     .eq("org_id", run.org_id)
     .maybeSingle();
@@ -603,6 +603,20 @@ async function processRun(
   }
 
   const lead = leadRow as LeadRow;
+  const leadRowMeta = leadRow as { archived_at?: string | null };
+  // Archived or lost leads must not keep receiving messages from parked runs.
+  if (leadRowMeta.archived_at || (lead.stage === "lost" && run.trigger !== "stage_changed")) {
+    await supabase
+      .from("automation_runs")
+      .update({
+        status: "cancelled",
+        last_error: leadRowMeta.archived_at ? "Lead was archived" : "Lead was marked lost",
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", run.id);
+    return "failed";
+  }
   let stepIndex = run.step_index;
   let executed = 0;
 
@@ -699,6 +713,21 @@ export async function processAutomationRuns(
     // Parked wait-steps should still resume if the silence scan fails.
   }
 
+  // A run left `running` by a timed-out function would otherwise be invisible
+  // forever. Fail it rather than re-run it, so a half-sent step isn't repeated.
+  let stuck = supabase
+    .from("automation_runs")
+    .update({
+      status: "failed",
+      last_error: "Timed out while running",
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("status", "running")
+    .lt("started_at", new Date(Date.now() - 10 * 60_000).toISOString());
+  if (options.orgId) stuck = stuck.eq("org_id", options.orgId);
+  await stuck;
+
   let query = supabase
     .from("automation_runs")
     .select("id, org_id, automation_id, lead_id, trigger, status, step_index, context")
@@ -723,14 +752,19 @@ export async function processAutomationRuns(
 
   for (const row of runs) {
     const run = row as RunRow;
-    await supabase
+    // Compare-and-set: the cron, the CRM page and trigger calls can overlap, and
+    // only the caller that flips the status may send this run's messages.
+    const { data: claimed } = await supabase
       .from("automation_runs")
       .update({
         status: "running",
         started_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", run.id);
+      .eq("id", run.id)
+      .in("status", ["pending", "waiting"])
+      .select("id");
+    if (!claimed?.length) continue;
 
     let outcome: "completed" | "waiting" | "failed";
     try {

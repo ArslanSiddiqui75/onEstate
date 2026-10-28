@@ -402,20 +402,31 @@ export async function pointDomainAtWebsite(domain: string) {
 export async function buyDomain(
   contact: RegistrantContact,
   domain: string,
-  options?: { legalType?: string; companyId?: string },
+  options?: { legalType?: string; companyId?: string; expectedPrice?: number },
 ) {
   const parts = splitRegistrableDomain(domain);
   if (!parts) throw new Error("Enter a domain such as northbridge.co.uk.");
   const checked = await callNamecheap("namecheap.domains.check", { DomainList: parts.domain });
   const quote = quotesFromCheckXml(checked, new Map())[0];
   if (!quote?.available) throw new Error("That domain isn’t available.");
-  const standard = quote.premium ? null : await priceFor(parts.tld);
-  const premiumPrice = quote.premium ? money(elementsNamed(checked, "DomainCheckResult")[0]?.PremiumRegistrationPrice) : null;
-  if (quote.premium && !premiumPrice) throw new Error("That premium price isn’t available yet.");
+  if (quote.premium) {
+    throw new Error("Premium domains can’t be bought here. Choose a standard domain.");
+  }
+  const standard = await priceFor(parts.tld);
+  if (!standard) throw new Error("We couldn’t confirm the price for that domain. Try again shortly.");
+  const maxPrice = Number(process.env.NAMECHEAP_MAX_PRICE || 60);
+  if (standard.amount > maxPrice) {
+    throw new Error("That domain is above the price limit. Choose another extension.");
+  }
+  if (
+    typeof options?.expectedPrice !== "number" ||
+    Math.abs(options.expectedPrice - standard.amount) > 0.01
+  ) {
+    throw new Error("The price changed. Search again to see the current price before buying.");
+  }
   const params = registrationParams(contact, parts.domain, {
     legalType: options?.legalType,
     companyId: options?.companyId,
-    premiumPrice: premiumPrice || undefined,
   });
   let xml: string;
   try {
@@ -444,7 +455,7 @@ export async function buyDomain(
   return {
     domain: (created.Domain || parts.domain).toLowerCase(),
     chargedAmount: money(created.ChargedAmount),
-    currency: quote.premium ? "USD" : standard?.currency || "USD",
+    currency: standard.currency || "USD",
     dnsReady,
     dnsError,
   };

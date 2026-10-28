@@ -32,7 +32,7 @@ const LEGAL_TYPES = [
 ] as const;
 
 function formatPrice(amount: number | null, currency: string) {
-  if (amount === null) return "Price at checkout";
+  if (amount === null) return "Price unavailable";
   try {
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
@@ -105,7 +105,14 @@ export function NamecheapDomains({
     }
   }
 
-  async function buy(domain: string) {
+  async function buy(domain: string, price: number | null, currency: string) {
+    if (price === null) {
+      setError("The price isn’t available right now. Search again in a moment.");
+      return;
+    }
+    if (!window.confirm(`Buy ${domain} for ${formatPrice(price, currency)} for the first year? This is charged immediately.`)) {
+      return;
+    }
     if (needsUkDetails(domain) && requiresCompanyNumber(legalType) && !companyId.trim()) {
       setError("A company number is required for that registrant type.");
       return;
@@ -120,6 +127,7 @@ export function NamecheapDomains({
         body: JSON.stringify({
           action: "buy",
           domain,
+          expectedPrice: price,
           legalType: needsUkDetails(domain) ? legalType : undefined,
           companyId: companyId.trim() || undefined,
           contact: {
@@ -239,8 +247,8 @@ export function NamecheapDomains({
                 <Button
                   type="button"
                   size="sm"
-                  disabled={busy !== null}
-                  onClick={() => void buy(row.domain)}
+                  disabled={busy !== null || row.price === null || row.premium}
+                  onClick={() => void buy(row.domain, row.price, row.currency)}
                 >
                   {buying === row.domain ? "Buying…" : "Buy and connect"}
                 </Button>

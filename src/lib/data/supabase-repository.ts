@@ -26,7 +26,7 @@ import type { WorkspaceOrg, WorkspaceSnapshot, WorkspaceUser } from "@/lib/data/
 import { newId } from "@/lib/data/workspace-store";
 import { toast } from "@/components/ui/toast";
 import { assertCanPublishWebsite } from "@/lib/website/publish";
-import { fallbackSlug, normalizeHost } from "@/lib/website/slug";
+import { fallbackSlug, normalizeHost, slugify } from "@/lib/website/slug";
 import { asErrorMessage } from "@/lib/utils";
 import { ensureDefaultSequences } from "@/lib/sequences/ensure";
 import { mapSequenceRow } from "@/lib/sequences/catalog";
@@ -1434,7 +1434,7 @@ export function createSupabaseRepository(
       }
       // `slug`, `custom_domain` and `published` are also written as columns
       // because the public renderer resolves a host without reading payloads.
-      const slug = site.slug?.trim() || fallbackSlug(ctx.org.id, ctx.org.name);
+      const slug = slugify(site.slug ?? "") || fallbackSlug(ctx.org.id, ctx.org.name);
       const payload = { ...site, slug, orgId: ctx.org.id, id: ctx.org.id };
       const { error } = await supabase.from("websites").upsert(
         {
