@@ -12,6 +12,7 @@ import {
   type RegistrantContact,
 } from "@/lib/namecheap/domains";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { workspaceBlocked } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { attachVercelDomain, checkCustomDomain } from "@/lib/website/domain";
 import { persistDomain } from "@/lib/website/persist-domain";
@@ -140,6 +141,9 @@ async function orgClaimsDomain(orgId: string, domain: string) {
 export async function POST(request: Request) {
   const { profile, denied } = await assertOwner(request);
   if (denied) return denied;
+  if (profile && workspaceBlocked(profile)) {
+    return NextResponse.json({ error: "Update billing before buying a domain." }, { status: 402 });
+  }
   if (!isNamecheapConfigured()) {
     return NextResponse.json({ error: UNAVAILABLE }, { status: 503 });
   }
@@ -166,6 +170,17 @@ export async function POST(request: Request) {
         ssl: check.ssl,
         message: check.message,
       });
+    }
+    if (profile) {
+      const db = createServiceSupabaseClient();
+      const { data: site } = await db!.from("websites").select("payload").eq("org_id", profile.orgId).maybeSingle();
+      const payload = (site?.payload || {}) as { customDomain?: string; domainRegistrar?: string };
+      if (payload.customDomain && payload.domainRegistrar === "namecheap") {
+        return NextResponse.json(
+          { error: `This workspace already bought ${payload.customDomain}. Remove it before buying another.` },
+          { status: 409 },
+        );
+      }
     }
     const contact = await contactFor(profile, parsed.data.contact, marketFrom(parsed.data.contact?.country === "US" ? "us" : "uk"));
     const bought = await buyDomain(contact, parsed.data.domain, {

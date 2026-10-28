@@ -48,7 +48,7 @@ export function ImpersonationBanner() {
             try {
               await fetch("/api/admin/impersonate", { method: "DELETE" });
               const supabase = createBrowserSupabaseClient();
-              if (supabase) await supabase.auth.signOut();
+              if (supabase) await supabase.auth.signOut({ scope: "local" });
               router.push("/admin");
             } finally {
               setBusy(false);

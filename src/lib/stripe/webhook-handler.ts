@@ -36,10 +36,12 @@ async function applyBillingPatch(
   patch: BillingPatch,
   audit: { action: string; entityId?: string | null; metadata?: Record<string, unknown> },
 ) {
-  await supabase
+  const { error: updateError } = await supabase
     .from("organizations")
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("id", orgId);
+  // Surface the failure so Stripe retries instead of treating it as delivered.
+  if (updateError) throw new Error(`Billing update failed: ${updateError.message}`);
 
   if (patch.subscription_status) {
     await syncLifecycleFromSubscription(supabase, orgId, patch.subscription_status);
@@ -140,7 +142,10 @@ export async function handleStripeWebhook(request: Request, only?: Market) {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
-      const orgId = session.metadata?.org_id || session.client_reference_id || null;
+      const reference = session.client_reference_id || "";
+      const orgId =
+        session.metadata?.org_id ||
+        (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(reference) ? reference : null);
       const subscriptionId =
         typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
       const customerId =
@@ -171,6 +176,15 @@ export async function handleStripeWebhook(request: Request, only?: Market) {
         typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
       const orgId =
         subscription.metadata?.org_id || (await orgIdForCustomer(supabase, customerId));
+      if (orgId && event.type === "customer.subscription.updated") {
+        // A late "updated" event must not revive a subscription that has since ended.
+        const { data: current } = await supabase
+          .from("organizations")
+          .select("subscription_status, stripe_subscription_id")
+          .eq("id", orgId)
+          .maybeSingle();
+        if (current?.subscription_status === "canceled" && current.stripe_subscription_id === subscription.id) break;
+      }
       if (orgId) {
         await applyBillingPatch(supabase, orgId, subscriptionPatch(subscription), {
           action: `subscription.${event.type === "customer.subscription.created" ? "created" : "updated"}`,

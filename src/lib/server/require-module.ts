@@ -36,11 +36,24 @@ export function profileCanAccess(
   );
 }
 
+/** Admin-suspended, cancelled and unpaid workspaces keep billing access only. */
+const BLOCKED_WORKSPACE_STATUSES = new Set(["paused", "canceled", "unpaid", "incomplete_expired"]);
+
+export function workspaceBlocked(profile: Pick<RequestProfile, "subscriptionStatus">): boolean {
+  return Boolean(profile.subscriptionStatus && BLOCKED_WORKSPACE_STATUSES.has(profile.subscriptionStatus));
+}
+
 export function forbiddenIfNoModule(
   profile: RequestProfile,
   module: ModuleId,
   required: AccessLevel,
 ): NextResponse | null {
+  if (module !== "billing" && workspaceBlocked(profile)) {
+    return NextResponse.json(
+      { error: "This workspace is paused. Update billing or contact support to continue." },
+      { status: 402 },
+    );
+  }
   if (profileCanAccess(profile, module, required)) return null;
   return NextResponse.json(
     { error: "You do not have access to this action" },
@@ -66,6 +79,12 @@ export function forbiddenIfNoAnyModule(
   profile: RequestProfile,
   checks: Array<[ModuleId, AccessLevel]>,
 ): NextResponse | null {
+  if (workspaceBlocked(profile) && !checks.some(([module]) => module === "billing")) {
+    return NextResponse.json(
+      { error: "This workspace is paused. Update billing or contact support to continue." },
+      { status: 402 },
+    );
+  }
   if (checks.some(([module, required]) => profileCanAccess(profile, module, required))) {
     return null;
   }

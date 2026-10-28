@@ -89,7 +89,7 @@ export async function POST(request: Request) {
   }
 
   const email = parsed.data.email.trim().toLowerCase();
-  const name = parsed.data.name.trim();
+  const name = parsed.data.name.replace(/[\r\n]+/g, " ").trim();
   const role = parsed.data.role as Role;
 
   const { data: duplicateInvite } = await supabase

@@ -40,7 +40,8 @@ export function unauthorizedCronResponse(
 
   const url = new URL(request.url);
   const headerSecret = request.headers.get("x-cron-secret");
-  const querySecret = url.searchParams.get("secret");
+  // A secret in the URL ends up in access logs, so it is only accepted outside production.
+  const querySecret = production ? null : url.searchParams.get("secret");
   const auth = request.headers.get("authorization");
   const bearer = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
 

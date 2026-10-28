@@ -364,7 +364,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
                   onClick={() => {
                     try {
                       const supabase = createBrowserSupabaseClient();
-                      void supabase.auth.signOut().then(() => setOrgSessionEmail(null));
+                      void supabase.auth.signOut({ scope: "local" }).then(() => setOrgSessionEmail(null));
                     } catch {
                       setOrgSessionEmail(null);
                     }

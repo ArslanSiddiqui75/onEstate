@@ -102,6 +102,14 @@ export async function POST(request: Request) {
     );
   }
 
+  // A cancelled subscription can't be updated: the tenant starts a fresh checkout.
+  if (existingSubscriptionId) {
+    const known = await stripe.subscriptions.retrieve(existingSubscriptionId).catch(() => null);
+    if (!known || known.status === "canceled" || known.status === "incomplete_expired") {
+      existingSubscriptionId = null;
+    }
+  }
+
   // Tenant already has a live subscription — swap the price on it instead of
   // starting a second, duplicate subscription every time they change plans.
   if (existingSubscriptionId && supabase) {

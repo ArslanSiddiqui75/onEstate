@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isE164 } from "@/lib/phone/e164";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { workspaceBlocked } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import {
   buyNumber,
@@ -60,8 +61,19 @@ const buySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const { denied } = await assertOwner(request);
+  const { profile, denied } = await assertOwner(request);
   if (denied) return denied;
+  if (profile && workspaceBlocked(profile)) {
+    return NextResponse.json({ error: "Update billing before buying a number." }, { status: 402 });
+  }
+  const db = createServiceSupabaseClient();
+  if (profile && db) {
+    // One number per workspace keeps platform costs predictable and inbound texts routable.
+    const { data: org } = await db.from("organizations").select("phone_number").eq("id", profile.orgId).maybeSingle();
+    if (org?.phone_number) {
+      return NextResponse.json({ error: "This workspace already has a phone number." }, { status: 409 });
+    }
+  }
   const json = await request.json().catch(() => null);
   const parsed = buySchema.safeParse(json);
   if (!parsed.success) {
@@ -69,6 +81,10 @@ export async function POST(request: Request) {
   }
   try {
     const phoneNumber = await buyNumber(parsed.data.phoneNumber);
+    if (profile && db) {
+      // Record it server-side straight away so the number is tied to this workspace.
+      await db.from("organizations").update({ phone_number: phoneNumber }).eq("id", profile.orgId);
+    }
     return NextResponse.json({ ok: true, phoneNumber });
   } catch {
     return NextResponse.json({ error: "Could not buy that number." }, { status: 500 });

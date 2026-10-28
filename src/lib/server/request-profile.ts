@@ -8,6 +8,7 @@ export interface RequestProfile {
   orgId: string;
   role: string;
   plan: string;
+  subscriptionStatus?: string;
   moduleAccess?: ModuleGrants;
 }
 
@@ -31,13 +32,15 @@ export async function resolveProfileFromRequest(
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, org_id, role, module_access, organizations(plan)")
+    .select("id, org_id, role, module_access, organizations(plan, subscription_status)")
     .eq("id", userData.user.id)
     .maybeSingle();
   if (!profile) return null;
 
-  const orgJoin = profile.organizations as { plan?: string } | { plan?: string }[] | null;
-  const plan = Array.isArray(orgJoin) ? orgJoin[0]?.plan : orgJoin?.plan;
+  type OrgJoin = { plan?: string; subscription_status?: string | null };
+  const orgJoin = profile.organizations as OrgJoin | OrgJoin[] | null;
+  const org = Array.isArray(orgJoin) ? orgJoin[0] : orgJoin;
+  const plan = org?.plan;
 
   return {
     userId: String(userData.user.id),
@@ -45,6 +48,7 @@ export async function resolveProfileFromRequest(
     orgId: String(profile.org_id),
     role: String(profile.role),
     plan: String(plan || "solo"),
+    subscriptionStatus: org?.subscription_status ? String(org.subscription_status) : undefined,
     moduleAccess: readModuleGrants(profile.module_access),
   };
 }
