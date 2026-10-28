@@ -73,6 +73,11 @@ export default async function PortalPage({
               Check the details and send that again.
             </p>
           ) : null}
+          {error === "unavailable" ? (
+            <p className="mt-6 rounded-[1.25rem] bg-[var(--danger-soft)] px-4 py-3 text-sm font-medium" role="status">
+              The office can’t take this from the link yet. Contact them directly.
+            </p>
+          ) : null}
           {done === "approved" || portal.approvedAt ? (
             <p className="mt-6 rounded-[1.25rem] bg-[var(--success-soft)] px-4 py-3 text-sm font-medium" role="status">
               {portal.role === "landlord" ? "Repair approval received." : "Listing approval received."}

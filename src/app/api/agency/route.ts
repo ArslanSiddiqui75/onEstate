@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { fileServerApproval, fileServerBooking, fileServerOffer, fileServerPortal, readAgencyInbox } from "@/lib/agency/server-inbox";
 import { appRedirectUrl } from "@/lib/http/same-origin";
-import { demoInboxJson } from "@/lib/server/demo-inbox";
+import { demoInboxEnabled, demoInboxJson } from "@/lib/server/demo-inbox";
 import type { AppointmentKind } from "@/lib/agency/types";
 
 function redirectTo(request: Request, path: string, query: Record<string, string>) {
@@ -27,6 +27,13 @@ export async function POST(request: Request) {
   }
   const action = String(raw.action || "book");
   const token = String(raw.token || raw.bookToken || "harbour");
+  if (!demoInboxEnabled()) {
+    if (formPost) {
+      const path = action === "book" ? `/book/${encodeURIComponent(token)}` : `/portal/${encodeURIComponent(token)}`;
+      return redirectTo(request, path, { error: "unavailable" });
+    }
+    return NextResponse.json({ error: "The office can't receive this yet." }, { status: 503 });
+  }
   try {
     if (action === "register") {
       const portal = fileServerPortal({

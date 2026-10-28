@@ -36,41 +36,55 @@ export function phoneLookupVariants(raw: string): string[] {
   return [...variants];
 }
 
+/** Brokerages whose bought number is this inbound `To`. More than one means we will not guess. */
+export async function findOrgIdsByPhone(
+  supabase: SupabaseClient,
+  to: string,
+): Promise<string[]> {
+  const variants = phoneLookupVariants(to);
+  if (!variants.length) return [];
+  const { data } = await supabase
+    .from("organizations")
+    .select("id")
+    .in("phone_number", variants);
+  return [...new Set((data || []).map((row) => String(row.id)))];
+}
+
 export async function findLeadByPhone(
   supabase: SupabaseClient,
   from: string,
+  orgId: string,
 ): Promise<{ leadId: string; orgId: string } | null> {
   const variants = phoneLookupVariants(from);
-  if (!variants.length) return null;
+  if (!variants.length || !orgId) return null;
 
-  const { data: phoneRow } = await supabase
+  const { data: phoneRows } = await supabase
     .from("lead_phone_numbers")
-    .select("lead_id, org_id")
+    .select("lead_id")
+    .eq("org_id", orgId)
     .in("number", variants)
-    .limit(1)
-    .maybeSingle();
+    .limit(5);
 
-  if (phoneRow) {
-    return {
-      leadId: String(phoneRow.lead_id),
-      orgId: String(phoneRow.org_id),
-    };
+  const phoneLeadIds = [...new Set((phoneRows || []).map((row) => String(row.lead_id)))];
+  if (phoneLeadIds.length === 1) {
+    return { leadId: phoneLeadIds[0], orgId };
   }
+  if (phoneLeadIds.length > 1) return null;
 
-  // Fallback: primary phone on leads row (older rows / imports)
   const { data: leadRows } = await supabase
     .from("leads")
-    .select("id, org_id, phone")
+    .select("id, phone")
+    .eq("org_id", orgId)
     .not("phone", "is", null);
 
+  const matches: string[] = [];
   for (const row of leadRows || []) {
-    const leadPhone = String(row.phone || "");
-    const leadVariants = phoneLookupVariants(leadPhone);
-    if (leadVariants.some((v) => variants.includes(v))) {
-      return { leadId: String(row.id), orgId: String(row.org_id) };
+    const leadVariants = phoneLookupVariants(String(row.phone || ""));
+    if (leadVariants.some((variant) => variants.includes(variant))) {
+      matches.push(String(row.id));
     }
   }
-
+  if (matches.length === 1) return { leadId: matches[0], orgId };
   return null;
 }
 

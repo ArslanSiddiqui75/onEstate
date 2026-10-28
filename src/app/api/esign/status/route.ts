@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { forbiddenIfNoModule, profileCanAccess } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { listEsignDocuments } from "@/lib/esign/service";
 import { getEsignCapabilities } from "@/lib/esign/capabilities";
@@ -21,6 +22,8 @@ export async function GET(request: Request) {
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
+  const denied = forbiddenIfNoModule(profile, "transactions", "view");
+  if (denied) return denied;
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
@@ -35,6 +38,7 @@ export async function GET(request: Request) {
   const documents = await listEsignDocuments(supabase, {
     orgId: profile.orgId,
     dealId,
+    includeSignToken: profileCanAccess(profile, "transactions", "edit"),
   });
 
   return NextResponse.json({

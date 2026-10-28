@@ -88,7 +88,7 @@ export async function PUT(request: Request) {
       ciphertext = encryptToken(parsed.data.apiKey.trim());
     } catch {
       return NextResponse.json(
-        { error: "SOCIAL_TOKEN_ENCRYPTION_KEY is not set; cannot store portal API keys" },
+        { error: "Portal keys can’t be stored yet." },
         { status: 503 },
       );
     }

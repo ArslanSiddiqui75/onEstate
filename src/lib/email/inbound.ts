@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readEmailDomain } from "@/lib/email/domain-model";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -78,6 +79,30 @@ function isLeadTag(value: string) {
   return UUID_RE.test(value) || LOCAL_LEAD_RE.test(value);
 }
 
+export function recipientDomains(addresses: string[]): string[] {
+  const domains = new Set<string>();
+  for (const raw of addresses) {
+    const email = bareEmail(raw);
+    const at = email.lastIndexOf("@");
+    if (at > 0 && at < email.length - 1) domains.add(email.slice(at + 1));
+  }
+  return [...domains];
+}
+
+/** Verified brokerage domains only. A shared or unknown domain matches nobody. */
+export function orgIdsForInboundDomains(
+  rows: { id: string; emailDomain: unknown }[],
+  domains: string[],
+): string[] {
+  const wanted = new Set(domains.map((domain) => domain.toLowerCase()));
+  const ids: string[] = [];
+  for (const row of rows) {
+    const parsed = readEmailDomain(row.emailDomain);
+    if (parsed?.status === "verified" && wanted.has(parsed.domain)) ids.push(row.id);
+  }
+  return [...new Set(ids)];
+}
+
 export function extractLeadTag(addresses: string[]): string | null {
   for (const raw of addresses) {
     const email = bareEmail(raw);
@@ -137,46 +162,63 @@ export async function fetchReceivedEmail(
   };
 }
 
+async function leadInOrg(supabase: SupabaseClient, leadId: string, orgId: string) {
+  const { data } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("id", leadId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+  return data ? { leadId: String(data.id), orgId } : null;
+}
+
 export async function findLeadForInboundEmail(
   supabase: SupabaseClient,
   meta: InboundEmailMeta,
 ): Promise<{ leadId: string; orgId: string } | null> {
-  const tag = extractLeadTag([...meta.receivedFor, ...meta.to]);
-  if (tag) {
-    const { data } = await supabase
+  const addresses = [...meta.receivedFor, ...meta.to];
+  const domains = recipientDomains(addresses);
+  const { data: orgs } = await supabase.from("organizations").select("id, email_domain");
+  const orgIds = orgIdsForInboundDomains(
+    (orgs || []).map((row) => ({ id: String(row.id), emailDomain: row.email_domain })),
+    domains,
+  );
+  const tag = extractLeadTag(addresses);
+
+  if (orgIds.length > 1) return null;
+
+  if (orgIds.length === 1) {
+    const orgId = orgIds[0];
+    if (tag) return leadInOrg(supabase, tag, orgId);
+
+    const from = bareEmail(meta.from);
+    if (!from) return null;
+    const { data: leads } = await supabase
       .from("leads")
-      .select("id, org_id")
-      .eq("id", tag)
+      .select("id")
+      .eq("org_id", orgId)
+      .ilike("email", from)
+      .limit(20);
+    if (!leads?.length) return null;
+    if (leads.length === 1) return { leadId: String(leads[0].id), orgId };
+
+    const ids = leads.map((row) => String(row.id));
+    const { data: thread } = await supabase
+      .from("conversation_threads")
+      .select("lead_id")
+      .eq("org_id", orgId)
+      .in("lead_id", ids)
+      .order("last_message_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
-    if (data) {
-      return { leadId: String(data.id), orgId: String(data.org_id) };
-    }
+    if (!thread) return null;
+    return { leadId: String(thread.lead_id), orgId };
   }
 
-  const from = bareEmail(meta.from);
-  if (!from) return null;
-
-  const { data: leads } = await supabase
-    .from("leads")
-    .select("id, org_id, email")
-    .ilike("email", from)
-    .limit(20);
-  if (!leads?.length) return null;
-  if (leads.length === 1) {
-    return { leadId: String(leads[0].id), orgId: String(leads[0].org_id) };
-  }
-
-  const ids = leads.map((row) => String(row.id));
-  const { data: thread } = await supabase
-    .from("conversation_threads")
-    .select("lead_id, org_id, last_message_at")
-    .in("lead_id", ids)
-    .order("last_message_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (thread) {
-    return { leadId: String(thread.lead_id), orgId: String(thread.org_id) };
-  }
-
-  return { leadId: String(leads[0].id), orgId: String(leads[0].org_id) };
+  // Platform reply address, not a brokerage domain. The lead id in the
+  // address is the only safe route; never scan every org by From.
+  if (!tag) return null;
+  const { data } = await supabase.from("leads").select("id, org_id").eq("id", tag).maybeSingle();
+  if (!data) return null;
+  return { leadId: String(data.id), orgId: String(data.org_id) };
 }

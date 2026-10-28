@@ -273,11 +273,21 @@ export function createSupabaseRepository(
     },
 
     async saveLeadRouting(settings) {
-      const { error } = await supabase
-        .from("organizations")
-        .update({ lead_routing: settings })
-        .eq("id", ctx.org.id);
-      if (error) throw error;
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      if (!token) throw new Error("Sign in required");
+      const res = await fetch("/api/crm/routing", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(settings),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(json?.error || "Could not save lead routing.");
+      }
       ctx.org.leadRouting = settings;
       return ctx.org;
     },

@@ -97,11 +97,14 @@ export function ReportDesk({
           }),
         });
         const json = (await res.json()) as { repair?: Repair; error?: string };
+        if (res.status === 503) {
+          throw new Error(json.error || "The office can't receive this report yet.");
+        }
         if (!res.ok || !json.repair) throw new Error(json.error || "Could not send that report.");
         setRepair(json.repair);
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
-        if (/sentence|recognised|room|photo/i.test(message)) throw err;
+        if (/can't receive|sentence|recognised|room|photo/i.test(message)) throw err;
         const result = submitPublicReport(token, { roomId: room, body, channel, photo });
         setRepair(result.repair);
         setProperty(result.property);
@@ -124,6 +127,10 @@ export function ReportDesk({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action: "confirm", token, reference: confirmRef, tenantName }),
       });
+      if (res.status === 503) {
+        setError("The office can't receive this yet.");
+        return;
+      }
       if (!res.ok) {
         confirmPublicRepair(token, confirmRef, tenantName);
       }
@@ -144,6 +151,10 @@ export function ReportDesk({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action: "sign", token, inspectionId: inspection.id, tenantName }),
       });
+      if (res.status === 503) {
+        setError("The office can't receive this yet.");
+        return;
+      }
       if (!res.ok) signPublicInspection(token, inspection.id, tenantName);
       setInspections((current) =>
         current.map((item) =>

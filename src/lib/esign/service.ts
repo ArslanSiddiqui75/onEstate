@@ -34,7 +34,10 @@ function newToken() {
   return randomBytes(24).toString("hex");
 }
 
-function mapDoc(row: Record<string, unknown>): TransactionEsignDocument {
+function mapDoc(
+  row: Record<string, unknown>,
+  options?: { includeSignToken?: boolean },
+): TransactionEsignDocument {
   return {
     id: String(row.id),
     dealId: String(row.transaction_id),
@@ -43,7 +46,8 @@ function mapDoc(row: Record<string, unknown>): TransactionEsignDocument {
     status: (row.status as EsignDocStatus) || "draft",
     signerName: row.signer_name ? String(row.signer_name) : undefined,
     signerEmail: row.signer_email ? String(row.signer_email) : undefined,
-    signToken: row.sign_token ? String(row.sign_token) : undefined,
+    signToken:
+      options?.includeSignToken && row.sign_token ? String(row.sign_token) : undefined,
     summary: row.summary ? String(row.summary) : undefined,
     provider: row.provider ? String(row.provider) : undefined,
     sentAt: row.sent_at ? String(row.sent_at) : undefined,
@@ -54,7 +58,7 @@ function mapDoc(row: Record<string, unknown>): TransactionEsignDocument {
 
 export async function listEsignDocuments(
   supabase: SupabaseClient,
-  input: { orgId: string; dealId: string },
+  input: { orgId: string; dealId: string; includeSignToken?: boolean },
 ): Promise<TransactionEsignDocument[]> {
   const { data, error } = await supabase
     .from("transaction_documents")
@@ -63,7 +67,9 @@ export async function listEsignDocuments(
     .eq("transaction_id", input.dealId)
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  return (data || []).map((row) => mapDoc(row as Record<string, unknown>));
+  return (data || []).map((row) =>
+    mapDoc(row as Record<string, unknown>, { includeSignToken: input.includeSignToken }),
+  );
 }
 
 export async function requestEsign(
@@ -157,7 +163,7 @@ export async function requestEsign(
 
   return {
     ok: true,
-    document: mapDoc(created as Record<string, unknown>),
+    document: mapDoc(created as Record<string, unknown>, { includeSignToken: true }),
     signUrl,
     mode: caps.mode,
     emailed,

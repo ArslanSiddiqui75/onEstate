@@ -68,6 +68,11 @@ export default async function BookPage({
           Add your name, a property, and a time, then send it again.
         </p>
       ) : null}
+      {error === "unavailable" ? (
+        <p className="mt-6 rounded-[1.25rem] bg-[var(--danger-soft)] px-4 py-3 text-sm font-medium" role="status">
+          The office can’t take this request from the link yet. Call them instead.
+        </p>
+      ) : null}
 
       {appointment ? (
         <section className="mt-6 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-elevated)] p-5" role="status">

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { appRedirectUrl } from "@/lib/http/same-origin";
+import { demoInboxEnabled } from "@/lib/server/demo-inbox";
 import {
   fileServerConfirmation,
   fileServerInspectionSign,
@@ -31,6 +32,10 @@ export async function POST(request: Request) {
 
   const token = String(raw.token || "");
   const action = String(raw.action || "report");
+  if (!demoInboxEnabled()) {
+    if (formPost) return redirectTo(request, token || "unknown", { error: "unavailable" });
+    return NextResponse.json({ error: "The office can't receive this report yet." }, { status: 503 });
+  }
   try {
     if (!token) throw new Error("This repair link is not recognised.");
     if (action === "confirm") {

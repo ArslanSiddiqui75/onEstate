@@ -142,9 +142,7 @@ export async function POST(request: Request) {
     console.error("[upload-media] createSignedUploadUrl error:", error);
     return NextResponse.json(
       {
-        error: error?.message?.includes("Bucket not found")
-          ? "The 'social-media' Storage bucket does not exist. Create it in the Supabase dashboard (Storage → New bucket, name: social-media, public: enabled)."
-          : error?.message || "Could not create upload URL",
+        error: "This upload isn’t available right now.",
       },
       { status: 502 },
     );
@@ -213,9 +211,7 @@ async function handleLegacyMultipart(
     console.error("[upload-media] legacy storage upload error:", uploadError);
     return NextResponse.json(
       {
-        error: uploadError.message.includes("Bucket not found")
-          ? "The 'social-media' Storage bucket does not exist. Create it in the Supabase dashboard (Storage → New bucket, name: social-media, public: enabled)."
-          : uploadError.message,
+        error: "This upload isn’t available right now.",
       },
       { status: 502 },
     );

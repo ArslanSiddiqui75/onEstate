@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
-import { findLeadByPhone, recordInboundMessage } from "@/lib/messaging/service";
+import { findLeadByPhone, findOrgIdsByPhone, recordInboundMessage } from "@/lib/messaging/service";
 import { cancelNoReplyRuns } from "@/lib/automations/engine";
 import {
   assertTwilioSignature,
@@ -13,6 +13,7 @@ export async function POST(request: Request) {
   if (unauthorized) return unauthorized;
 
   const from = String(params.From || "");
+  const to = String(params.To || "");
   const body = String(params.Body || "");
   const sid = String(params.MessageSid || "");
 
@@ -22,7 +23,8 @@ export async function POST(request: Request) {
 
   const supabase = createServiceSupabaseClient();
   if (supabase) {
-    const match = await findLeadByPhone(supabase, from);
+    const orgIds = await findOrgIdsByPhone(supabase, to);
+    const match = orgIds.length === 1 ? await findLeadByPhone(supabase, from, orgIds[0]) : null;
     if (match) {
       await recordInboundMessage(supabase, {
         orgId: match.orgId,

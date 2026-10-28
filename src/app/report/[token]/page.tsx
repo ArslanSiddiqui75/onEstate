@@ -39,8 +39,10 @@ export default async function ReportPage({
       ? "Describe the problem in a sentence, then send it again."
       : error === "unknown"
         ? "This repair link isn’t recognised."
-        : error
-          ? "We couldn’t save that report. Try again in a moment."
+        : error === "unavailable"
+          ? "The office can’t receive this report from the link yet. Call them if it’s urgent."
+          : error
+            ? "We couldn’t save that report. Try again in a moment."
           : noted === "confirmed"
             ? "Confirmation received. The office will match it to the repair once it is marked fixed."
             : noted === "signed"
