@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { fileServerApproval, fileServerBooking, fileServerOffer, fileServerPortal, readAgencyInbox } from "@/lib/agency/server-inbox";
+import { appRedirectUrl } from "@/lib/http/same-origin";
 import { demoInboxJson } from "@/lib/server/demo-inbox";
 import type { AppointmentKind } from "@/lib/agency/types";
 
 function redirectTo(request: Request, path: string, query: Record<string, string>) {
-  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
-  const proto = request.headers.get("x-forwarded-proto") || "http";
-  const url = host ? new URL(`${proto}://${host}${path}`) : new URL(path, request.url);
+  const url = appRedirectUrl(request, path);
   for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
   return NextResponse.redirect(url, 303);
 }

@@ -7,6 +7,7 @@ import {
   recordsForDomain,
 } from "@/lib/email/domain";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 const bodySchema = z.object({
   domain: z.string().min(1),
@@ -16,6 +17,10 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   const profile = await resolveProfileFromRequest(request);
+  const supabase = createServiceSupabaseClient();
+  if (supabase && !profile) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
   if (profile && profile.role !== "owner") {
     return NextResponse.json({ error: "Only the owner can connect a domain." }, { status: 403 });
   }

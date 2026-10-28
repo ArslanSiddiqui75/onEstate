@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { appRedirectUrl } from "@/lib/http/same-origin";
 import {
   fileServerConfirmation,
   fileServerInspectionSign,
@@ -7,11 +8,7 @@ import {
 import type { RepairChannel } from "@/lib/lettings/types";
 
 function redirectTo(request: Request, token: string, query: Record<string, string>) {
-  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
-  const proto = request.headers.get("x-forwarded-proto") || "http";
-  const url = host
-    ? new URL(`${proto}://${host}/report/${encodeURIComponent(token)}`)
-    : new URL(`/report/${encodeURIComponent(token)}`, request.url);
+  const url = appRedirectUrl(request, `/report/${encodeURIComponent(token)}`);
   for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
   return NextResponse.redirect(url, 303);
 }

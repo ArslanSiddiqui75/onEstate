@@ -11,7 +11,7 @@ import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
 
 export default function EmailDomainSettingsPage() {
-  const { user, org, updateWorkspace } = useAppSession();
+  const { user, org, updateWorkspace, getAuthToken, persistence } = useAppSession();
   const saved = org?.emailDomain;
   const [domain, setDomain] = useState(saved?.domain || "");
   const [fromLocal, setFromLocal] = useState(saved?.fromLocal || "hello");
@@ -25,6 +25,11 @@ export default function EmailDomainSettingsPage() {
 
   if (!user || !org) return null;
   const isOwner = user.role === "owner";
+
+  async function authHeaders(): Promise<Record<string, string>> {
+    const token = persistence === "supabase" ? await getAuthToken() : null;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
 
   function remember(next: EmailDomain) {
     setVerified(next.status === "verified");
@@ -55,11 +60,13 @@ export default function EmailDomainSettingsPage() {
               e.preventDefault();
               setBusy(true);
               setError(null);
-              void fetch("/api/email/domain", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ domain, fromLocal, fromName }),
-              })
+              void authHeaders().then((headers) =>
+                fetch("/api/email/domain", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", ...headers },
+                  body: JSON.stringify({ domain, fromLocal, fromName }),
+                }),
+              )
                 .then(async (res) => {
                   const json = (await res.json()) as {
                     domain?: string;

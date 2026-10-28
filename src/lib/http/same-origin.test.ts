@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sameOriginUrl } from "@/lib/http/same-origin";
+import { appRedirectUrl, sameOriginUrl } from "@/lib/http/same-origin";
 
 const origin = "https://0nestreet.co.uk";
 const fallback = `${origin}/app/settings/billing`;
@@ -18,5 +18,25 @@ describe("sameOriginUrl", () => {
   it("rejects a missing or malformed URL", () => {
     expect(sameOriginUrl(undefined, fallback, origin)).toBe(fallback);
     expect(sameOriginUrl("not a url", fallback, origin)).toBe(fallback);
+  });
+});
+
+describe("appRedirectUrl", () => {
+  it("stays on the request when the forwarded host is someone else's site", () => {
+    const request = new Request("https://0nestreet.co.uk/api/waitlist", {
+      headers: { "x-forwarded-host": "evil.example", "x-forwarded-proto": "https" },
+    });
+    expect(appRedirectUrl(request, "/").origin).toBe("https://0nestreet.co.uk");
+  });
+
+  it("follows the public host when it matches the request", () => {
+    const request = new Request("http://internal:3000/api/waitlist", {
+      headers: {
+        host: "0nestreet.co.uk",
+        "x-forwarded-host": "0nestreet.co.uk",
+        "x-forwarded-proto": "https",
+      },
+    });
+    expect(appRedirectUrl(request, "/report/abc").href).toBe("https://0nestreet.co.uk/report/abc");
   });
 });

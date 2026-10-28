@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
+import { appRedirectUrl } from "@/lib/http/same-origin";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 const schema = z.object({
@@ -13,9 +14,7 @@ const schema = z.object({
 const demoRequests: z.infer<typeof schema>[] = [];
 
 function formRedirect(request: Request, demo: "received" | "invalid" | "error") {
-  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
-  const proto = request.headers.get("x-forwarded-proto") || "http";
-  const url = host ? new URL(`${proto}://${host}/`) : new URL("/", request.url);
+  const url = appRedirectUrl(request, "/");
   url.searchParams.set("demo", demo);
   url.hash = "contact";
   return NextResponse.redirect(url, 303);

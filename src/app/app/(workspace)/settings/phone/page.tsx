@@ -15,7 +15,7 @@ interface ListedNumber {
 }
 
 export default function PhoneNumberSettingsPage() {
-  const { user, org, market, updateWorkspace } = useAppSession();
+  const { user, org, market, updateWorkspace, getAuthToken, persistence } = useAppSession();
   const [contains, setContains] = useState("");
   const [numbers, setNumbers] = useState<ListedNumber[]>([]);
   const [searched, setSearched] = useState(false);
@@ -26,6 +26,11 @@ export default function PhoneNumberSettingsPage() {
   if (!user || !org) return null;
   const isOwner = user.role === "owner";
   const country = market === "us" ? "US" : "GB";
+
+  async function authHeaders(): Promise<Record<string, string>> {
+    const token = persistence === "supabase" ? await getAuthToken() : null;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
 
   return (
     <div className="space-y-6">
@@ -53,7 +58,9 @@ export default function PhoneNumberSettingsPage() {
               setBusy("search");
               setError(null);
               const params = new URLSearchParams({ country, contains });
-              void fetch(`/api/phone/numbers?${params.toString()}`)
+              void authHeaders().then((headers) =>
+                fetch(`/api/phone/numbers?${params.toString()}`, { headers }),
+              )
                 .then(async (res) => {
                   const json = (await res.json()) as {
                     numbers?: ListedNumber[];
@@ -104,11 +111,13 @@ export default function PhoneNumberSettingsPage() {
                       setBusy("buy");
                       setBuying(row.phoneNumber);
                       setError(null);
-                      void fetch("/api/phone/numbers", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ phoneNumber: row.phoneNumber }),
-                      })
+                      void authHeaders().then((headers) =>
+                        fetch("/api/phone/numbers", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", ...headers },
+                          body: JSON.stringify({ phoneNumber: row.phoneNumber }),
+                        }),
+                      )
                         .then(async (res) => {
                           const json = (await res.json()) as { phoneNumber?: string; error?: string };
                           if (!res.ok || !json.phoneNumber) {

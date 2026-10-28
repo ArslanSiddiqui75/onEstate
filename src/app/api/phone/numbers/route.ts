@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isE164 } from "@/lib/phone/e164";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import {
   buyNumber,
   countryForMarket,
@@ -16,8 +17,14 @@ function countryFrom(value: string | null): NumberCountry {
 
 async function assertOwner(request: Request) {
   const profile = await resolveProfileFromRequest(request);
-  if (!profile) return { profile: null, denied: null };
-  if (profile.role !== "owner") {
+  const supabase = createServiceSupabaseClient();
+  if (supabase && !profile) {
+    return {
+      profile: null,
+      denied: NextResponse.json({ error: "Sign in required" }, { status: 401 }),
+    };
+  }
+  if (profile && profile.role !== "owner") {
     return {
       profile,
       denied: NextResponse.json({ error: "Only the owner can buy a number." }, { status: 403 }),
@@ -43,11 +50,8 @@ export async function GET(request: Request) {
   try {
     const result = await searchNumbers(country, url.searchParams.get("contains") || "");
     return NextResponse.json(result);
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Could not search numbers." },
-      { status: 500 },
-    );
+  } catch {
+    return NextResponse.json({ error: "Could not search numbers." }, { status: 500 });
   }
 }
 
@@ -66,10 +70,7 @@ export async function POST(request: Request) {
   try {
     const phoneNumber = await buyNumber(parsed.data.phoneNumber);
     return NextResponse.json({ ok: true, phoneNumber });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Could not buy that number." },
-      { status: 500 },
-    );
+  } catch {
+    return NextResponse.json({ error: "Could not buy that number." }, { status: 500 });
   }
 }
