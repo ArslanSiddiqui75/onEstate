@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- database rows and job payloads are untyped JSON */
 import type {
   AutomationRun,
   AutomationRunStep,

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { CreditCard, ShieldCheck, ListChecks, ChevronDown, ChevronUp, Download, FileText } from "lucide-react";
+import { CreditCard, ShieldCheck, ListChecks, ChevronDown, ChevronUp, Download } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
@@ -52,7 +52,7 @@ function formatDate(value?: string) {
 export default function AppBillingPage() {
   const { user, org, brand, setPlan, market, persistence, getAuthToken, refresh } = useAppSession();
   const [message, setMessage] = useState("");
-  const [tone, setTone] = useState<"neutral" | "danger">("neutral");
+  const [tone] = useState<"neutral" | "danger">("neutral");
   const [loadingPlan, setLoadingPlan] = useState<PlanId | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [showMatrix, setShowMatrix] = useState(false);

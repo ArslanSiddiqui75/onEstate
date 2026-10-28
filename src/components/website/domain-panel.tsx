@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cleanHost, cnameTarget, dnsInstructions, isApexHost } from "@/lib/website/domain-records";
 import type { DomainStatus, SslStatus, WebsiteSite } from "@/types";
+import { copyToClipboard } from "@/lib/utils";
 
 const DOMAIN_STATUS_META: Record<
   DomainStatus,
@@ -54,13 +55,9 @@ export function DomainPanel({
       : null;
 
   async function copy(value: string) {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(value);
-      setTimeout(() => setCopied(null), 1500);
-    } catch {
-      // ignore
-    }
+    if (!(await copyToClipboard(value))) return;
+    setCopied(value);
+    setTimeout(() => setCopied(null), 1500);
   }
 
   return (

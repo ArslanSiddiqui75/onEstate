@@ -18,6 +18,7 @@ import type { Appointment } from "@/lib/agency/types";
 import { formatWhen } from "@/lib/lettings/format";
 import { useModuleSection } from "@/lib/nav/module-section";
 import { SectionPills } from "@/components/ui/section-pills";
+import { copyToClipboard } from "@/lib/utils";
 
 function dayKey(iso: string) {
   return iso.slice(0, 10);
@@ -89,7 +90,9 @@ function DiaryDesk() {
           variant="secondary"
           onClick={() => {
             const url = `${window.location.origin}/book/${book.bookingToken}`;
-            void navigator.clipboard.writeText(url).then(() => toast.success("Booking link copied"));
+            void copyToClipboard(url).then((ok) =>
+              ok ? toast.success("Booking link copied") : toast.info(`Copy this link: ${url}`),
+            );
           }}
         >
           Copy booking link

@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatDate, formatMoney } from "@/lib/utils";
+import { copyToClipboard, formatDate, formatMoney } from "@/lib/utils";
 import { fadeUp } from "@/lib/motion";
 import type { Market, TransactionDeal, TransactionEsignDocument } from "@/types";
 import { useAgencyBook } from "@/components/agency/use-agency-book";
@@ -42,7 +42,6 @@ import {
   createReferral,
   draftSaleSummary,
   setFeeStatus,
-  setOfferStatus,
 } from "@/lib/agency/book";
 import type { AgencyBook } from "@/lib/agency/types";
 
@@ -507,11 +506,15 @@ Generated on ${new Date().toLocaleString()} by ${brand.name}.
                                 });
                                 await refreshDocs(deal.id);
                                 if (result.signUrl) {
-                                  await navigator.clipboard.writeText(result.signUrl);
+                                  const copied = await copyToClipboard(result.signUrl);
                                   toast.success(
                                     result.emailed
-                                      ? "Invite emailed — sign link also copied"
-                                      : "Sign link copied to clipboard",
+                                      ? copied
+                                        ? "Invite emailed — sign link also copied"
+                                        : "Invite emailed"
+                                      : copied
+                                        ? "Sign link copied to clipboard"
+                                        : `Sign link: ${result.signUrl}`,
                                   );
                                 } else {
                                   toast.success(
@@ -554,8 +557,9 @@ Generated on ${new Date().toLocaleString()} by ${brand.name}.
                                   className="gap-1"
                                   onClick={() => {
                                     const url = `${window.location.origin}/sign/${doc.signToken}`;
-                                    void navigator.clipboard.writeText(url);
-                                    toast.success("Sign link copied");
+                                    void copyToClipboard(url).then((ok) =>
+                                      ok ? toast.success("Sign link copied") : toast.info(`Sign link: ${url}`),
+                                    );
                                   }}
                                 >
                                   <Copy className="h-3.5 w-3.5" />
@@ -950,7 +954,7 @@ function NewDealModal({
             </MenuSelect>
           ) : null}
           <Input name="title" placeholder="Property / Deal Title" required />
-          <Input name="value" type="number" placeholder="Deal Value" required />
+          <Input name="value" type="number" min={1} step="any" placeholder="Deal Value" required />
           <div className="grid grid-cols-2 gap-2">
             <Input name="party1" placeholder="Party 1 (Buyer/Tenant)" required />
             <Input name="party2" placeholder="Party 2 (Seller/Landlord)" required />

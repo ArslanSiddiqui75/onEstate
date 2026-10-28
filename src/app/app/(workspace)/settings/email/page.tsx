@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
+import { copyToClipboard } from "@/lib/utils";
 
 export default function EmailDomainSettingsPage() {
   const { user, org, updateWorkspace, getAuthToken, persistence } = useAppSession();
@@ -159,7 +160,8 @@ export default function EmailDomainSettingsPage() {
                       variant="secondary"
                       size="sm"
                       onClick={() => {
-                        void navigator.clipboard.writeText(record.value).then(() => {
+                        void copyToClipboard(record.value).then((ok) => {
+                          if (!ok) return;
                           setCopied(record.host);
                           window.setTimeout(() => setCopied(null), 1500);
                         });

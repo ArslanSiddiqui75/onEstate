@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
+import { findDuplicateLead } from "@/lib/crm/duplicates";
 import { buildPhoneContactMethod, formatDate, formatMoney, asErrorMessage } from "@/lib/utils";
 import { PhoneField } from "@/components/crm/phone-field";
 import { SequenceProgress } from "@/components/crm/sequence-panel";
@@ -41,7 +42,6 @@ import { scoreLead } from "@/lib/crm/scoring";
 import {
   Download,
   Eye,
-  FileSpreadsheet,
   Inbox as InboxIcon,
   Mail,
   Pencil,
@@ -476,6 +476,13 @@ export function CrmDesk({ view }: { view: CrmView }) {
                       toast.error("Add an email or a phone number.");
                       return;
                     }
+                    const duplicate = findDuplicateLead(leads, { email: leadEmail, phone: leadPhone });
+                    if (duplicate) {
+                      const msg = `${duplicate.name} is already a lead with these details.`;
+                      setError(msg);
+                      toast.error(msg);
+                      return;
+                    }
                     await addLead({
                       name: leadName,
                       email: leadEmail,
@@ -559,7 +566,7 @@ export function CrmDesk({ view }: { view: CrmView }) {
                 <option value="landlord">Landlord</option>
                 <option value="tenant">Tenant</option>
               </MenuSelect>
-              <Input name="budget" type="number" placeholder="Budget" />
+              <Input name="budget" type="number" min={0} step="any" placeholder="Budget" />
               <Input name="nextAction" placeholder="Next action" />
               <MenuSelect
                 name="phoneConsent"

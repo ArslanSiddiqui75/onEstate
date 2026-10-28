@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- database rows and job payloads are untyped JSON */
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { normalizeHost } from "@/lib/website/slug";
 import type { Listing, Market, WebsiteSite } from "@/types";

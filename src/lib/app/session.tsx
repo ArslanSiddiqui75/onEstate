@@ -81,7 +81,6 @@ import {
 import type { PortalConnection } from "@/types";
 import {
   loadWorkspace,
-  newId,
   saveWorkspace,
   type WorkspaceOrg,
   type WorkspaceSnapshot,
@@ -574,7 +573,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
             }
           }
         }
-      } catch (err) {
+      } catch {
         toast.error("Failed to load workspace session.");
       } finally {
         if (!cancelled) setLoading(false);
@@ -1353,7 +1352,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         const contact = snap.contacts.find((c) => c.id === id);
         const targetLeadId = patch.leadId || contact?.leadId;
         if (targetLeadId) {
-          const leadPatch: any = {};
+          const leadPatch: LeadPatch = {};
           if (patch.name !== undefined) leadPatch.name = patch.name;
           if (patch.email !== undefined) leadPatch.email = patch.email;
           if (patch.phone !== undefined) {

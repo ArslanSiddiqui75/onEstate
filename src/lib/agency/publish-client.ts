@@ -1,4 +1,5 @@
 import type { PortalRecord } from "@/lib/agency/types";
+import { copyToClipboard } from "@/lib/utils";
 
 const published = new Set<string>();
 const inflight = new Map<string, Promise<void>>();
@@ -82,10 +83,7 @@ export async function openClientPortal(portal: PortalRecord) {
 
 export async function copyClientPortal(portal: PortalRecord) {
   const url = `${window.location.origin}${clientPortalPath(portal.token)}`;
-  const copied = navigator.clipboard.writeText(url).then(
-    () => true,
-    () => false,
-  );
+  const copied = copyToClipboard(url);
   await publishPortalRecord(portal);
   return copied;
 }

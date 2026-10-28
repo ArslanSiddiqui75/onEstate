@@ -283,12 +283,13 @@ function ListingsDesk() {
             <Input name="address" placeholder="Street address" required />
             <Input name="postcode" placeholder={market === "uk" ? "Postcode" : "ZIP"} />
             <Input name="city" placeholder="City" required />
-            <Input name="price" type="number" placeholder="Price" required />
-            <Input name="beds" type="number" placeholder="Beds" />
-            <Input name="baths" type="number" placeholder="Baths" />
+            <Input name="price" type="number" min={0} step="any" placeholder="Price" required />
+            <Input name="beds" type="number" min={0} max={99} placeholder="Beds" />
+            <Input name="baths" type="number" min={0} max={99} placeholder="Baths" />
             <Input
               name="sqft"
               type="number"
+              min={0}
               placeholder={market === "uk" ? "Floor area (sq m)" : "Floor area (sq ft)"}
             />
             {market === "uk" ? (
@@ -727,12 +728,13 @@ function ListingsDesk() {
                 defaultValue={splitStreetPostcode(editingListing.address).postcode}
               />
               <Input name="city" placeholder="City" defaultValue={editingListing.city} required />
-              <Input name="price" type="number" placeholder="Price" defaultValue={editingListing.price} required />
-              <Input name="beds" type="number" placeholder="Beds" defaultValue={editingListing.beds} />
-              <Input name="baths" type="number" placeholder="Baths" defaultValue={editingListing.baths} />
+              <Input name="price" type="number" min={0} step="any" placeholder="Price" defaultValue={editingListing.price} required />
+              <Input name="beds" type="number" min={0} max={99} placeholder="Beds" defaultValue={editingListing.beds} />
+              <Input name="baths" type="number" min={0} max={99} placeholder="Baths" defaultValue={editingListing.baths} />
               <Input
                 name="sqft"
                 type="number"
+                min={0}
                 placeholder={market === "uk" ? "Floor area (sq m)" : "Floor area (sq ft)"}
                 defaultValue={sqftToArea(market, editingListing.sqft)}
               />

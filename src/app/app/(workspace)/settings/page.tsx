@@ -19,6 +19,7 @@ import {
   validateBusinessProfile,
   type BusinessProfile,
 } from "@/lib/org/business-profile";
+import { copyToClipboard } from "@/lib/utils";
 
 export default function AppSettingsPage() {
   const { user, org, market, updateWorkspace, updateProfile } = useAppSession();
@@ -133,7 +134,11 @@ export default function AppSettingsPage() {
               variant="secondary"
               className="shrink-0"
               onClick={() => {
-                void navigator.clipboard.writeText(org.id).then(() => {
+                void copyToClipboard(org.id).then((ok) => {
+                  if (!ok) {
+                    toast.info("Select the ID and copy it.");
+                    return;
+                  }
                   setIdCopied(true);
                   toast.success("Workspace ID copied");
                   window.setTimeout(() => setIdCopied(false), 2000);

@@ -20,7 +20,7 @@ const pending = {
 describe("pending signup", () => {
   it("accepts a validated signup and rejects a payload without a password", () => {
     expect(parsePendingSignup(pending)?.email).toBe("jane@brokerage.com");
-    const { password: _password, ...withoutPassword } = pending;
+    const withoutPassword = { ...pending, password: undefined };
     expect(parsePendingSignup(withoutPassword)).toBeNull();
     expect(parsePendingSignup({ ...pending, plan: "nope" })).toBeNull();
   });

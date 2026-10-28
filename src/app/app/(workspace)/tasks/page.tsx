@@ -173,7 +173,7 @@ function AddTaskDialog({
           >
             <label className="block text-sm font-medium">
               What needs doing
-              <Input name="title" className="mt-1.5" required placeholder="Call back about the viewing" />
+              <Input name="title" className="mt-1.5" required maxLength={200} placeholder="Call back about the viewing" />
             </label>
             <label className="block text-sm font-medium">
               Lead
