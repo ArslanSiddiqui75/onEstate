@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { ReportDesk } from "@/components/lettings/report-desk";
 import { seedPropertyByToken } from "@/lib/lettings/book";
+import {
+  hostedFindRepair,
+  hostedPropertyByReportToken,
+  lettingsHostedAvailable,
+} from "@/lib/lettings/hosted";
 import { findServerRepair } from "@/lib/lettings/server-inbox";
 import type { RepairChannel } from "@/lib/lettings/types";
 
@@ -15,7 +20,10 @@ export async function generateMetadata({
   params: Promise<{ token: string }>;
 }): Promise<Metadata> {
   const { token } = await params;
-  const property = seedPropertyByToken(token);
+  const located = lettingsHostedAvailable()
+    ? await hostedPropertyByReportToken(token)
+    : null;
+  const property = located?.property || seedPropertyByToken(token);
   const address = property ? `${property.address} — ` : "";
   return {
     title: `${address}Report a repair`,
@@ -32,8 +40,13 @@ export default async function ReportPage({
 }) {
   const { token } = await params;
   const { via, sent, error, noted } = await searchParams;
-  const property = seedPropertyByToken(token);
-  const sentRepair = sent ? findServerRepair(sent) : null;
+  const located = lettingsHostedAvailable()
+    ? await hostedPropertyByReportToken(token)
+    : null;
+  const property = located?.property || seedPropertyByToken(token);
+  const sentRepair = sent
+    ? (lettingsHostedAvailable() ? await hostedFindRepair(sent) : findServerRepair(sent))
+    : null;
   const banner =
     error === "short"
       ? "Describe the problem in a sentence, then send it again."

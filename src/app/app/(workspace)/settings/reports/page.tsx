@@ -260,6 +260,8 @@ export default function AppReportsPage() {
     socialAccounts,
     socialPosts,
     listPortalConnections,
+    persistence,
+    getAuthToken,
   } = session;
   const [range, setRange] = useState<SnapshotRange>("all");
   const [agency, setAgency] = useState<AgencyBook | null>(null);
@@ -267,9 +269,39 @@ export default function AppReportsPage() {
 
   useEffect(() => {
     if (!org) return;
-    setAgency(loadAgencyBook(org.id));
-    setLettings(market === "uk" ? loadBook(org.id) : null);
-  }, [org, market]);
+    let cancel = false;
+    void (async () => {
+      if (persistence === "supabase") {
+        const token = await getAuthToken();
+        if (token) {
+          const headers = { Authorization: `Bearer ${token}` };
+          const [agencyRes, lettingsRes] = await Promise.all([
+            fetch("/api/agency/book", { headers, cache: "no-store" }),
+            market === "uk"
+              ? fetch("/api/lettings/book", { headers, cache: "no-store" })
+              : Promise.resolve(null),
+          ]);
+          if (!cancel && agencyRes.ok) {
+            const json = (await agencyRes.json()) as { book?: AgencyBook };
+            if (json.book) {
+              setAgency(json.book);
+            }
+          }
+          if (!cancel && lettingsRes && lettingsRes.ok) {
+            const json = (await lettingsRes.json()) as { book?: LettingsBook };
+            if (json.book) setLettings(json.book);
+          }
+          if (!cancel) return;
+        }
+      }
+      if (cancel) return;
+      setAgency(loadAgencyBook(org.id));
+      setLettings(market === "uk" ? loadBook(org.id) : null);
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [org, market, persistence, getAuthToken]);
 
   const report = useMemo(() => {
     if (!org) return null;

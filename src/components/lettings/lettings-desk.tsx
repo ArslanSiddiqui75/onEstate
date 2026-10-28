@@ -63,6 +63,7 @@ import {
   REPAIR_STAGES,
   URGENCY_LABELS,
 } from "@/lib/lettings/types";
+import { useAppSession } from "@/lib/app/session";
 import { cn } from "@/lib/utils";
 
 const selectClass =
@@ -84,25 +85,79 @@ const RENT_STATUS: { id: RentStatus; label: string }[] = [
 
 type Section = "repairs" | "rent" | "properties";
 
+async function fetchHostedLettings(
+  getAuthToken: () => Promise<string | null>,
+): Promise<LettingsBook | null> {
+  const token = await getAuthToken();
+  if (!token) return null;
+  const res = await fetch("/api/lettings/book", {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const json = (await res.json()) as { available?: boolean; book?: LettingsBook };
+  if (!json.available || !json.book) return null;
+  return json.book;
+}
+
+async function putHostedLettings(
+  getAuthToken: () => Promise<string | null>,
+  book: LettingsBook,
+): Promise<LettingsBook> {
+  const token = await getAuthToken();
+  if (!token) throw new Error("Sign in required");
+  const res = await fetch("/api/lettings/book", {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(book),
+  });
+  const json = (await res.json().catch(() => null)) as
+    | { book?: LettingsBook; error?: string }
+    | null;
+  if (!res.ok || !json?.book) {
+    throw new Error(json?.error || "Could not save lettings");
+  }
+  return json.book;
+}
+
 function useLettingsBook(orgId: string) {
+  const { persistence, getAuthToken } = useAppSession();
   const [book, setBook] = useState<LettingsBook>(() => seedBook());
   useEffect(() => {
     let cancel = false;
     const refresh = () => {
       void (async () => {
+        if (persistence === "supabase") {
+          try {
+            const hosted = await fetchHostedLettings(getAuthToken);
+            if (!cancel && hosted) {
+              setBook(hosted);
+              return;
+            }
+          } catch {
+            // Fall through to the browser copy.
+          }
+        }
         let next = loadBook(orgId);
         try {
           const res = await fetch("/api/lettings/inbox");
           if (res.ok) {
-            const json = (await res.json()) as Partial<LettingsInbox>;
-            const merged = applyInbox(next, {
-              repairs: json.repairs ?? [],
-              confirmations: json.confirmations ?? [],
-              inspectionSigns: json.inspectionSigns ?? [],
-            });
-            if (merged.book !== next) {
-              saveBook(orgId, merged.book);
-              next = merged.book;
+            const json = (await res.json()) as Partial<LettingsInbox> & {
+              available?: boolean;
+            };
+            if (json.available !== false) {
+              const merged = applyInbox(next, {
+                repairs: json.repairs ?? [],
+                confirmations: json.confirmations ?? [],
+                inspectionSigns: json.inspectionSigns ?? [],
+              });
+              if (merged.book !== next) {
+                saveBook(orgId, merged.book);
+                next = merged.book;
+              }
             }
           }
         } catch {
@@ -120,12 +175,20 @@ function useLettingsBook(orgId: string) {
       window.removeEventListener("storage", refresh);
       window.removeEventListener("focus", refresh);
     };
-  }, [orgId]);
+  }, [orgId, persistence, getAuthToken]);
   return {
     book,
     commit(next: LettingsBook) {
-      saveBook(orgId, next);
       setBook(next);
+      if (persistence === "supabase") {
+        void putHostedLettings(getAuthToken, next)
+          .then((saved) => setBook(saved))
+          .catch((err) => {
+            toast.error(err instanceof Error ? err.message : "Could not save lettings");
+          });
+        return;
+      }
+      saveBook(orgId, next);
     },
   };
 }

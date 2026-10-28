@@ -4,9 +4,14 @@ import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { bookingSlots, seedAgencyBook } from "@/lib/agency/book";
-import { PORTAL_ROLE_LABELS } from "@/lib/agency/types";
+import { PORTAL_ROLE_LABELS, type ClientOffer } from "@/lib/agency/types";
+import { agencyHostedAvailable, hostedPortal, loadHostedAgencyBook } from "@/lib/agency/hosted";
 import { readAgencyInbox, serverPortal } from "@/lib/agency/server-inbox";
 import { seedBook, seedPropertyByToken } from "@/lib/lettings/book";
+import {
+  hostedPropertyByReportToken,
+  lettingsHostedAvailable,
+} from "@/lib/lettings/hosted";
 import { formatWhen, gbp } from "@/lib/lettings/format";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +22,7 @@ export async function generateMetadata({
   params: Promise<{ token: string }>;
 }): Promise<Metadata> {
   const { token } = await params;
-  const portal = serverPortal(token);
+  const portal = (await hostedPortal(token)) || serverPortal(token);
   const who = portal ? PORTAL_ROLE_LABELS[portal.role] : "Client";
   return {
     title: portal ? `${who} · ${portal.address}` : "Client link",
@@ -34,9 +39,12 @@ export default async function PortalPage({
 }) {
   const { token } = await params;
   const { done, error, ref } = await searchParams;
-  const inbox = readAgencyInbox();
-  const base = serverPortal(token);
-  const approval = [...inbox.approvals].reverse().find((item) => item.token === token);
+  const hostedBase = await hostedPortal(token);
+  const inbox = agencyHostedAvailable() ? null : readAgencyInbox();
+  const base = hostedBase || serverPortal(token);
+  const approval = inbox
+    ? [...inbox.approvals].reverse().find((item) => item.token === token)
+    : null;
   const portal = base
     ? {
         ...base,
@@ -44,12 +52,33 @@ export default async function PortalPage({
         feedback: approval?.feedback?.trim() || base.feedback,
       }
     : null;
-  const property = portal?.lettingsToken ? seedPropertyByToken(portal.lettingsToken) : null;
-  const repairs = property
-    ? seedBook().repairs.filter((item) => item.propertyId === property.id && item.status !== "tenant_confirmed")
-    : [];
+  let property = null;
+  let repairs: ReturnType<typeof seedBook>["repairs"] = [];
+  if (portal?.lettingsToken) {
+    if (lettingsHostedAvailable()) {
+      const located = await hostedPropertyByReportToken(portal.lettingsToken);
+      if (located) {
+        property = located.property;
+        repairs = located.book.repairs.filter(
+          (item) => item.propertyId === property!.id && item.status !== "tenant_confirmed",
+        );
+      }
+    } else {
+      property = seedPropertyByToken(portal.lettingsToken);
+      repairs = property
+        ? seedBook().repairs.filter(
+            (item) => item.propertyId === property!.id && item.status !== "tenant_confirmed",
+          )
+        : [];
+    }
+  }
+  let hostedOffers: ClientOffer[] = [];
+  if (portal && agencyHostedAvailable() && "orgId" in portal && portal.orgId) {
+    const book = await loadHostedAgencyBook(String(portal.orgId));
+    hostedOffers = book?.offers ?? [];
+  }
   const offers = portal
-    ? [...seedAgencyBook().offers, ...inbox.offers].filter(
+    ? [...seedAgencyBook().offers, ...(inbox?.offers ?? []), ...hostedOffers].filter(
         (item) =>
           item.address === portal.address &&
           item.buyerName.trim().toLowerCase() === portal.name.trim().toLowerCase(),

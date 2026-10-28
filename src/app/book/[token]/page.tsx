@@ -6,6 +6,11 @@ import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BOOKING_ADDRESSES, bookingSlots } from "@/lib/agency/book";
+import {
+  agencyHostedAvailable,
+  hostedAppointment,
+  hostedRecognisesBookingToken,
+} from "@/lib/agency/hosted";
 import { readAgencyInbox, serverRecognisesToken } from "@/lib/agency/server-inbox";
 import { defaultMarket, marketFromHost } from "@/lib/brand/host";
 import { demoInboxEnabled } from "@/lib/server/demo-inbox";
@@ -40,11 +45,17 @@ export default async function BookPage({
   const { token } = await params;
   const { sent, error } = await searchParams;
   const us = marketFromHeaders(await headers()) === "us";
-  const available = demoInboxEnabled();
-  const recognised = available && serverRecognisesToken(token);
-  const inbox = readAgencyInbox();
-  const appointment = sent ? inbox.appointments.find((item) => item.id === sent) : null;
-  const fixedAddress = token === "elm-grove" ? "14 Elm Grove" : null;
+  const hosted = agencyHostedAvailable();
+  const available = hosted || demoInboxEnabled();
+  const recognised = hosted
+    ? await hostedRecognisesBookingToken(token)
+    : available && serverRecognisesToken(token);
+  const appointment = sent
+    ? hosted
+      ? await hostedAppointment(token, sent)
+      : readAgencyInbox().appointments.find((item) => item.id === sent) ?? null
+    : null;
+  const fixedAddress = token.toLowerCase() === "elm-grove" ? "14 Elm Grove" : null;
 
   return (
     <main className="mx-auto min-h-screen max-w-lg px-5 py-10">

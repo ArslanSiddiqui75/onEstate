@@ -229,3 +229,15 @@ npm run test:e2e    # browser tests (Playwright, uses installed Chrome)
 ```
 
 The browser tests start `next dev` on port 43123 (or reuse one that is already running). They sign in with the seeded local owner account, open every module, and fail on uncaught errors, server errors, CSP violations or horizontal overflow, then run the add-lead and add-task flows. To test a production build, run `next start` and set `E2E_BASE_URL`; the flows that need the seeded dev workspace are skipped there. Set `E2E_CHROME_PATH` to use a specific Chrome binary.
+
+## Production go-live (agency diary + lettings)
+
+With Supabase configured, the diary, public booking links, client portals, and the landlord desk persist on the server. They no longer need `DEMO_PUBLIC_INBOX`.
+
+1. Apply every migration in `supabase/migrations/`, including `20261029010000_agency_and_lettings_books.sql`.
+2. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
+3. Set Stripe, Twilio, Resend, cron, admin, and Namecheap secrets from `.env.example`.
+4. Deploy. After the first sign-in, open Diary and Lettings once so each workspace gets a hosted book and public link tokens.
+5. Copy the booking / client / repair links from the app — seeded demo tokens (`harbour`, `elm-grove`) are local-only.
+
+Without Supabase, local demo mode still uses browser storage and the file inbox (non-production only).
