@@ -39,7 +39,12 @@ function themeType(id: string) {
 import { formatMoney } from "@/lib/utils";
 import { getTemplate } from "@/lib/website/templates";
 import { hydrateWebsiteSite } from "@/lib/website/defaults";
-import { resolveSections, sectionVariant } from "@/lib/website/sections";
+import {
+  isSampleQuotes,
+  isSampleStats,
+  resolveSections,
+  sectionVariant,
+} from "@/lib/website/sections";
 import { EditableImage, EditableText } from "@/components/website/editable-field";
 import type {
   Listing,
@@ -699,6 +704,7 @@ function TestimonialsBlock({
   };
   const featured = variant === "featured";
   const shown = featured ? quotes.slice(0, 1) : quotes;
+  if (!editable && isSampleQuotes(quotes)) return null;
 
   return (
     <section id="section-testimonials" className="px-6 py-16 md:px-10">
@@ -773,6 +779,7 @@ function StatsBlock({
     patch({ stats: list });
   };
   const asCards = variant === "cards";
+  if (!editable && isSampleStats(stats)) return null;
 
   return (
     <section id="section-stats" className="px-6 py-14 md:px-10">

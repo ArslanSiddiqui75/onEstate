@@ -56,7 +56,15 @@ export async function POST(request: Request) {
       codeVerifier,
     });
     const url = provider.buildAuthorizeUrl({ redirectUri, state, codeChallenge });
-    return NextResponse.json({ url });
+    const response = NextResponse.json({ url });
+    response.cookies.set("social_oauth_state", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/api/social/oauth/callback",
+      maxAge: 600,
+    });
+    return response;
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Could not start the connection" },

@@ -1,10 +1,12 @@
 import type { Jurisdiction } from "@/lib/lettings/types";
 
 export function gbp(amount: number) {
+  const whole = Number.isInteger(amount);
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
   }).format(amount);
 }
 

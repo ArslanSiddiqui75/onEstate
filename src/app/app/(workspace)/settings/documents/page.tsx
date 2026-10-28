@@ -90,6 +90,7 @@ export default function AppDocumentsPage() {
                   body: JSON.stringify({
                     fileName: file.name,
                     mimeType: file.type,
+                    sizeBytes: file.size,
                   }),
                 });
                 const upload = (await signed.json()) as {

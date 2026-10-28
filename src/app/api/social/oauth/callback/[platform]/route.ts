@@ -17,14 +17,25 @@ export async function GET(
   const state = url.searchParams.get("state");
   const providerError = url.searchParams.get("error_description") || url.searchParams.get("error");
 
-  const stateRecord = state ? await consumeOAuthState(state) : null;
+  const cookieState = request.headers
+    .get("cookie")
+    ?.split(/;\s*/)
+    .find((part) => part.startsWith("social_oauth_state="))
+    ?.slice("social_oauth_state=".length);
+  const stateRecord =
+    state && cookieState === state ? await consumeOAuthState(state) : null;
   const returnTo = stateRecord?.returnTo || "/app/settings/social";
   const origin = getRequestOrigin(request);
 
   function redirectTo(extra: Record<string, string>) {
     const target = new URL(returnTo, origin);
     for (const [key, value] of Object.entries(extra)) target.searchParams.set(key, value);
-    return NextResponse.redirect(target);
+    const response = NextResponse.redirect(target);
+    response.cookies.set("social_oauth_state", "", {
+      path: "/api/social/oauth/callback",
+      maxAge: 0,
+    });
+    return response;
   }
 
   if (providerError) {

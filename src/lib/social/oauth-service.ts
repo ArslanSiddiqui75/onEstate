@@ -54,11 +54,11 @@ export async function consumeOAuthState(state: string) {
   if (!supabase) return null;
   const { data } = await supabase
     .from("social_oauth_states")
-    .select("*")
+    .delete()
     .eq("state", state)
+    .select("*")
     .maybeSingle();
   if (!data) return null;
-  await supabase.from("social_oauth_states").delete().eq("state", state);
 
   const createdAt = new Date(String(data.created_at)).getTime();
   if (Number.isFinite(createdAt) && Date.now() - createdAt > STATE_TTL_MS) {

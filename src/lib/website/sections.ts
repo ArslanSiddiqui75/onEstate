@@ -140,6 +140,16 @@ export function defaultStats(): WebsiteStat[] {
   ];
 }
 
+export function isSampleQuotes(quotes?: WebsiteQuote[]): boolean {
+  if (!quotes?.length) return true;
+  return JSON.stringify(quotes) === JSON.stringify(defaultQuotes());
+}
+
+export function isSampleStats(stats?: WebsiteStat[]): boolean {
+  if (!stats?.length) return true;
+  return JSON.stringify(stats) === JSON.stringify(defaultStats());
+}
+
 function fromLegacyFlags(site: WebsiteSite): WebsiteSectionConfig[] {
   return [
     { kind: "hero", visible: site.showHero ?? true },

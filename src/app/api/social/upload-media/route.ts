@@ -33,8 +33,8 @@ function storagePath(orgId: string, mimeType: string, fileName?: string | null) 
   const fromName = fileName?.split(".").pop()?.toLowerCase();
   const fromMime = mimeType.split("/")[1]?.split("+")[0]?.toLowerCase();
   const ext =
-    (fromName && /^[a-z0-9]{1,8}$/.test(fromName) ? fromName : null) ||
-    fromMime ||
+    (fromName && fromName in EXT_MIME ? fromName : null) ||
+    (fromMime && fromMime in EXT_MIME ? fromMime : null) ||
     "bin";
   return `${orgId}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
 }

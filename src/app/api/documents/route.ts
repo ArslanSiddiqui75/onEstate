@@ -102,6 +102,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Hosted mode required" }, { status: 503 });
   }
 
+  const owned = async (table: "leads" | "listings" | "transactions", id?: string) => {
+    if (!id) return true;
+    const { data } = await supabase
+      .from(table)
+      .select("id")
+      .eq("id", id)
+      .eq("org_id", profile.orgId)
+      .maybeSingle();
+    return Boolean(data);
+  };
+  const [leadOk, listingOk, dealOk] = await Promise.all([
+    owned("leads", parsed.data.leadId),
+    owned("listings", parsed.data.listingId),
+    owned("transactions", parsed.data.dealId),
+  ]);
+  if (!leadOk || !listingOk || !dealOk) {
+    return NextResponse.json({ error: "Linked record not found" }, { status: 400 });
+  }
+
   const { error } = await supabase.from("org_documents").insert({
     org_id: profile.orgId,
     title: parsed.data.title,

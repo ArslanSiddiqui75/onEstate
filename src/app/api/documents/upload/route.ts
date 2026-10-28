@@ -3,6 +3,12 @@ import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoAnyModule } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
+const MAX_BYTES = 25 * 1024 * 1024;
+const ALLOWED_EXT = new Set([
+  "pdf", "doc", "docx", "xls", "xlsx", "csv", "txt", "rtf",
+  "jpg", "jpeg", "png", "gif", "webp", "heic",
+]);
+
 export async function POST(request: Request) {
   const profile = await resolveProfileFromRequest(request);
   if (!profile) {
@@ -23,10 +29,26 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     fileName?: string;
     mimeType?: string;
+    sizeBytes?: number;
   } | null;
   const ext =
     body?.fileName?.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") ||
-    "bin";
+    "";
+  if (!ALLOWED_EXT.has(ext)) {
+    return NextResponse.json(
+      { error: "That file type can’t be uploaded. Use PDF, Office, text or image files." },
+      { status: 400 },
+    );
+  }
+  if (
+    typeof body?.sizeBytes === "number" &&
+    (body.sizeBytes < 0 || body.sizeBytes > MAX_BYTES)
+  ) {
+    return NextResponse.json(
+      { error: "File exceeds the 25 MB upload limit." },
+      { status: 413 },
+    );
+  }
   const path = `${profile.orgId}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
 
   const { data, error } = await supabase.storage
