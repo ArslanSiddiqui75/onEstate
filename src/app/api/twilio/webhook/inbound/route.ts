@@ -27,20 +27,25 @@ export async function POST(request: Request) {
     const orgIds = await findOrgIdsByPhone(supabase, to);
     const match = orgIds.length === 1 ? await findLeadByPhone(supabase, from, orgIds[0]) : null;
     if (match) {
-      await recordInboundMessage(supabase, {
+      // Opt-outs are applied first so they hold even if storing the message fails.
+      if (isOptOutMessage(body)) {
+        await applyLeadOptOut(supabase, { orgId: match.orgId, leadId: match.leadId });
+      }
+      const recorded = await recordInboundMessage(supabase, {
         orgId: match.orgId,
         leadId: match.leadId,
         body,
         providerSid: sid || null,
         source: "twilio",
       });
+      if (!recorded.ok) {
+        // Twilio only retries on an error response; a 200 would lose the reply.
+        return NextResponse.json({ error: "Could not store the message" }, { status: 500 });
+      }
       await cancelNoReplyRuns(supabase, {
         orgId: match.orgId,
         leadId: match.leadId,
       });
-      if (isOptOutMessage(body)) {
-        await applyLeadOptOut(supabase, { orgId: match.orgId, leadId: match.leadId });
-      }
     }
   }
 

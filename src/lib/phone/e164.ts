@@ -50,7 +50,10 @@ export function toE164(raw: string, dialCode: string): string {
   const trimmed = raw.trim();
   if (!trimmed) return "";
   if (trimmed.startsWith("+")) {
-    return `+${trimmed.slice(1).replace(/\D/g, "")}`;
+    // "+44 (0)7911…" writes the trunk 0 in brackets; it is not dialled internationally.
+    const withoutTrunk = trimmed.replace(/^(\+\d{1,3})\s*\(0\)/, "$1");
+    const international = `+${withoutTrunk.slice(1).replace(/\D/g, "")}`;
+    return international.startsWith("+440") ? `+44${international.slice(4)}` : international;
   }
   const digits = trimmed.replace(/\D/g, "");
   if (!digits) return "";
@@ -58,7 +61,8 @@ export function toE164(raw: string, dialCode: string): string {
     return `+${digits.slice(2)}`;
   }
   const code = dialCode.startsWith("+") ? dialCode : `+${dialCode.replace(/\D/g, "")}`;
-  const national = digits.startsWith("0") ? digits.slice(1) : digits;
+  let national = digits.startsWith("0") ? digits.slice(1) : digits;
+  if (code === "+1" && national.length === 11 && national.startsWith("1")) national = national.slice(1);
   if (!national) return "";
   return `${code}${national}`;
 }

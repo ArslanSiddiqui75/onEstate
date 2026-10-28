@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { triggerAndProcess } from "@/lib/automations/engine";
 import { findWebsiteRecord } from "@/lib/website/public-site";
-import { normalizePhoneNumber } from "@/lib/utils";
+import { defaultDialCode, isE164, toE164 } from "@/lib/phone/e164";
 import { hydrateLeadRouting, ownerId, prepareNewLead } from "@/lib/crm/routing";
 import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import type { LeadType, PlanId, Role } from "@/types";
@@ -91,7 +91,12 @@ export async function POST(request: Request) {
     .eq("id", orgId)
     .maybeSingle();
 
-  const phone = parsed.data.phone ? normalizePhoneNumber(parsed.data.phone) : "";
+  const phone = parsed.data.phone
+    ? toE164(parsed.data.phone, defaultDialCode(org?.market === "us" ? "us" : "uk"))
+    : "";
+  if (parsed.data.phone && !isE164(phone)) {
+    return NextResponse.json({ error: "Enter a valid phone number, or leave it blank" }, { status: 400 });
+  }
   const leadType = (parsed.data.type || "buyer") satisfies LeadType;
 
   const [{ data: profiles }, { data: existing }] = await Promise.all([

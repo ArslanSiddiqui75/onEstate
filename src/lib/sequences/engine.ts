@@ -50,15 +50,24 @@ async function executeSequenceStep(
     if (preferred?.consent === "opted_out") {
       return { ok: false, detail: "Contact opted out of SMS" };
     }
+    const { data: orgRow } = await supabase
+      .from("organizations")
+      .select("phone_number")
+      .eq("id", orgId)
+      .maybeSingle();
     const result = await sendOutboundSms(supabase, {
       orgId,
       leadId,
       to: dest,
       body,
+      from: String(orgRow?.phone_number || "").trim() || undefined,
       consent:
         (preferred?.consent as "unknown" | "opted_in" | "opted_out") || "unknown",
     });
     if (!result.ok) return { ok: false, detail: result.error || "SMS send failed" };
+    if (result.mode !== "live" && process.env.NODE_ENV === "production") {
+      return { ok: false, detail: "Buy a phone number in Settings before sequences can text." };
+    }
     return { ok: true, detail: `SMS sent (${result.mode})` };
   }
 
@@ -152,6 +161,18 @@ export async function advanceEnrollment(
 
   const step = steps[currentStep];
   const vars = sequenceVarsFromLead(lead);
+
+  // Claim this step before sending so a double click or two agents can't both send it.
+  const { data: claimed } = await supabase
+    .from("sequence_enrollments")
+    .update({ current_step: currentStep + 1 })
+    .eq("id", enrollment.id)
+    .eq("current_step", currentStep)
+    .select("id");
+  if (!claimed?.length) {
+    return { ok: false, error: "That step was just sent.", currentStep };
+  }
+
   const result = await executeSequenceStep(supabase, {
     orgId: input.orgId,
     leadId: input.leadId,
@@ -161,6 +182,11 @@ export async function advanceEnrollment(
   });
 
   if (!result.ok) {
+    await supabase
+      .from("sequence_enrollments")
+      .update({ current_step: currentStep })
+      .eq("id", enrollment.id)
+      .eq("current_step", currentStep + 1);
     return { ok: false, error: result.detail, currentStep };
   }
 

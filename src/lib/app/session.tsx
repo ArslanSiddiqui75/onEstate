@@ -1210,7 +1210,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
               buildPhoneContactMethod({
                 number,
                 source: existing?.source || "manual",
-                consent: existing?.consent || "unknown",
+                consent: "unknown",
                 verification: "unverified",
               }),
             ],

@@ -10,7 +10,10 @@ export function localToday(now = new Date()) {
 
 export function taskDay(dueAt?: string) {
   if (!dueAt) return null;
-  return dueAt.slice(0, 10);
+  if (dueAt.length <= 10) return dueAt;
+  // A timestamp is a moment in time; the task is due on the viewer's local day.
+  const moment = new Date(dueAt);
+  return Number.isNaN(moment.getTime()) ? dueAt.slice(0, 10) : localToday(moment);
 }
 
 export function dueState(dueAt?: string, today = localToday()): DueState {

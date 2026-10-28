@@ -223,13 +223,15 @@ export async function fireLeadContactedIfFirst(
     failed: 0,
   };
   try {
+    // Automation sends are stored as outbound messages too, so counting them
+    // misses the agent's first message. "Has this fired before?" is the real test.
     const { count, error } = await supabase
-      .from("messages")
+      .from("automation_runs")
       .select("id", { count: "exact", head: true })
       .eq("org_id", input.orgId)
       .eq("lead_id", input.leadId)
-      .eq("direction", "outbound");
-    if (error || count !== 1) return empty;
+      .eq("trigger", "lead_contacted");
+    if (error || (count ?? 0) > 0) return empty;
     return triggerAndProcess(supabase, {
       orgId: input.orgId,
       leadId: input.leadId,
@@ -286,12 +288,16 @@ export async function enqueueNoReplyTriggers(
   ).toISOString();
   const lookback = new Date(Date.now() - 14 * 24 * 3_600_000).toISOString();
 
+  // Only scan workspaces that actually have a no-reply workflow, newest first,
+  // so other tenants' threads can't fill the batch and starve these ones.
   let threadQuery = supabase
     .from("conversation_threads")
     .select("id, org_id, lead_id, last_message_at")
+    .in("org_id", [...new Set(active.map((row) => String(row.org_id)))])
     .lte("last_message_at", silentBefore)
     .gte("last_message_at", lookback)
-    .limit(options.limit ?? 40);
+    .order("last_message_at", { ascending: false })
+    .limit(options.limit ?? 200);
   if (options.orgId) threadQuery = threadQuery.eq("org_id", options.orgId);
 
   const { data: threads } = await threadQuery;
@@ -327,13 +333,26 @@ export async function enqueueNoReplyTriggers(
       .maybeSingle();
     if (!last || last.direction !== "outbound" || !last.sent_at) continue;
 
+    // The workflow's own texts are outbound too, so "since the last message"
+    // would re-trigger forever. One chase per lead until they reply.
+    const { data: lastInbound } = await supabase
+      .from("messages")
+      .select("sent_at")
+      .eq("org_id", orgId)
+      .eq("lead_id", leadId)
+      .eq("direction", "inbound")
+      .order("sent_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const since =
+      lastInbound?.sent_at && String(lastInbound.sent_at) > lookback ? String(lastInbound.sent_at) : lookback;
     const { data: existing } = await supabase
       .from("automation_runs")
       .select("id")
       .eq("org_id", orgId)
       .eq("lead_id", leadId)
       .eq("trigger", "no_reply")
-      .gte("created_at", String(last.sent_at))
+      .gte("created_at", since)
       .limit(1);
     if (existing?.length) continue;
 
@@ -399,16 +418,28 @@ async function executeStep(
         return { outcome: "skipped", detail: "Contact opted out of SMS" };
       }
 
+      // Texts must leave from this workspace's own number so replies route back.
+      const { data: orgRow } = await supabase
+        .from("organizations")
+        .select("phone_number")
+        .eq("id", run.org_id)
+        .maybeSingle();
+      const from = String(orgRow?.phone_number || "").trim() || undefined;
+
       const result = await sendOutboundSms(supabase, {
         orgId: run.org_id,
         leadId: lead.id,
         to,
         body,
+        from,
         consent:
           (preferred?.consent as "unknown" | "opted_in" | "opted_out") || "unknown",
       });
       if (!result.ok) {
         return { outcome: "failed", detail: result.error || "SMS send failed" };
+      }
+      if (result.mode !== "live" && process.env.NODE_ENV === "production") {
+        return { outcome: "failed", detail: "Buy a phone number in Settings before automations can text." };
       }
 
       await logActivity(supabase, {

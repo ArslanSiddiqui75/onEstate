@@ -501,11 +501,25 @@ export function createSupabaseRepository(
       if (error) throw error;
       
       if (patch.phones) {
-        // Simple wipe and replace for phones to sync changes easily
-        await supabase.from("lead_phone_numbers").delete().eq("lead_id", id);
-        if (patch.phones.length > 0) {
+        // Replace the phone list, but never erase an opt-out: a number that said
+        // STOP stays on file so re-adding it can't make it textable again.
+        const { data: optedOut } = await supabase
+          .from("lead_phone_numbers")
+          .select("number")
+          .eq("lead_id", id)
+          .eq("org_id", ctx.org.id)
+          .eq("consent", "opted_out");
+        const keep = new Set((optedOut || []).map((row) => String(row.number)));
+        await supabase
+          .from("lead_phone_numbers")
+          .delete()
+          .eq("lead_id", id)
+          .eq("org_id", ctx.org.id)
+          .neq("consent", "opted_out");
+        const incoming = patch.phones.filter((p) => !keep.has(p.number));
+        if (incoming.length > 0) {
           await supabase.from("lead_phone_numbers").insert(
-            patch.phones.map((p) => ({
+            incoming.map((p) => ({
               lead_id: id,
               org_id: ctx.org.id,
               label: p.label,

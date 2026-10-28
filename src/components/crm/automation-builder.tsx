@@ -687,7 +687,7 @@ function StepEditor({
           min={1}
           value={step.config.delayHours ?? 24}
           onChange={(e) => {
-            const delayHours = Number(e.target.value) || 1;
+            const delayHours = Math.max(1, Math.min(24 * 90, Math.round(Number(e.target.value) || 1)));
             onChange({
               ...step,
               label: `Wait ${delayHours} hours`,

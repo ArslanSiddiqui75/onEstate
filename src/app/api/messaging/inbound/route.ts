@@ -21,6 +21,9 @@ export async function POST(request: Request) {
   }
   const denied = forbiddenIfNoModule(profile, "crm", "edit");
   if (denied) return denied;
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not available" }, { status: 404 });
+  }
 
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);

@@ -689,6 +689,8 @@ export function CrmDesk({ view }: { view: CrmView }) {
                               void updateLeadStage(
                                 lead.id,
                                 e.target.value as LeadStage,
+                              ).catch((err) =>
+                                toast.error(err instanceof Error ? err.message : "Could not move that lead"),
                               )
                             }
                           >

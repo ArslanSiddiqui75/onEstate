@@ -146,6 +146,15 @@ export async function ensureThread(
     .single();
 
   if (error || !created) {
+    // A concurrent first message may have created the thread a moment ago.
+    const { data: raced } = await supabase
+      .from("conversation_threads")
+      .select("id")
+      .eq("org_id", input.orgId)
+      .eq("lead_id", input.leadId)
+      .eq("channel", channel)
+      .maybeSingle();
+    if (raced) return { threadId: String(raced.id) };
     return { error: error?.message || "Failed to create thread" };
   }
   return { threadId: String(created.id) };

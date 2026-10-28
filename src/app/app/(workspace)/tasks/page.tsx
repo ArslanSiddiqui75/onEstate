@@ -85,7 +85,7 @@ function TasksDesk() {
                       type="button"
                       aria-label={`Mark ${task.title} done`}
                       className="h-5 w-5 shrink-0 rounded-full border border-[var(--border-strong)] transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
-                      onClick={() => void resolveTask(task.id).then(() => toast.success("Task done"))}
+                      onClick={() => void resolveTask(task.id).then(() => toast.success("Task done"), (err) => toast.error(err instanceof Error ? err.message : "Could not update that task"))}
                     />
                   ) : (
                     <span className="h-5 w-5 shrink-0 rounded-full border border-[var(--border-strong)]" aria-hidden />

@@ -19,18 +19,21 @@ export async function POST(request: Request) {
 
   const supabase = createServiceSupabaseClient();
   if (supabase && status) {
-    const mapped =
-      status === "delivered"
-        ? "delivered"
-        : status === "failed" || status === "undelivered"
-          ? "failed"
-          : status === "sent"
-            ? "sent"
-            : "queued";
-    await supabase
-      .from("messages")
-      .update({ status: mapped })
-      .eq("provider_sid", sid);
+    // Callbacks can arrive out of order, so a status may only move forward.
+    const forward: Record<string, { to: string; from: string[] }> = {
+      sent: { to: "sent", from: ["queued"] },
+      delivered: { to: "delivered", from: ["queued", "sent"] },
+      failed: { to: "failed", from: ["queued", "sent"] },
+      undelivered: { to: "failed", from: ["queued", "sent"] },
+    };
+    const rule = forward[status];
+    if (rule) {
+      await supabase
+        .from("messages")
+        .update({ status: rule.to })
+        .eq("provider_sid", sid)
+        .in("status", rule.from);
+    }
   }
 
   return NextResponse.json({ ok: true });
