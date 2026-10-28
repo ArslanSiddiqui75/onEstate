@@ -47,7 +47,7 @@ export function LogoLoader({
           width={524}
           height={706}
           draggable={false}
-          className="absolute inset-0 hidden h-full w-full origin-center scale-[1.15] object-contain dark:block"
+          className="absolute inset-0 hidden h-full w-full origin-center scale-[1.26] object-contain dark:block"
         />
       </div>
       {label ? (
