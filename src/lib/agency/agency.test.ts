@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createAppointment, createOffer, draftListing, draftSaleSummary, seedAgencyBook } from "@/lib/agency/book";
+import { createAppointment, createOffer, draftListing, draftSaleSummary, issuePortal, seedAgencyBook } from "@/lib/agency/book";
 import { PROGRESSION } from "@/lib/agency/types";
 
 describe("agency book", () => {
@@ -9,6 +9,16 @@ describe("agency book", () => {
     expect(book.offers[0]?.amount).toBe(425000);
     expect(book.portals.map((item) => item.role).sort()).toEqual(["buyer", "landlord", "tenant", "vendor"]);
     expect(book.bookingToken).toBe("harbour");
+  });
+
+  it("issues a client link that cannot be guessed from the role", () => {
+    const { portal } = issuePortal(seedAgencyBook(), {
+      role: "vendor",
+      name: "Helen Croft",
+      address: "14 Elm Grove",
+    });
+    expect(portal.token.startsWith("vendor-")).toBe(true);
+    expect(portal.token.length).toBeGreaterThan(24);
   });
 
   it("rejects a booking without a name", () => {

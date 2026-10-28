@@ -69,7 +69,11 @@ export async function PATCH(
   const patch: { role?: Role; module_access?: ReturnType<typeof readModuleGrants> } = {};
   if (parsed.data.role) patch.role = parsed.data.role;
   if (parsed.data.moduleAccess) patch.module_access = readModuleGrants(parsed.data.moduleAccess) || {};
-  const { error } = await supabase.from("profiles").update(patch).eq("id", id);
+  const { error } = await supabase
+    .from("profiles")
+    .update(patch)
+    .eq("id", id)
+    .eq("org_id", profile.orgId);
   if (error) return NextResponse.json({ error: error.message }, { status: 502 });
   return NextResponse.json({ ok: true });
 }
@@ -111,7 +115,7 @@ export async function DELETE(
   if (member.role === "owner") {
     return NextResponse.json({ error: "The owner stays on the team" }, { status: 400 });
   }
-  const { error } = await supabase.from("profiles").delete().eq("id", id);
+  const { error } = await supabase.from("profiles").delete().eq("id", id).eq("org_id", profile.orgId);
   if (error) {
     return NextResponse.json(
       { error: "This person is still on records. Change their role instead." },

@@ -25,9 +25,17 @@ export async function POST(request: Request) {
   // Never trust a client-supplied Stripe customer id — that would let anyone
   // open someone else's billing portal. Resolve the caller's own org instead.
   const supabase = createServiceSupabaseClient();
-  let customerId = parsed.data.customerId || null;
+  if (!supabase) {
+    return NextResponse.json({
+      mode: "demo",
+      market: "uk",
+      message: "Payment settings open after your first payment.",
+      returnUrl,
+    });
+  }
+  let customerId: string | null = null;
   let market: Market = "uk";
-  if (supabase) {
+  {
     const profile = await resolveProfileFromRequest(request);
     if (!profile) {
       return NextResponse.json({ error: "Sign in required" }, { status: 401 });

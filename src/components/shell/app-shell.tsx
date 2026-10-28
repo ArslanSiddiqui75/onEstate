@@ -534,7 +534,7 @@ function ShellFrame({
 
           <main
             className={cn(
-              "surface-panel min-h-0 flex-1",
+              "surface-panel min-h-0 min-w-0 flex-1",
               pathname === "/app/conversations" || pathname === "/app/crm"
                 ? "flex flex-col overflow-hidden p-0"
                 : "overflow-y-auto scrollbar-thin p-4 sm:p-6 lg:p-8",

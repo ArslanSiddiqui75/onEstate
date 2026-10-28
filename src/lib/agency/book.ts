@@ -13,6 +13,15 @@ export function newAgencyId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function secretLinkToken(prefix: string) {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  const body = btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+  return `${prefix}-${body}`;
+}
+
 export function seedAgencyBook(): AgencyBook {
   return {
     version: 1,
@@ -255,7 +264,7 @@ export function issuePortal(
     : undefined;
   if (existing) return { book, portal: existing };
   const portal: PortalRecord = {
-    token: `${input.role}-${Math.random().toString(36).slice(2, 8)}`,
+    token: secretLinkToken(input.role),
     role: input.role,
     name,
     address,

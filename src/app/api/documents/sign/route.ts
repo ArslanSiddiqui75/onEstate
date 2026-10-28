@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoAnyModule } from "@/lib/server/require-module";
+import { isOrgOwnedStoragePath } from "@/lib/documents/storage-path";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   const path = new URL(request.url).searchParams.get("path") || "";
-  if (!path.startsWith(`${profile.orgId}/`)) {
+  if (!isOrgOwnedStoragePath(profile.orgId, path)) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 

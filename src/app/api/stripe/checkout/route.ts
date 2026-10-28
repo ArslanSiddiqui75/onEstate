@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       : null;
   }
 
-  if (!isStripeConfigured(market)) {
+  if (!supabase || !isStripeConfigured(market)) {
     // Each region has its own Stripe account. Keys stay with the operator.
     return NextResponse.json({
       mode: "demo",

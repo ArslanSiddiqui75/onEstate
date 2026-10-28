@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoAnyModule } from "@/lib/server/require-module";
+import { isOrgOwnedStoragePath } from "@/lib/documents/storage-path";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 const createSchema = z.object({
@@ -92,7 +93,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Title and path are required" }, { status: 400 });
   }
-  if (!parsed.data.path.startsWith(`${profile.orgId}/`)) {
+  if (!isOrgOwnedStoragePath(profile.orgId, parsed.data.path)) {
     return NextResponse.json({ error: "Invalid storage path" }, { status: 400 });
   }
 

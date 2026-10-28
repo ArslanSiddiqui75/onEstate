@@ -64,7 +64,7 @@ export default function AppDocumentsPage() {
     <div className="space-y-6">
       <p className="text-sm text-[var(--muted)]">
         {canEdit
-          ? "Upload a file below, or browse e-sign files and listing media. This is not a full document system."
+          ? "Upload a file, or open e-sign files and listing media from this workspace."
           : "E-sign files and listing media for this workspace. Uploading needs edit access."}
       </p>
       {canEdit ? (
@@ -171,7 +171,10 @@ export default function AppDocumentsPage() {
                     onClick={() => {
                       void (async () => {
                         if (doc.kind === "listing") {
-                          window.open(doc.href || "", "_blank", "noopener,noreferrer");
+                          const href = doc.href || "";
+                          if (/^https?:\/\//i.test(href)) {
+                            window.open(href, "_blank", "noopener,noreferrer");
+                          }
                           return;
                         }
                         const token = await getAuthToken();
@@ -187,7 +190,17 @@ export default function AppDocumentsPage() {
                           toast.error(json?.error || "Could not open file");
                           return;
                         }
-                        window.open(json.url, "_blank", "noopener,noreferrer");
+                        try {
+                          const target = new URL(json.url);
+                          const local =
+                            target.protocol === "http:" &&
+                            (target.hostname === "localhost" || target.hostname === "127.0.0.1");
+                          if (target.protocol === "https:" || local) {
+                            window.open(target.href, "_blank", "noopener,noreferrer");
+                          }
+                        } catch {
+                          toast.error("Could not open file");
+                        }
                       })();
                     }}
                   >

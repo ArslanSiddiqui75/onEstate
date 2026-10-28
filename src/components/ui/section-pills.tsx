@@ -15,13 +15,15 @@ function pillClass(active: boolean) {
 
 function PillTrack({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="max-w-full overflow-x-auto">
-      <div
-        className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-muted)] p-1"
-        role="tablist"
-        aria-label={label}
-      >
-        {children}
+    <div className="grid w-full min-w-0">
+      <div className="overflow-x-auto">
+        <div
+          className="inline-flex w-max rounded-full border border-[var(--border)] bg-[var(--surface-muted)] p-1"
+          role="tablist"
+          aria-label={label}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

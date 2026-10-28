@@ -28,7 +28,8 @@ export async function GET(
   }
 
   if (providerError) {
-    return redirectTo({ social_error: `${platform}: ${providerError}` });
+    const message = providerError.replace(/[\r\n\t]/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
+    return redirectTo({ social_error: message || "Couldn’t connect that account. Try again." });
   }
   if (!code || !stateRecord) {
     return redirectTo({

@@ -17,11 +17,11 @@ export async function GET(request: Request) {
   }
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+    return NextResponse.json({ error: "This signing link isn’t available right now." }, { status: 503 });
   }
   const doc = await getEsignByToken(supabase, token);
   if (!doc) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "This signing link isn’t recognised." }, { status: 404 });
   }
   return NextResponse.json({
     ok: true,
@@ -43,12 +43,16 @@ export async function POST(request: Request) {
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+    return NextResponse.json({ error: "This signing link isn’t available right now." }, { status: 503 });
   }
 
   const result = await completeEsignByToken(supabase, parsed.data.token);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error || "Failed" }, { status: 400 });
+    const safe =
+      result.error === "Signature request not found" || result.error === "This request was voided"
+        ? result.error
+        : "Could not complete the signature.";
+    return NextResponse.json({ error: safe }, { status: 400 });
   }
   return NextResponse.json({
     ok: true,

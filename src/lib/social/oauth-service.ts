@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { appRedirectUrl } from "@/lib/http/same-origin";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import type { SocialPlatform } from "@/types";
 
@@ -11,19 +12,7 @@ export function createPkcePair() {
 }
 
 export function getRequestOrigin(request: Request): string {
-  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  if (host) {
-    const isLocal =
-      host.startsWith("localhost") ||
-      host.startsWith("127.0.0.1") ||
-      host.startsWith("0.0.0.0") ||
-      host.includes("localhost:") ||
-      host.includes("127.0.0.1:");
-    const proto = forwardedProto || (isLocal ? "http" : "https");
-    return `${proto}://${host}`;
-  }
-  return new URL(request.url).origin;
+  return appRedirectUrl(request, "/").origin;
 }
 
 export function buildRedirectUri(origin: string, platform: SocialPlatform) {
@@ -32,9 +21,9 @@ export function buildRedirectUri(origin: string, platform: SocialPlatform) {
 }
 
 export function safeReturnTo(path: unknown) {
-  if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//")) {
-    return "/app/settings/social";
-  }
+  if (typeof path !== "string") return "/app/settings/social";
+  if (!path.startsWith("/") || path.startsWith("//")) return "/app/settings/social";
+  if (/[\r\n\\]/.test(path) || path.includes("://")) return "/app/settings/social";
   return path;
 }
 
@@ -80,7 +69,7 @@ export async function consumeOAuthState(state: string) {
     orgId: String(data.org_id),
     userId: String(data.user_id),
     platform: data.platform as SocialPlatform,
-    returnTo: String(data.return_to),
+    returnTo: safeReturnTo(data.return_to),
     codeVerifier: data.code_verifier ? String(data.code_verifier) : undefined,
   };
 }
