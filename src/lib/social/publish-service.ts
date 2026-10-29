@@ -75,7 +75,11 @@ export async function publishSocialPost(postId: string, orgId: string): Promise<
   for (const accountId of accountIds) {
     const account = accounts?.find((a) => String(a.id) === accountId);
     if (!account) {
-      results.push({ accountId, ok: false, error: "Account not found" });
+      results.push({
+        accountId,
+        ok: false,
+        error: "Account is not connected to this workspace",
+      });
       continue;
     }
     if (account.status !== "connected") {

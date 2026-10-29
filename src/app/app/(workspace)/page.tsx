@@ -22,10 +22,13 @@ import { toast } from "@/components/ui/toast";
 import { formatWhen } from "@/lib/lettings/format";
 
 export default function AppDashboardPage() {
-  const { user, org, leads, listings, deals, tasks, market, brand } =
+  const { user, org, leads, listings, deals, tasks, market, brand, socialAccounts } =
     useAppSession();
   const { book } = useAgencyBook(org?.id ?? "workspace");
   if (!user || !org) return null;
+  const canSocial = hasModuleAccess(user, org.plan, "social", "edit");
+  const needsSocialConnect =
+    canSocial && !socialAccounts.some((account) => account.status === "connected");
   const marketLeads = leads.filter((l) => l.market === market);
   const marketListings = listings.filter((l) => l.market === market);
   const marketDeals = deals.filter((d) => d.market === market);
@@ -100,6 +103,25 @@ export default function AppDashboardPage() {
                   </Button>
                 </div>
               </div>
+            </div>
+          </Card>
+        </motion.div>
+      ) : null}
+
+      {needsSocialConnect ? (
+        <motion.div variants={fadeUp} initial="hidden" animate="show">
+          <Card className="border-[var(--border)]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="max-w-2xl">
+                <h2 className="font-semibold">Connect your social accounts</h2>
+                <p className="mt-1.5 text-sm text-[var(--muted)]">
+                  Link {org.name}&apos;s Instagram, Facebook, LinkedIn, or X so Social can
+                  publish for this brokerage only. Other clients keep their own connections.
+                </p>
+              </div>
+              <Button asChild>
+                <Link href="/app/settings/social">Connect accounts</Link>
+              </Button>
             </div>
           </Card>
         </motion.div>

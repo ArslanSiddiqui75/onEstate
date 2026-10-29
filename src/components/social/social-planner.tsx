@@ -1206,12 +1206,18 @@ export function AccountsPanel({
         </p>
       </div>
 
-      {live && accounts.filter((a) => a.status === "connected").length === 0 ? (
+      {accounts.filter((a) => a.status === "connected").length === 0 ? (
         <div className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--muted)]">
-          No accounts connected in <strong>{orgName}</strong> yet. Connect one
-          below to publish.
+          No accounts connected in <strong>{orgName}</strong> yet. Sign in to each
+          network below with <strong>this brokerage’s</strong> login — not a personal
+          or platform-wide account. Other workspaces keep their own connections.
         </div>
-      ) : null}
+      ) : (
+        <div className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--muted)]">
+          Connected only for <strong>{orgName}</strong>. Disconnect anytime; other
+          tenants cannot use these pages.
+        </div>
+      )}
 
       {connectError ? (
         <div className="rounded-[var(--radius-sm)] border border-[var(--danger)]/30 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">

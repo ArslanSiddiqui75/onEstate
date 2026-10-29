@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useEffect, useRef } from "react";
+import { Plug } from "lucide-react";
 import { useAppSession } from "@/lib/app/session";
 import { hasModuleAccess } from "@/lib/access";
 import { LockedModule } from "@/components/ui/locked-module";
 import { OAuthReturnBanner } from "@/components/social/oauth-return-banner";
 import { SocialPlanner } from "@/components/social/social-planner";
+import { Button } from "@/components/ui/button";
 import { PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 
 /** Hobby Vercel can't run every-few-minutes crons — flush due posts when Social opens. */
@@ -76,6 +79,7 @@ export default function AppSocialPage() {
 
   const canEdit = hasModuleAccess(user, org.plan, "social", "edit");
   const flags = PLAN_FEATURE_FLAGS[org.plan];
+  const connectedCount = socialAccounts.filter((a) => a.status === "connected").length;
 
   return (
     <div className="space-y-4">
@@ -83,6 +87,35 @@ export default function AppSocialPage() {
       <Suspense fallback={null}>
         <OAuthReturnBanner />
       </Suspense>
+      {connectedCount === 0 ? (
+        <div className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
+          <div className="max-w-2xl">
+            <p className="font-semibold">Connect {org.name}&apos;s own social accounts</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              Each workspace authorises its own Instagram, Facebook, LinkedIn, and X pages.
+              Nothing is shared with other brokerages — connect yours before composing posts.
+            </p>
+          </div>
+          {canEdit ? (
+            <Button asChild className="mt-3 shrink-0 sm:mt-0">
+              <Link href="/app/settings/social">
+                <Plug className="size-4" />
+                Connect accounts
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <p className="text-sm text-[var(--muted)]">
+          Publishing for <span className="font-medium text-[var(--foreground)]">{org.name}</span>{" "}
+          only — {connectedCount} connected account{connectedCount === 1 ? "" : "s"}. Manage
+          connections in{" "}
+          <Link href="/app/settings/social" className="text-[var(--accent)] hover:underline">
+            Branding
+          </Link>
+          .
+        </p>
+      )}
       <Suspense fallback={null}>
       <SocialPlanner
         posts={socialPosts}

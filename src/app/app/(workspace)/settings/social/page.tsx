@@ -45,7 +45,9 @@ export default function SocialAccountsSettingsPage() {
       {canSocial ? (
         <div className="space-y-4">
           <p className="text-sm text-[var(--muted)]">
-            Networks this workspace can publish to. Compose and schedule from{" "}
+            Connect <strong className="font-medium text-[var(--foreground)]">{org.name}</strong>
+            ’s own Instagram, Facebook, LinkedIn, and X accounts. Credentials stay in this
+            workspace only — other brokerages never see or post to them. Compose and schedule from{" "}
             <Link href="/app/social" className="text-[var(--accent)] hover:underline">
               Social
             </Link>

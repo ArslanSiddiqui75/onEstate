@@ -97,6 +97,28 @@ function mapConversationMessage(m: Record<string, unknown>): ConversationMessage
   };
 }
 
+/** Drop any account ids that do not belong to this workspace so posts cannot target another tenant. */
+async function ownedSocialAccountIds(
+  supabase: ReturnType<typeof createBrowserSupabaseClient>,
+  orgId: string,
+  accountIds: string[],
+): Promise<string[]> {
+  const unique = [...new Set(accountIds.map(String).filter(Boolean))];
+  if (!unique.length) return [];
+  const { data, error } = await supabase
+    .from("social_accounts")
+    .select("id")
+    .eq("org_id", orgId)
+    .in("id", unique);
+  if (error) throw error;
+  const allowed = new Set((data || []).map((row) => String(row.id)));
+  const owned = unique.filter((id) => allowed.has(id));
+  if (owned.length !== unique.length) {
+    throw new Error("One of those accounts is not connected to this workspace.");
+  }
+  return owned;
+}
+
 function mapSocialAccount(row: Record<string, unknown>): SocialAccount {
   return {
     id: String(row.id),
@@ -1515,11 +1537,16 @@ export function createSupabaseRepository(
     },
 
     async createSocialPost(post) {
+      const accountIds = await ownedSocialAccountIds(
+        supabase,
+        ctx.org.id,
+        post.accountIds || [],
+      );
       const { data, error } = await supabase
         .from("social_posts")
         .insert({
           org_id: ctx.org.id,
-          account_ids: post.accountIds || [],
+          account_ids: accountIds,
           caption: post.caption,
           media: post.media || [],
           link_url: post.linkUrl,
@@ -1536,6 +1563,10 @@ export function createSupabaseRepository(
     },
 
     async updateSocialPost(id, patch) {
+      const accountIds =
+        patch.accountIds === undefined
+          ? undefined
+          : await ownedSocialAccountIds(supabase, ctx.org.id, patch.accountIds || []);
       const { data, error } = await supabase
         .from("social_posts")
         .update({
@@ -1543,7 +1574,7 @@ export function createSupabaseRepository(
           status: patch.status,
           scheduled_for: patch.scheduledFor,
           published_at: patch.publishedAt,
-          account_ids: patch.accountIds,
+          account_ids: accountIds,
           media: patch.media,
           link_url: patch.linkUrl,
           listing_id: patch.listingId,
@@ -1551,6 +1582,7 @@ export function createSupabaseRepository(
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
+        .eq("org_id", ctx.org.id)
         .select("*")
         .single();
       if (error) throw error;
@@ -1558,7 +1590,11 @@ export function createSupabaseRepository(
     },
 
     async deleteSocialPost(id) {
-      const { error } = await supabase.from("social_posts").delete().eq("id", id);
+      const { error } = await supabase
+        .from("social_posts")
+        .delete()
+        .eq("id", id)
+        .eq("org_id", ctx.org.id);
       if (error) throw error;
     },
   };

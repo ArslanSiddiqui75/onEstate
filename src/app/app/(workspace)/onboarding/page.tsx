@@ -54,8 +54,8 @@ export default function OnboardingPage() {
       if (selectedPlan !== org?.plan) {
         await setPlan(selectedPlan);
       }
-      toast.success("Workspace setup complete!");
-      router.push("/app");
+      toast.success("Workspace ready — connect your social accounts next from Branding.");
+      router.push("/app/settings/social");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to setup workspace");
     } finally {
