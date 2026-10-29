@@ -61,7 +61,8 @@ export function recordsForDomain(domain: string, host = mailHost()): DnsRecord[]
       type: "TXT",
       host: domain,
       value: `v=spf1 include:${host} ~all`,
-      purpose: "Authorises the app to send from this domain.",
+      purpose:
+        "Authorises the app to send from this domain. If Hostinger (or another host) already has an SPF TXT, merge this include into that one record — do not create two SPF rows.",
     },
     {
       type: "TXT",

@@ -9,7 +9,17 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
+import { DnsProviderGuide } from "@/components/settings/dns-provider-guide";
 import { copyToClipboard } from "@/lib/utils";
+
+/** Hostinger and many panels want "@" for the root, and the left label only for subdomains. */
+function dnsHostLabel(host: string, domain: string) {
+  const h = host.trim().toLowerCase();
+  const d = domain.trim().toLowerCase();
+  if (h === d) return "@";
+  if (h.endsWith(`.${d}`)) return h.slice(0, -(d.length + 1));
+  return host;
+}
 
 export default function EmailDomainSettingsPage() {
   const { user, org, updateWorkspace, getAuthToken, persistence } = useAppSession();
@@ -40,8 +50,12 @@ export default function EmailDomainSettingsPage() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-[var(--muted)]">
-        Connect the brokerage domain with DNS. Conversations then send email from that domain.
+        Connect a domain you already own (Hostinger, GoDaddy, and so on). Add the DNS records they
+        show you, then Conversations can send from your brokerage address — for example{" "}
+        <span className="text-[var(--foreground)]">hello@youragency.com</span>.
       </p>
+
+      <DnsProviderGuide kind="email" />
 
       <Card className="space-y-4 p-5">
         <div>
@@ -51,7 +65,7 @@ export default function EmailDomainSettingsPage() {
               ? saved.status === "verified"
                 ? `Sending as ${saved.fromName} <${saved.fromLocal}@${saved.domain}>.`
                 : `${saved.domain} is saved. DNS still needs to match.`
-              : "No domain connected yet."}
+              : "Enter the domain you already use for the business, then check DNS."}
           </p>
         </div>
         {isOwner ? (
@@ -142,7 +156,9 @@ export default function EmailDomainSettingsPage() {
           <div>
             <h2 className="font-semibold">{verified ? "DNS matches" : "Add these records"}</h2>
             <p className="text-sm text-[var(--muted)]">
-              Add them at the registrar, then check again. The mail and DKIM CNAMEs plus the SPF record are required.
+              In Hostinger (or your DNS host), create each row below. The mail and DKIM CNAMEs plus
+              SPF are required. If an SPF TXT already exists, merge the{" "}
+              <code className="text-xs">include:</code> into that one row — do not add a second SPF.
             </p>
           </div>
           <ul className="divide-y divide-[var(--border)]">
@@ -152,7 +168,11 @@ export default function EmailDomainSettingsPage() {
                 <li key={`${record.type}-${record.host}`} className="space-y-1 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium">
-                      {record.type} · {record.host}
+                      {record.type} · Host{" "}
+                      <span className="font-mono">{dnsHostLabel(record.host, saved?.domain || domain)}</span>
+                      <span className="ml-2 text-xs font-normal text-[var(--muted)]">
+                        ({record.host})
+                      </span>
                       {absent ? <span className="ml-2 text-xs text-[var(--warning)]">Missing</span> : null}
                     </p>
                     <Button

@@ -127,8 +127,8 @@ export function WebsiteDomainConnect() {
       <div>
         <h2 className="font-display text-xl">Website domain</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Buy a domain at Namecheap and point it at the public site, or connect one you already own there.
-          DNS is checked when you verify. Edit the page from{" "}
+          Buy a domain here with Namecheap, or point one you already own at Hostinger, GoDaddy,
+          Cloudflare, and so on. Add the DNS records below, verify, then publish. Edit the page from{" "}
           <Link href="/app/website" className="text-[var(--accent)] hover:underline">
             Website
           </Link>

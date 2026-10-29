@@ -5,6 +5,7 @@ import { CheckCircle2, Copy, ExternalLink, Globe, ShieldCheck } from "lucide-rea
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DnsProviderGuide } from "@/components/settings/dns-provider-guide";
 import { cleanHost, cnameTarget, dnsInstructions, isApexHost } from "@/lib/website/domain-records";
 import type { DomainStatus, SslStatus, WebsiteSite } from "@/types";
 import { copyToClipboard } from "@/lib/utils";
@@ -116,6 +117,8 @@ export function DomainPanel({
           </p>
         )}
       </div>
+
+      <DnsProviderGuide kind="website" />
 
       <div className="rounded-xl border border-[var(--border)] p-3">
         <p className="mb-2 flex items-center gap-1.5 text-xs font-medium">
