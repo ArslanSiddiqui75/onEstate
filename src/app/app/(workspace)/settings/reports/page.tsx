@@ -68,7 +68,7 @@ function ReportView({ report }: { report: WorkspaceReport }) {
 
   return (
     <div className="space-y-4">
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
         {report.overview.map((item) => {
           const target = sectionIdForOverview(item.label, report.sections);
           const active = target === section.id;

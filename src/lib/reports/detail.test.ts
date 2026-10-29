@@ -323,4 +323,93 @@ describe("workspace report", () => {
     expect(listings?.hint).toContain("200,000");
     expect(listings?.hint).not.toContain("550,000");
   });
+
+  it("shows social accounts, status stats and posts in Reports", () => {
+    const report = buildWorkspaceReport(
+      base({
+        socialAccounts: [
+          {
+            id: "acc_ig",
+            orgId: "org",
+            platform: "instagram",
+            displayName: "Northbridge Homes",
+            handle: "northbridge",
+            status: "connected",
+            connectedAt: "2026-09-01T10:00:00.000Z",
+          },
+          {
+            id: "acc_fb",
+            orgId: "org",
+            platform: "facebook",
+            displayName: "Northbridge Page",
+            status: "disconnected",
+          },
+        ],
+        socialPosts: [
+          {
+            id: "post_1",
+            orgId: "org",
+            accountIds: ["acc_ig"],
+            caption: "Open house this Saturday",
+            media: [
+              {
+                id: "m1",
+                kind: "image",
+                name: "hero.jpg",
+                mimeType: "image/jpeg",
+                sizeBytes: 10,
+                dataUrl: "https://example.com/a.jpg",
+                createdAt: "2026-10-25T10:00:00.000Z",
+              },
+            ],
+            status: "published",
+            publishedAt: "2026-10-25T12:00:00.000Z",
+            createdAt: "2026-10-25T10:00:00.000Z",
+          },
+          {
+            id: "post_2",
+            orgId: "org",
+            accountIds: ["acc_ig"],
+            caption: "Failed carousel",
+            media: [],
+            status: "failed",
+            lastError: "Token expired",
+            createdAt: "2026-10-26T10:00:00.000Z",
+          },
+          {
+            id: "post_3",
+            orgId: "org",
+            accountIds: ["acc_ig"],
+            caption: "Coming next week",
+            media: [],
+            status: "scheduled",
+            scheduledFor: "2026-10-30T15:00:00.000Z",
+            createdAt: "2026-10-26T11:00:00.000Z",
+          },
+        ],
+      }),
+    );
+    expect(report.overview.map((item) => item.label)).toContain("Social");
+    const socialOverview = report.overview.find((item) => item.label === "Social");
+    expect(socialOverview?.value).toBe("1");
+    expect(socialOverview?.hint).toContain("1 connected");
+    const social = report.sections.find((section) => section.id === "social");
+    expect(social).toBeTruthy();
+    expect(social?.facts.some((fact) => fact.label === "Published" && fact.value === "1")).toBe(true);
+    expect(social?.facts.some((fact) => fact.label === "Failed" && fact.value === "1")).toBe(true);
+    expect(social?.facts.some((fact) => fact.label === "Instagram accounts")).toBe(true);
+    expect(social?.facts.some((fact) => fact.label === "Instagram posts")).toBe(true);
+    const accounts = social?.groups.find((group) => group.title === "Accounts");
+    expect(accounts?.records.map((row) => row.title)).toEqual([
+      "Northbridge Homes",
+      "Northbridge Page",
+    ]);
+    expect(social?.groups.find((group) => group.title === "Published")?.records[0].title).toContain(
+      "Open house",
+    );
+    expect(social?.groups.find((group) => group.title === "Failed")?.records[0].note).toContain(
+      "Token expired",
+    );
+    expect(social?.groups.find((group) => group.title === "Scheduled")?.records).toHaveLength(1);
+  });
 });

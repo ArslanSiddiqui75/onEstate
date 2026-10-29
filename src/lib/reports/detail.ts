@@ -445,6 +445,28 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
         },
   ];
 
+  const socialPostsInRange = input.socialPosts.filter((post) => {
+    if (post.status === "published") return dated(post.publishedAt || post.createdAt);
+    if (post.status === "scheduled") {
+      return upcoming(post.scheduledFor) || dated(post.scheduledFor || post.createdAt);
+    }
+    return dated(post.createdAt) || dated(post.publishedAt) || dated(post.scheduledFor);
+  });
+  const connectedSocial = input.socialAccounts.filter((account) => account.status === "connected");
+  const publishedSocial = socialPostsInRange.filter((post) => post.status === "published");
+  overview.push({
+    label: "Social",
+    value: String(publishedSocial.length),
+    hint: join([
+      connectedSocial.length
+        ? `${connectedSocial.length} connected`
+        : "No accounts connected",
+      socialPostsInRange.length
+        ? `${socialPostsInRange.length} in range`
+        : "No posts in range",
+    ]),
+  });
+
   const leadName = new Map(input.leads.map((lead) => [lead.id, lead.name]));
 
   function opportunitiesSection(): ReportSection {
@@ -1034,18 +1056,87 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
   }
 
   function socialSection(): ReportSection {
-    const posts = input.socialPosts.filter((post) =>
-      upcoming(post.publishedAt || post.scheduledFor || post.createdAt),
+    const posts = socialPostsInRange;
+    const accountName = new Map(
+      input.socialAccounts.map((account) => [account.id, account.displayName]),
     );
-    const accountName = new Map(input.socialAccounts.map((account) => [account.id, account.displayName]));
+    const accountPlatform = new Map(
+      input.socialAccounts.map((account) => [account.id, account.platform]),
+    );
+    const connected = connectedSocial;
+    const published = publishedSocial;
+    const scheduled = posts.filter((post) => post.status === "scheduled");
+    const drafts = posts.filter((post) => post.status === "draft");
+    const failed = posts.filter((post) => post.status === "failed");
+    const withMedia = posts.filter((post) => post.media.length > 0);
+    const platformsUsed = new Map<string, number>();
+    for (const post of posts) {
+      const platforms = new Set<string>();
+      for (const id of post.accountIds) {
+        const platform = accountPlatform.get(id) || post.channel;
+        if (platform) platforms.add(platform);
+      }
+      if (!platforms.size && post.channel) platforms.add(post.channel);
+      for (const platform of platforms) {
+        platformsUsed.set(platform, (platformsUsed.get(platform) || 0) + 1);
+      }
+    }
+    const platformFacts = [...platformsUsed.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([platform, count]) => ({
+        label: named(PLATFORM, platform),
+        value: String(count),
+      }));
+    function postRecord(post: SocialPost) {
+      const targets = post.accountIds
+        .map((id) => accountName.get(id))
+        .filter((name): name is string => Boolean(name));
+      return {
+        title: snippet(post.caption, 80) || "Untitled post",
+        detail: join([
+          named(SOCIAL_STATUS, post.status),
+          stamp(post.publishedAt || post.scheduledFor || post.createdAt, market),
+          targets.join(", ") || (post.channel ? named(PLATFORM, post.channel) : ""),
+          post.media.length
+            ? `${post.media.length} media · ${post.media.map((item) => item.kind).join(", ")}`
+            : "No media",
+          post.linkUrl ? "Link attached" : "",
+          post.listingId ? "From a listing" : "",
+        ]),
+        note: snippet(post.lastError) || undefined,
+      };
+    }
+
     return section(
       "social",
       "Social",
       join([
-        `${input.socialAccounts.length} account${input.socialAccounts.length === 1 ? "" : "s"} connected in setup`,
+        `${connected.length} of ${input.socialAccounts.length} account${input.socialAccounts.length === 1 ? "" : "s"} connected`,
+        `${published.length} published`,
+        scheduled.length ? `${scheduled.length} scheduled` : "",
+        failed.length ? `${failed.length} failed` : "",
+        drafts.length ? `${drafts.length} draft${drafts.length === 1 ? "" : "s"}` : "",
         `${posts.length} post${posts.length === 1 ? "" : "s"} in this range`,
       ]),
-      tally(posts.map((post) => named(SOCIAL_STATUS, post.status))),
+      [
+        { label: "Connected accounts", value: String(connected.length) },
+        { label: "Published", value: String(published.length) },
+        { label: "Scheduled", value: String(scheduled.length) },
+        { label: "Drafts", value: String(drafts.length) },
+        { label: "Failed", value: String(failed.length) },
+        {
+          label: "With media",
+          value: `${withMedia.length}/${posts.length || 0}`,
+        },
+        ...tally(connected.map((account) => named(PLATFORM, account.platform))).map(
+          (fact) => ({ ...fact, label: `${fact.label} accounts` }),
+        ),
+        ...platformFacts.map((fact) => ({
+          ...fact,
+          label: `${fact.label} posts`,
+        })),
+        ...tally(posts.map((post) => named(SOCIAL_STATUS, post.status))),
+      ],
       [
         group(
           "Accounts",
@@ -1056,25 +1147,31 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
               account.handle ? `@${account.handle.replace(/^@/, "")}` : "",
               named(SOCIAL_STATUS, account.status),
               account.connectedAt ? `Since ${day(account.connectedAt, market)}` : "",
+              account.scopes?.length ? account.scopes.join(", ") : "",
             ]),
             note: snippet(account.lastError) || undefined,
           })),
           "No social accounts connected.",
         ),
         group(
-          "Posts",
-          posts.map((post: SocialPost) => ({
-            title: snippet(post.caption, 80) || "Untitled post",
-            detail: join([
-              named(SOCIAL_STATUS, post.status),
-              stamp(post.publishedAt || post.scheduledFor || post.createdAt, market),
-              post.accountIds.map((id) => accountName.get(id)).filter((name): name is string => Boolean(name)).join(", ")
-                || (post.channel ? named(PLATFORM, post.channel) : ""),
-              post.media.length ? `${post.media.length} file${post.media.length === 1 ? "" : "s"}` : "No media",
-            ]),
-            note: snippet(post.lastError) || undefined,
-          })),
-          "No posts in this range.",
+          "Published",
+          published.map(postRecord),
+          "No published posts in this range.",
+        ),
+        group(
+          "Scheduled",
+          scheduled.map(postRecord),
+          "No scheduled posts in this range.",
+        ),
+        group(
+          "Failed",
+          failed.map(postRecord),
+          "No failed posts in this range.",
+        ),
+        group(
+          "Drafts",
+          drafts.map(postRecord),
+          "No drafts in this range.",
         ),
       ],
     );
