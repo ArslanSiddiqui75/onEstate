@@ -58,6 +58,7 @@ export async function POST(request: Request) {
   const denied = forbiddenIfNoAnyModule(profile, [
     ["social", "edit"],
     ["website", "edit"],
+    ["listings", "edit"],
   ]);
   if (denied) return denied;
 

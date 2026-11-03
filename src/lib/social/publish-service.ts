@@ -147,20 +147,30 @@ export async function publishSocialPost(postId: string, orgId: string): Promise<
     }
   }
 
-  const allOk = results.every((r) => r.ok);
-  const failedCount = results.filter((r) => !r.ok).length;
+  const succeeded = results.filter((r) => r.ok).map((r) => r.accountId);
+  const failed = results.filter((r) => !r.ok);
+  const allOk = failed.length === 0;
   const message = allOk
     ? "Published to all target accounts."
-    : `${failedCount} of ${results.length} target account${results.length === 1 ? "" : "s"} failed: ${results
-        .filter((r) => !r.ok)
+    : `${failed.length} of ${results.length} target account${results.length === 1 ? "" : "s"} failed: ${failed
         .map((r) => r.error)
-        .join(" · ")}`;
+        .join(" · ")}${
+        succeeded.length
+          ? ` · Already published to ${succeeded.length} account${succeeded.length === 1 ? "" : "s"} (won't retry those).`
+          : ""
+      }`;
 
+  // Shrink account_ids to remaining failures so a retry / cron tick never
+  // re-posts to accounts that already succeeded.
   await supabase
     .from("social_posts")
     .update({
       status: allOk ? "published" : "failed",
-      published_at: allOk ? new Date().toISOString() : post.published_at,
+      account_ids: allOk ? accountIds : failed.map((r) => r.accountId),
+      published_at:
+        allOk || succeeded.length
+          ? post.published_at || new Date().toISOString()
+          : post.published_at,
       last_error: allOk ? null : message,
       updated_at: new Date().toISOString(),
     })

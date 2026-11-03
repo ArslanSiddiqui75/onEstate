@@ -30,10 +30,21 @@ export async function sendTwilioSms(input: {
     process.env.TWILIO_ACCOUNT_SID!,
     process.env.TWILIO_AUTH_TOKEN!,
   );
+  const base = (
+    process.env.TWILIO_WEBHOOK_BASE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    ""
+  )
+    .trim()
+    .replace(/\/$/, "");
+  const statusCallback = base ? `${base}/api/twilio/webhook/status` : undefined;
   const message = await client.messages.create({
     to: input.to,
     from,
     body: input.body,
+    ...(statusCallback
+      ? { statusCallback, statusCallbackMethod: "POST" as const }
+      : {}),
   });
   return {
     sid: message.sid,
