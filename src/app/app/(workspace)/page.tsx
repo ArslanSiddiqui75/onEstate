@@ -286,12 +286,7 @@ export default function AppDashboardPage() {
 
         <motion.div variants={fadeUp}>
           <Card hover className="h-full">
-            <CardHeader
-              title="Integrations"
-              action={
-                <Badge tone="neutral">Coming soon</Badge>
-              }
-            />
+            <CardHeader title="Integrations" />
             <ul className="mt-4 divide-y divide-[var(--border)]">
               {integrations.slice(0, 5).map((provider) => (
                 <li key={provider.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
@@ -300,10 +295,20 @@ export default function AppDashboardPage() {
                     <p className="text-xs text-[var(--muted)]">{provider.summary}</p>
                   </div>
                   <Badge
-                    tone={provider.health === "connected" ? "success" : "neutral"}
+                    tone={
+                      provider.health === "connected"
+                        ? "success"
+                        : provider.health === "attention"
+                          ? "warning"
+                          : "neutral"
+                    }
                     className="shrink-0"
                   >
-                    {provider.health === "connected" ? "Connected" : "Coming soon"}
+                    {provider.health === "connected"
+                      ? "Connected"
+                      : provider.health === "attention"
+                        ? "Needs setup"
+                        : "Partner API"}
                   </Badge>
                 </li>
               ))}

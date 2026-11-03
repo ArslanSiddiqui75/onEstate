@@ -478,26 +478,7 @@ export default function AppBillingPage() {
                             PDF
                           </Button>
                         ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="gap-1 text-xs"
-                            onClick={() => {
-                              const receiptText = `RECEIPT - ${brand.name}\nInvoice Date: ${inv.date}\nOrganization: ${org.name}\nPlan: ${String(inv.plan).toUpperCase()}\nAmount Paid: ${amountLabel}\nStatus: ${inv.status.toUpperCase()}\nThank you for choosing ${brand.name}!`;
-                              const blob = new Blob([receiptText], { type: "text/plain" });
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement("a");
-                              a.href = url;
-                              a.download = `invoice_${inv.date}_${brand.name}.txt`;
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              toast.success("Receipt downloaded");
-                            }}
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                            Receipt
-                          </Button>
+                          <span className="text-xs text-[var(--muted)]">No Stripe PDF</span>
                         )}
                       </TD>
                     </TR>

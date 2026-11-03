@@ -93,7 +93,7 @@ Modules under `/app`: crm, listings, transactions, website, social, billing + te
 - Calls tab: `tel:` device dialer + log — **no** in-app WebRTC.
 - Website publish requires active/under-offer listings (UI, `saveWebsite`, and DB trigger agree); unpublished public URLs stay unavailable.
 - E-sign stays **simulated** until Dropbox Sign is wired end-to-end — a `DROPBOX_SIGN_API_KEY` alone does not mean live.
-- Apply on hosted (in order): `20261104120000_p0_honesty_hardening.sql`, `20261104140000_sell_ready_wave_a.sql`, `20261104160000_sell_ready_wave_e.sql` (unmatched triage fields, profiles.email).
+- Apply on hosted (in order): through `20261104170000_deep_sweep_wave1.sql` (honesty, wave A/E, signup plan from metadata).
 - Team invites use `/app/invite?token=…` (no Checkout). Owner signup still pays via Stripe.
 - Org + admin cookies can coexist until sign-out (sign-out clears both; overlap banner in app).
 - Twilio can send to many countries; PK inbound SMS is not reliable — use CRM **Simulate reply** in Conversations.

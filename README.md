@@ -170,17 +170,7 @@ Market rules are applied from backend/brand config — there is no user-facing U
 
 The app works in two modes:
 1. **Without Supabase** — Data lives in a durable browser workspace store (localStorage-backed). Fully functional for demos & dev.
-2. **With Supabase** — Same modules use Postgres + RLS. Apply SQL migrations in `supabase/migrations/` in order:
-
-| Migration | Purpose |
-|---|---|
-| `001_phase1_rbac.sql` | Core schema: orgs, profiles, leads, listings, audit logs + RBAC RLS policies |
-| `002_real_modules.sql` | Extended module tables (contacts, sequences, deals, etc.) |
-| `003_platform_admin.sql` | Platform admin console tables |
-| `004_contacts.sql` | Full contacts module |
-| `005_automations.sql` | Automation workflow tables |
-| `006_social.sql` | Social media accounts, posts, and scheduling tables |
-| `007_billing.sql` | Subscription lifecycle columns + webhook plan mutation |
+2. **With Supabase** — Same modules use Postgres + RLS. Apply **every** file in `supabase/migrations/` in filename order (numbered `001_*` through dated `20261104*` honesty / sell-ready / deep-sweep waves). Do not stop at `007`.
 
 ---
 
@@ -209,7 +199,7 @@ src/
 ├── components/             # UI and feature components
 ├── lib/                    # Core business logic, RBAC, session, data repositories
 ├── types/                  # TypeScript definitions
-└── supabase/migrations/    # Postgres SQL migrations (001–007)
+└── supabase/migrations/    # Postgres SQL — apply all files in order
 ```
 
 ---
@@ -235,7 +225,7 @@ The browser tests start `next dev` on port 43123 (or reuse one that is already r
 
 With Supabase configured, the diary, public booking links, client portals, and the landlord desk persist on the server. They no longer need `DEMO_PUBLIC_INBOX`.
 
-1. Apply every migration in `supabase/migrations/`, including `20261029010000_agency_and_lettings_books.sql` and `20261104120000_p0_honesty_hardening.sql`.
+1. Apply every migration in `supabase/migrations/` in order through `20261104170000_deep_sweep_wave1.sql`.
 2. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 3. Set Stripe, Twilio, Resend, cron, admin, and Namecheap secrets from `.env.example`.
 4. On Vercel Hobby, platform cron is daily only — wire cron-job.org every few minutes to `/api/social/cron/publish` and `/api/automations/cron/run` with `X-Cron-Secret`.

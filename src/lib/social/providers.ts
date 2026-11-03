@@ -656,9 +656,11 @@ function basicAuthHeader(clientId: string, clientSecret?: string) {
 const xProvider: SocialProvider = {
   platform: "x",
   usesPkce: true,
-  isConfigured: () => Boolean(process.env.X_CLIENT_ID),
+  // Launch policy: X stays off until paid API + explicit ask (SOCIAL_ENABLE_X=1).
+  isConfigured: () =>
+    process.env.SOCIAL_ENABLE_X === "1" && Boolean(process.env.X_CLIENT_ID),
   missingEnvHint: () =>
-    "Set X_CLIENT_ID (and X_CLIENT_SECRET for a confidential app) from an X Developer app with OAuth 2.0 enabled. Posting also requires a paid X API tier.",
+    "X is disabled by default. Set SOCIAL_ENABLE_X=1 plus X_CLIENT_ID (and X_CLIENT_SECRET for a confidential app) only when you have a paid X API tier and explicitly want live posting.",
   buildAuthorizeUrl: ({ redirectUri, state, codeChallenge }) => {
     const params = new URLSearchParams({
       response_type: "code",
