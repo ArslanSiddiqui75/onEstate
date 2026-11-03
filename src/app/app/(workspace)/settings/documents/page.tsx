@@ -222,6 +222,38 @@ export default function AppDocumentsPage() {
                 ) : (
                   <span className="text-xs text-[var(--muted)]">{doc.meta || "In deals"}</span>
                 )}
+                {canEdit && doc.kind === "upload" ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-[var(--danger)]"
+                    onClick={() => {
+                      void (async () => {
+                        const token = await getAuthToken();
+                        if (!token) return;
+                        const res = await fetch("/api/documents", {
+                          method: "DELETE",
+                          headers: {
+                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({ id: doc.id }),
+                        });
+                        const json = (await res.json().catch(() => null)) as {
+                          error?: string;
+                        } | null;
+                        if (!res.ok) {
+                          toast.error(json?.error || "Could not delete");
+                          return;
+                        }
+                        toast.success("Document deleted");
+                        await load();
+                      })();
+                    }}
+                  >
+                    Delete
+                  </Button>
+                ) : null}
               </div>
             </Card>
           ))

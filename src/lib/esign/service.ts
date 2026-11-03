@@ -214,10 +214,14 @@ export async function completeEsignByToken(
     .from("transaction_documents")
     .update({ status: "signed", signed_at: signedAt })
     .eq("id", current.id)
+    .eq("status", "sent")
     .select("*")
-    .single();
-  if (error || !data) {
-    return { ok: false, error: error?.message || "Failed to mark signed" };
+    .maybeSingle();
+  if (error) {
+    return { ok: false, error: error.message || "Failed to mark signed" };
+  }
+  if (!data) {
+    return { ok: false, error: "This request is no longer open for signing" };
   }
 
   // The deal is only "signed" once nothing is still waiting on a signature.

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoAnyModule } from "@/lib/server/require-module";
 import { isOrgOwnedStoragePath } from "@/lib/documents/storage-path";
+import { ALLOWED_DOCUMENT_MIME, resolveDocumentMime } from "@/lib/documents/mime";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 const createSchema = z.object({
@@ -12,6 +13,10 @@ const createSchema = z.object({
   leadId: z.string().optional(),
   listingId: z.string().optional(),
   dealId: z.string().optional(),
+});
+
+const deleteSchema = z.object({
+  id: z.string().uuid(),
 });
 
 export async function GET(request: Request) {
@@ -97,6 +102,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid storage path" }, { status: 400 });
   }
 
+  const ext = parsed.data.path.split(".").pop()?.toLowerCase() || "";
+  const mimeType = resolveDocumentMime({
+    ext,
+    claimed: parsed.data.mimeType,
+  });
+  if (!mimeType || !ALLOWED_DOCUMENT_MIME.has(mimeType)) {
+    return NextResponse.json({ error: "Unsupported document type" }, { status: 400 });
+  }
+
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
     return NextResponse.json({ error: "Hosted mode required" }, { status: 503 });
@@ -126,12 +140,60 @@ export async function POST(request: Request) {
     title: parsed.data.title,
     path: parsed.data.path,
     kind: "upload",
-    mime_type: parsed.data.mimeType,
+    mime_type: mimeType,
     lead_id: parsed.data.leadId || null,
     listing_id: parsed.data.listingId || null,
     deal_id: parsed.data.dealId || null,
     created_by: profile.userId,
   });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 502 });
+  }
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(request: Request) {
+  const profile = await resolveProfileFromRequest(request);
+  if (!profile) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+  const denied = forbiddenIfNoAnyModule(profile, [
+    ["crm", "edit"],
+    ["listings", "edit"],
+    ["transactions", "edit"],
+  ]);
+  if (denied) return denied;
+
+  const parsed = deleteSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Document id required" }, { status: 400 });
+  }
+
+  const supabase = createServiceSupabaseClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Hosted mode required" }, { status: 503 });
+  }
+
+  const { data: row, error: loadError } = await supabase
+    .from("org_documents")
+    .select("id, path")
+    .eq("id", parsed.data.id)
+    .eq("org_id", profile.orgId)
+    .maybeSingle();
+  if (loadError || !row) {
+    return NextResponse.json({ error: "Document not found" }, { status: 404 });
+  }
+
+  const path = String(row.path || "");
+  if (path && isOrgOwnedStoragePath(profile.orgId, path)) {
+    await supabase.storage.from("documents").remove([path]);
+  }
+
+  const { error } = await supabase
+    .from("org_documents")
+    .delete()
+    .eq("id", row.id)
+    .eq("org_id", profile.orgId);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 502 });
   }

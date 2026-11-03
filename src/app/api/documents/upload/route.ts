@@ -2,11 +2,24 @@ import { NextResponse } from "next/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoAnyModule } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
+import { mimeFromExtension, resolveDocumentMime } from "@/lib/documents/mime";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const ALLOWED_EXT = new Set([
-  "pdf", "doc", "docx", "xls", "xlsx", "csv", "txt", "rtf",
-  "jpg", "jpeg", "png", "gif", "webp", "heic",
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "csv",
+  "txt",
+  "rtf",
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "heic",
 ]);
 
 export async function POST(request: Request) {
@@ -34,11 +47,15 @@ export async function POST(request: Request) {
   const ext =
     body?.fileName?.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") ||
     "";
-  if (!ALLOWED_EXT.has(ext)) {
+  if (!ALLOWED_EXT.has(ext) || !mimeFromExtension(ext)) {
     return NextResponse.json(
       { error: "That file type can’t be uploaded. Use PDF, Office, text or image files." },
       { status: 400 },
     );
+  }
+  const mimeType = resolveDocumentMime({ ext, claimed: body?.mimeType });
+  if (!mimeType) {
+    return NextResponse.json({ error: "Unsupported file type." }, { status: 400 });
   }
   if (
     typeof body?.sizeBytes === "number" &&
@@ -64,6 +81,6 @@ export async function POST(request: Request) {
     path: data.path,
     token: data.token,
     signedUrl: data.signedUrl,
-    mimeType: body?.mimeType,
+    mimeType,
   });
 }
