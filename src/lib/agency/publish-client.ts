@@ -4,6 +4,15 @@ import { copyToClipboard } from "@/lib/utils";
 const published = new Set<string>();
 const inflight = new Map<string, Promise<void>>();
 
+type TokenGetter = () => Promise<string | null>;
+
+let authTokenGetter: TokenGetter | null = null;
+
+/** Wire the session Bearer so hosted register can authenticate. */
+export function setPortalPublishAuth(getter: TokenGetter | null) {
+  authTokenGetter = getter;
+}
+
 export function markPortalsPublished(tokens: Iterable<string>) {
   for (const token of tokens) {
     if (token) published.add(token);
@@ -20,9 +29,13 @@ export function publishPortalRecord(
   if (existing) return existing;
 
   const job = (async () => {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    const bearer = authTokenGetter ? await authTokenGetter() : null;
+    if (bearer) headers.Authorization = `Bearer ${bearer}`;
+
     const res = await fetch("/api/agency", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({
         action: "register",
         token,

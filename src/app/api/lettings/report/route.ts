@@ -53,6 +53,7 @@ export async function POST(request: Request) {
         await hostedConfirmation({
           reference: String(raw.reference || ""),
           tenantName: String(raw.tenantName || "Tenant"),
+          reportToken: token,
         });
       } else {
         fileServerConfirmation({
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
         await hostedInspectionSign({
           inspectionId: String(raw.inspectionId || ""),
           tenantName: String(raw.tenantName || "Tenant"),
+          reportToken: token,
         });
       } else {
         fileServerInspectionSign({

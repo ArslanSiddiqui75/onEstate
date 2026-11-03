@@ -301,9 +301,19 @@ export async function hostedBooking(input: {
 }): Promise<Appointment> {
   const supabase = createServiceSupabaseClient();
   if (!supabase) throw new Error("Hosted mode required");
-  const orgId = await orgIdForLinkToken(supabase, input.bookToken, "booking");
+  // Accept office booking tokens, or a client portal token (buyer viewing form).
+  let orgId = await orgIdForLinkToken(supabase, input.bookToken, "booking");
+  let bookToken = normalizeToken(input.bookToken);
+  if (!orgId) {
+    const portalOrg = await orgIdForLinkToken(supabase, input.bookToken, "portal");
+    if (portalOrg) {
+      orgId = portalOrg;
+      const snap = await loadHostedAgencyBookSnap(portalOrg);
+      bookToken = snap?.book.bookingToken || bookToken;
+    }
+  }
   if (!orgId) throw new Error("This booking link is not recognised.");
-  const appointment = createAppointment({ ...input, bookToken: normalizeToken(input.bookToken) });
+  const appointment = createAppointment({ ...input, bookToken });
   await mutateAgencyBook(orgId, (book) => ({
     ...book,
     appointments: [appointment, ...book.appointments],

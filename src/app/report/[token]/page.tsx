@@ -20,10 +20,9 @@ export async function generateMetadata({
   params: Promise<{ token: string }>;
 }): Promise<Metadata> {
   const { token } = await params;
-  const located = lettingsHostedAvailable()
-    ? await hostedPropertyByReportToken(token)
-    : null;
-  const property = located?.property || seedPropertyByToken(token);
+  const hosted = lettingsHostedAvailable();
+  const located = hosted ? await hostedPropertyByReportToken(token) : null;
+  const property = located?.property || (hosted ? null : seedPropertyByToken(token));
   const address = property ? `${property.address} — ` : "";
   return {
     title: `${address}Report a repair`,
@@ -40,12 +39,12 @@ export default async function ReportPage({
 }) {
   const { token } = await params;
   const { via, sent, error, noted } = await searchParams;
-  const located = lettingsHostedAvailable()
-    ? await hostedPropertyByReportToken(token)
-    : null;
-  const property = located?.property || seedPropertyByToken(token);
+  const hosted = lettingsHostedAvailable();
+  const located = hosted ? await hostedPropertyByReportToken(token) : null;
+  // Hosted mode never falls back to demo seed properties.
+  const property = located?.property || (hosted ? null : seedPropertyByToken(token));
   const sentRepair = sent
-    ? (lettingsHostedAvailable() ? await hostedFindRepair(sent) : findServerRepair(sent))
+    ? (hosted ? await hostedFindRepair(sent) : findServerRepair(sent))
     : null;
   const banner =
     error === "short"

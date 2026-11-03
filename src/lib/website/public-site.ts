@@ -117,11 +117,12 @@ export async function getPublicSite(
     ...payload,
   };
 
-  // Only live inventory belongs on a public site.
+  // Only live, non-archived inventory belongs on a public site.
   const { data: listingRows } = await supabase
     .from("listings")
     .select("*")
     .eq("org_id", row.org_id)
+    .is("archived_at", null)
     .in("status", ["active", "under_offer"])
     .order("created_at", { ascending: false })
     .limit(12);

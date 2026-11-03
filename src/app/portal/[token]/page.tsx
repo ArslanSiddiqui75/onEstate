@@ -22,7 +22,8 @@ export async function generateMetadata({
   params: Promise<{ token: string }>;
 }): Promise<Metadata> {
   const { token } = await params;
-  const portal = (await hostedPortal(token)) || serverPortal(token);
+  const hosted = agencyHostedAvailable();
+  const portal = (await hostedPortal(token)) || (hosted ? null : serverPortal(token));
   const who = portal ? PORTAL_ROLE_LABELS[portal.role] : "Client";
   return {
     title: portal ? `${who} · ${portal.address}` : "Client link",
@@ -39,9 +40,11 @@ export default async function PortalPage({
 }) {
   const { token } = await params;
   const { done, error, ref } = await searchParams;
+  const hosted = agencyHostedAvailable();
   const hostedBase = await hostedPortal(token);
-  const inbox = agencyHostedAvailable() ? null : readAgencyInbox();
-  const base = hostedBase || serverPortal(token);
+  // Hosted production never falls back to demo seed portals.
+  const inbox = hosted ? null : readAgencyInbox();
+  const base = hostedBase || (hosted ? null : serverPortal(token));
   const approval = inbox
     ? [...inbox.approvals].reverse().find((item) => item.token === token)
     : null;
@@ -63,7 +66,7 @@ export default async function PortalPage({
           (item) => item.propertyId === property!.id && item.status !== "tenant_confirmed",
         );
       }
-    } else {
+    } else if (!hosted) {
       property = seedPropertyByToken(portal.lettingsToken);
       repairs = property
         ? seedBook().repairs.filter(
@@ -73,12 +76,12 @@ export default async function PortalPage({
     }
   }
   let hostedOffers: ClientOffer[] = [];
-  if (portal && agencyHostedAvailable() && "orgId" in portal && portal.orgId) {
+  if (portal && hosted && "orgId" in portal && portal.orgId) {
     const book = await loadHostedAgencyBook(String(portal.orgId));
     hostedOffers = book?.offers ?? [];
   }
   const offers = portal
-    ? [...seedAgencyBook().offers, ...(inbox?.offers ?? []), ...hostedOffers].filter(
+    ? [...(hosted ? [] : seedAgencyBook().offers), ...(inbox?.offers ?? []), ...hostedOffers].filter(
         (item) =>
           item.address === portal.address &&
           item.buyerName.trim().toLowerCase() === portal.name.trim().toLowerCase(),

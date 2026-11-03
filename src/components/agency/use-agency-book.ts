@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { applyAgencyInbox, seedAgencyBook } from "@/lib/agency/book";
 import { publishMissingPortals } from "@/lib/agency/publish-client";
 import { loadAgencyBook, saveAgencyBook } from "@/lib/agency/store";
+import { setPortalPublishAuth } from "@/lib/agency/publish-client";
 import type { AgencyBook, AgencyInbox } from "@/lib/agency/types";
 import { useAppSession } from "@/lib/app/session";
 import { toast } from "@/components/ui/toast";
@@ -59,6 +60,11 @@ export function useAgencyBook(orgId: string) {
   const [book, setBook] = useState<AgencyBook>(() => seedAgencyBook());
   const [ready, setReady] = useState(false);
   const updatedAtRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    setPortalPublishAuth(getAuthToken);
+    return () => setPortalPublishAuth(null);
+  }, [getAuthToken]);
 
   useEffect(() => {
     let cancel = false;

@@ -291,18 +291,19 @@ export async function hostedReport(input: {
 export async function hostedConfirmation(input: {
   reference: string;
   tenantName: string;
+  /** Required — confirmation must come from the property repair link. */
+  reportToken: string;
 }) {
   const reference = input.reference.trim().toUpperCase();
   if (!reference) throw new Error("Add the repair reference.");
-  const supabase = createServiceSupabaseClient();
-  if (!supabase) throw new Error("Hosted mode required");
-  const { data } = await supabase
-    .from("lettings_repair_refs")
-    .select("org_id")
-    .eq("reference", reference)
-    .maybeSingle();
-  if (!data?.org_id) throw new Error("That repair reference was not found.");
-  await mutateLettingsBook(String(data.org_id), (book) => {
+  const located = await hostedPropertyByReportToken(input.reportToken);
+  if (!located) throw new Error("This repair link is not recognised.");
+  const owned = located.book.repairs.find(
+    (item) =>
+      item.reference.toUpperCase() === reference && item.propertyId === located.property.id,
+  );
+  if (!owned) throw new Error("That repair reference was not found on this link.");
+  await mutateLettingsBook(located.orgId, (book) => {
     const before = book.repairs.find((item) => item.reference.toUpperCase() === reference);
     const next = tryConfirmRepair(book, reference, input.tenantName, new Date().toISOString());
     const after = next.repairs.find((item) => item.reference.toUpperCase() === reference);
@@ -316,17 +317,17 @@ export async function hostedConfirmation(input: {
 export async function hostedInspectionSign(input: {
   inspectionId: string;
   tenantName: string;
+  /** Required — sign-off must come from the property repair link. */
+  reportToken: string;
 }) {
   if (!input.inspectionId) throw new Error("That inspection is not on this link.");
-  const supabase = createServiceSupabaseClient();
-  if (!supabase) throw new Error("Hosted mode required");
-  const { data } = await supabase
-    .from("lettings_inspection_refs")
-    .select("org_id")
-    .eq("inspection_id", input.inspectionId)
-    .maybeSingle();
-  if (!data?.org_id) throw new Error("That inspection is not on this link.");
-  await mutateLettingsBook(String(data.org_id), (book) =>
+  const located = await hostedPropertyByReportToken(input.reportToken);
+  if (!located) throw new Error("This repair link is not recognised.");
+  const owned = located.book.inspections.find(
+    (item) => item.id === input.inspectionId && item.propertyId === located.property.id,
+  );
+  if (!owned) throw new Error("That inspection is not on this link.");
+  await mutateLettingsBook(located.orgId, (book) =>
     trySignInspection(
       book,
       input.inspectionId,
