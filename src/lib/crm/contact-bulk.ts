@@ -32,9 +32,21 @@ export type ContactImportRow = {
   notes?: string;
 };
 
+export type ContactImportIssue = {
+  line: number;
+  identifier: string;
+  kind: "error" | "warning";
+  reason: string;
+};
+
+export type ContactImportAccepted = ContactImportRow & { line: number };
+
 export type ContactImportResult = {
   rows: ContactImportRow[];
+  /** Accepted rows with source line numbers for stats reports. */
+  accepted: ContactImportAccepted[];
   skipped: string[];
+  issues: ContactImportIssue[];
 };
 
 function parseTags(value: string | undefined): string[] {
@@ -73,10 +85,11 @@ export function parseContactImportCsv(
   existing: Contact[],
 ): ContactImportResult {
   const parsed = parseCsv(text);
-  if (!parsed.length) return { rows: [], skipped: [] };
+  if (!parsed.length) return { rows: [], accepted: [], skipped: [], issues: [] };
 
   const hasHeader = looksLikeHeader(parsed[0]);
   const data = hasHeader ? parsed.slice(1) : parsed;
+  const lineOffset = hasHeader ? 2 : 1;
   const index = hasHeader
     ? headerIndex(parsed[0])
     : Object.fromEntries(CONTACT_CSV_HEADERS.map((key, i) => [key, i]));
@@ -86,11 +99,14 @@ export function parseContactImportCsv(
 
   const known = [...existing];
   const rows: ContactImportRow[] = [];
+  const accepted: ContactImportAccepted[] = [];
   const skipped: string[] = [];
+  const issues: ContactImportIssue[] = [];
 
-  for (const raw of data) {
+  data.forEach((raw, indexInData) => {
+    const line = indexInData + lineOffset;
     const name = col(raw, "name", 0).trim();
-    if (!name) continue;
+    if (!name) return;
 
     const email = col(raw, "email", 1).trim().toLowerCase();
     const phone = col(raw, "phone", 2).trim();
@@ -98,22 +114,28 @@ export function parseContactImportCsv(
     const category = parseCategory(col(raw, "category", 4));
     const tags = parseTags(col(raw, "tags", 5));
     const notes = col(raw, "notes", 6).trim();
+    const identifier = email || phone || name;
+
+    const reject = (kind: "error" | "warning", reason: string) => {
+      skipped.push(`${name} (${reason})`);
+      issues.push({ line, identifier, kind, reason });
+    };
 
     if (!email && !phone) {
-      skipped.push(`${name} (no email or phone)`);
-      continue;
+      reject("error", "no email or phone");
+      return;
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      skipped.push(`${name} (invalid email)`);
-      continue;
+      reject("error", "invalid email");
+      return;
     }
     if (phone && !isE164(phone)) {
-      skipped.push(`${name} (phone needs a country code)`);
-      continue;
+      reject("error", "phone needs a country code");
+      return;
     }
     if (findMatchingContact(known, { email, phone })) {
-      skipped.push(`${name} (already a contact)`);
-      continue;
+      reject("warning", "already a contact");
+      return;
     }
 
     const row: ContactImportRow = {
@@ -126,6 +148,7 @@ export function parseContactImportCsv(
       notes: notes || undefined,
     };
     rows.push(row);
+    accepted.push({ ...row, line });
     known.push({
       id: `import-${known.length}`,
       name,
@@ -137,9 +160,9 @@ export function parseContactImportCsv(
       createdAt: "",
       updatedAt: "",
     });
-  }
+  });
 
-  return { rows, skipped };
+  return { rows, accepted, skipped, issues };
 }
 
 export function contactImportTemplateCsv(): string {

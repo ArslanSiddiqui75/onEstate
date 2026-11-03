@@ -33,15 +33,17 @@ import {
   parseContactImportCsv,
   removeTags,
 } from "@/lib/crm/contact-bulk";
+import { BulkActionsReport } from "@/components/crm/bulk-actions-report";
 import {
-  BULK_ACTION_LABELS,
   clearBulkActions,
+  deleteBulkAction,
   loadBulkActions,
   recordBulkAction,
   type BulkActionRecord,
+  type BulkImportItem,
+  type BulkSmsItem,
 } from "@/lib/crm/bulk-action-log";
 import { downloadCsv } from "@/lib/csv";
-import { formatDate } from "@/lib/utils";
 import type {
   Contact,
   ContactCategory,
@@ -160,8 +162,9 @@ export function ContactsDirectory({
   sendSms,
   onOpenThread,
 }: ContactsDirectoryProps) {
-  const { org } = useAppSession();
+  const { org, user } = useAppSession();
   const ownedNumbers = resolveOwnedNumbers(org);
+  const actorName = user?.name || members.find((m) => m.id === userId)?.name || "You";
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<ContactCategory | "all">("all");
   const [tagFilter, setTagFilter] = useState("all");
@@ -271,8 +274,19 @@ export function ContactsDirectory({
     channelFilter !== "all",
   ].filter(Boolean).length;
 
-  function logAction(input: Omit<BulkActionRecord, "id" | "at">) {
-    setHistory(recordBulkAction(orgId, userId, input));
+  function logAction(
+    input: Omit<BulkActionRecord, "id" | "at" | "userId" | "userName"> & {
+      at?: string;
+      completedAt?: string;
+    },
+  ) {
+    setHistory(
+      recordBulkAction(orgId, userId, {
+        ...input,
+        userId,
+        userName: actorName,
+      }),
+    );
   }
 
   function toggleSelected(id: string) {
@@ -388,27 +402,64 @@ export function ContactsDirectory({
     setBusy(true);
     setError(null);
     try {
-      const { rows, skipped } = parseContactImportCsv(csvText, contacts);
+      const startedAt = new Date().toISOString();
+      const { accepted, skipped, issues } = parseContactImportCsv(csvText, contacts);
+      const importItems: BulkImportItem[] = [];
       let imported = 0;
-      for (const row of rows) {
-        await addContact({
-          name: row.name,
-          email: row.email || "",
-          phone: row.phone || "",
-          company: row.company || "",
-          category: row.category,
-          tags: row.tags,
-          notes: row.notes || "",
-          assignedTo: userId,
-        });
-        imported += 1;
+      for (const row of accepted) {
+        try {
+          await addContact({
+            name: row.name,
+            email: row.email || "",
+            phone: row.phone || "",
+            company: row.company || "",
+            category: row.category,
+            tags: row.tags,
+            notes: row.notes || "",
+            assignedTo: userId,
+          });
+          imported += 1;
+          importItems.push({
+            id: `imp_${row.line}_${imported}`,
+            line: row.line,
+            identifier: row.email || row.phone || row.name,
+            object: "Contacts",
+            type: "created",
+          });
+        } catch (err) {
+          importItems.push({
+            id: `imp_err_${row.line}`,
+            line: row.line,
+            identifier: row.email || row.phone || row.name,
+            object: "Contacts",
+            type: "error",
+            detail: err instanceof Error ? err.message : "Could not save contact",
+          });
+        }
       }
+      for (const issue of issues) {
+        importItems.push({
+          id: `imp_issue_${issue.line}_${issue.kind}`,
+          line: issue.line,
+          identifier: issue.identifier,
+          object: "Contacts",
+          type: issue.kind,
+          detail: issue.reason,
+        });
+      }
+      const failed = importItems.filter((item) => item.type === "error").length;
+      const warned = importItems.filter((item) => item.type === "warning").length;
       logAction({
         type: "import",
         label: `Imported ${imported} contact${imported === 1 ? "" : "s"}`,
-        count: imported,
-        skipped: skipped.length,
+        count: importItems.length || imported,
+        ok: imported,
+        failed,
+        skipped: warned,
         detail: skipped.slice(0, 3).join(", ") || undefined,
+        at: startedAt,
+        completedAt: new Date().toISOString(),
+        importItems,
       });
       if (skipped.length) {
         toast.warning(
@@ -436,14 +487,34 @@ export function ContactsDirectory({
     let ok = 0;
     let failed = 0;
     let skipped = 0;
+    const startedAt = new Date().toISOString();
+    const smsItems: BulkSmsItem[] = [];
     try {
       for (const contact of selectedContacts) {
-        if (!contact.phone?.trim()) {
+        const phone = contact.phone?.trim() || "";
+        const stamp = new Date().toISOString();
+        if (!phone) {
           skipped += 1;
+          smsItems.push({
+            id: `sms_${contact.id}_skip_phone`,
+            identifier: contact.name,
+            phone: undefined,
+            status: "skipped",
+            at: stamp,
+            detail: "Missing phone",
+          });
           continue;
         }
         if (isContactDnd(contact.id)) {
           skipped += 1;
+          smsItems.push({
+            id: `sms_${contact.id}_skip_dnd`,
+            identifier: contact.name,
+            phone,
+            status: "skipped",
+            at: stamp,
+            detail: "Do Not Disturb",
+          });
           continue;
         }
         try {
@@ -454,6 +525,14 @@ export function ContactsDirectory({
           if (!leadId) {
             if (!canEdit) {
               skipped += 1;
+              smsItems.push({
+                id: `sms_${contact.id}_skip_edit`,
+                identifier: contact.name,
+                phone,
+                status: "skipped",
+                at: stamp,
+                detail: "Needs CRM edit access to promote",
+              });
               continue;
             }
             leadId = await promoteContactToLead(contact.id, {
@@ -463,6 +542,14 @@ export function ContactsDirectory({
           }
           if (!leadId) {
             failed += 1;
+            smsItems.push({
+              id: `sms_${contact.id}_fail_promote`,
+              identifier: contact.name,
+              phone,
+              status: "error",
+              at: stamp,
+              detail: "Could not open pipeline lead",
+            });
             continue;
           }
           await sendSms({
@@ -472,8 +559,23 @@ export function ContactsDirectory({
             kind: "bulk",
           });
           ok += 1;
-        } catch {
+          smsItems.push({
+            id: `sms_${contact.id}_ok`,
+            identifier: contact.name,
+            phone,
+            status: "sent",
+            at: new Date().toISOString(),
+          });
+        } catch (err) {
           failed += 1;
+          smsItems.push({
+            id: `sms_${contact.id}_err`,
+            identifier: contact.name,
+            phone,
+            status: "error",
+            at: new Date().toISOString(),
+            detail: err instanceof Error ? err.message : "Send failed",
+          });
         }
       }
       logAction({
@@ -484,6 +586,9 @@ export function ContactsDirectory({
         failed,
         skipped,
         detail: body.slice(0, 80),
+        at: startedAt,
+        completedAt: new Date().toISOString(),
+        smsItems,
       });
       if (ok) toast.success(`Sent ${ok} text${ok === 1 ? "" : "s"}`);
       if (failed || skipped) {
@@ -531,7 +636,7 @@ export function ContactsDirectory({
             onClick={() => setShowHistory((v) => !v)}
           >
             <History className="h-3.5 w-3.5" />
-            Bulk log
+            Bulk report
           </Button>
           {canEdit ? (
             <>
@@ -640,54 +745,16 @@ export function ContactsDirectory({
       ) : null}
 
       {showHistory ? (
-        <div className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div>
-              <p className="font-semibold">Bulk action log</p>
-              <p className="text-xs text-[var(--muted)]">
-                Imports, tags, SMS, and other bulk runs on this seat.
-              </p>
-            </div>
-            {history.length ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  clearBulkActions(orgId, userId);
-                  setHistory([]);
-                }}
-              >
-                Clear log
-              </Button>
-            ) : null}
-          </div>
-          {history.length === 0 ? (
-            <p className="text-sm text-[var(--muted)]">No bulk actions yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {history.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex flex-col gap-1 rounded-xl border border-[var(--border)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">{row.label}</p>
-                    <p className="text-xs text-[var(--muted)]">
-                      {BULK_ACTION_LABELS[row.type]}
-                      {row.detail ? ` · ${row.detail}` : ""}
-                      {row.ok != null || row.failed != null || row.skipped != null
-                        ? ` · ok ${row.ok ?? 0}, failed ${row.failed ?? 0}, skipped ${row.skipped ?? 0}`
-                        : ""}
-                    </p>
-                  </div>
-                  <p className="shrink-0 text-xs text-[var(--muted)]">
-                    {formatDate(row.at, market)}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <BulkActionsReport
+          rows={history}
+          onClear={() => {
+            clearBulkActions(orgId, userId);
+            setHistory([]);
+          }}
+          onDelete={(id) => {
+            setHistory(deleteBulkAction(orgId, userId, id));
+          }}
+        />
       ) : null}
 
       {selectedIds.size > 0 ? (
