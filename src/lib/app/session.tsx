@@ -71,6 +71,12 @@ import { setTenantPlan } from "@/lib/admin/registry";
 import { syncWorkspaceToPlatformRegistry } from "@/lib/admin/sync-workspace";
 import { prepareNewLead, hydrateLeadRouting, ownerId } from "@/lib/crm/routing";
 import { scoreLead } from "@/lib/crm/scoring";
+import {
+  DND_BLOCK_MESSAGE,
+  leadIsDndForUser,
+  loadLocalContactDnd,
+  saveLocalContactDnd,
+} from "@/lib/crm/dnd";
 import { checkSeatLimit } from "@/lib/access";
 import { syncListingToPortals } from "@/lib/portals/adapters";
 import {
@@ -312,6 +318,11 @@ interface AppState {
     subject: string;
     body: string;
   }) => Promise<{ mode: "live" | "simulated" }>;
+  /** Contact ids this signed-in account has on personal Do Not Disturb. */
+  dndContactIds: string[];
+  setContactDnd: (contactId: string, enabled: boolean) => Promise<void>;
+  isContactDnd: (contactId: string) => boolean;
+  isLeadDnd: (leadId: string) => boolean;
   /** Simulate an inbound SMS or email from the lead (in-app testing). */
   receiveInboundSms: (input: {
     leadId: string;
@@ -446,6 +457,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
   const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
   const [portalConnections, setPortalConnections] = useState<PortalConnection[]>([]);
+  const [dndContactIds, setDndContactIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const repoRef = useRef<WorkspaceRepository | null>(null);
   const authMode: AppState["authMode"] = isSupabaseConfigured()
@@ -859,6 +871,73 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     if (!result) return null;
     return result.data.session?.access_token || null;
   }, [authMode]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setDndContactIds([]);
+      return;
+    }
+    if (authMode !== "supabase") {
+      setDndContactIds(loadLocalContactDnd(user.id));
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const token = await getAuthToken();
+      if (!token || cancelled) return;
+      const res = await fetch("/api/crm/dnd", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok || cancelled) return;
+      const json = (await res.json()) as { contactIds?: string[] };
+      if (!cancelled) setDndContactIds(json.contactIds || []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authMode, getAuthToken, user?.id]);
+
+  const setContactDnd = useCallback(
+    async (contactId: string, enabled: boolean) => {
+      if (!user?.id) throw new Error("Sign in required");
+      if (authMode === "supabase") {
+        const token = await getAuthToken();
+        if (!token) throw new Error("Sign in required");
+        const res = await fetch("/api/crm/dnd", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ contactId, enabled }),
+        });
+        const json = (await res.json()) as { ok?: boolean; error?: string };
+        if (!res.ok) throw new Error(json.error || "Could not update Do Not Disturb");
+      }
+      setDndContactIds((current) => {
+        const next = enabled
+          ? Array.from(new Set([...current, contactId]))
+          : current.filter((id) => id !== contactId);
+        if (authMode !== "supabase") saveLocalContactDnd(user.id, next);
+        return next;
+      });
+    },
+    [authMode, getAuthToken, user?.id],
+  );
+
+  const isContactDnd = useCallback(
+    (contactId: string) => dndContactIds.includes(contactId),
+    [dndContactIds],
+  );
+
+  const isLeadDnd = useCallback(
+    (leadId: string) => {
+      const lead = leads.find((item) => item.id === leadId);
+      if (!lead) return false;
+      return Boolean(leadIsDndForUser(lead, contacts, dndContactIds));
+    },
+    [contacts, dndContactIds, leads],
+  );
 
   useEffect(() => {
     if (!org) {
@@ -1814,6 +1893,9 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       }
       const lead = leads.find((l) => l.id === input.leadId);
       if (!lead) throw new Error("Lead not found");
+      if (leadIsDndForUser(lead, contacts, dndContactIds)) {
+        throw new Error(DND_BLOCK_MESSAGE);
+      }
       const phone = lead.phones?.find((p) => p.preferred) || lead.phones?.[0];
       const to = phone?.number || lead.phone;
       if (!to) throw new Error("Lead has no phone number");
@@ -1868,7 +1950,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
       return { mode: json.mode || "simulated" };
     },
-    [authMode, getAuthToken, leads, org, refresh],
+    [authMode, contacts, dndContactIds, getAuthToken, leads, org, refresh],
   );
 
   const sendEmail = useCallback(
@@ -1878,6 +1960,9 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       }
       const lead = leads.find((l) => l.id === input.leadId);
       if (!lead) throw new Error("Lead not found");
+      if (leadIsDndForUser(lead, contacts, dndContactIds)) {
+        throw new Error(DND_BLOCK_MESSAGE);
+      }
       const to = (lead.email || "").trim();
       if (!to) throw new Error("Lead has no email address");
       const sending = org.emailDomain;
@@ -1929,7 +2014,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
       return { mode: json.mode || "simulated" };
     },
-    [authMode, getAuthToken, leads, org, refresh],
+    [authMode, contacts, dndContactIds, getAuthToken, leads, org, refresh],
   );
 
   const logCall = useCallback(
@@ -2431,6 +2516,10 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       voidEsignDocument,
       sendSms,
       sendEmail,
+      dndContactIds,
+      setContactDnd,
+      isContactDnd,
+      isLeadDnd,
       receiveInboundSms,
       logCall,
       setLeadWorkflow,
@@ -2459,6 +2548,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       members,
       leads,
       contacts,
+      dndContactIds,
       listings,
       deals,
       messages,
@@ -2511,6 +2601,9 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       voidEsignDocument,
       sendSms,
       sendEmail,
+      setContactDnd,
+      isContactDnd,
+      isLeadDnd,
       receiveInboundSms,
       logCall,
       setLeadWorkflow,

@@ -81,8 +81,22 @@ describe("auth validation", () => {
       phone: "+447700900111",
       orgName: "Northbridge",
       plan: "team",
+      acceptTerms: true,
     });
     expect(ok.success).toBe(true);
+  });
+
+  it("requires terms acceptance at signup", () => {
+    const bad = validateForm(signupSchema, {
+      name: "Ava North",
+      email: "ava@brokerage.com",
+      password: "longenough",
+      phone: "+447700900111",
+      orgName: "Northbridge",
+      plan: "team",
+    });
+    expect(bad.success).toBe(false);
+    if (!bad.success) expect(bad.errors.acceptTerms).toBeTruthy();
   });
 
   it("scores password strength", () => {

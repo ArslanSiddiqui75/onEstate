@@ -25,6 +25,7 @@ export default function AppSignupPage() {
   const [phone, setPhone] = useState("");
   const [orgName, setOrgName] = useState("");
   const [password, setPassword] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function AppSignupPage() {
       setPassword(pending.password);
       setOrgName(pending.orgName);
       setPlan(pending.plan);
+      setAcceptTerms(Boolean(pending.acceptTerms));
     }
     const requested = new URLSearchParams(window.location.search).get("plan");
     if (isPlanId(requested)) setPlan(requested);
@@ -46,7 +48,15 @@ export default function AppSignupPage() {
     setFieldErrors({});
 
     const phoneNumber = String(new FormData(e.currentTarget).get("phone") || "");
-    const result = validateForm(signupSchema, { name, email, password, phone: phoneNumber, orgName, plan });
+    const result = validateForm(signupSchema, {
+      name,
+      email,
+      password,
+      phone: phoneNumber,
+      orgName,
+      plan,
+      acceptTerms: acceptTerms ? true : undefined,
+    });
     if (!result.success) {
       setFieldErrors(result.errors);
       return;
@@ -130,6 +140,40 @@ export default function AppSignupPage() {
         </FormField>
 
         <PlanPicker plan={plan} market={market} onChange={setPlan} error={fieldErrors.plan} />
+
+        <FormField error={fieldErrors.acceptTerms}>
+          <label className="flex items-start gap-3 rounded-[1rem] border border-[var(--border)] bg-[var(--surface-muted)] px-3.5 py-3 text-sm leading-relaxed">
+            <input
+              type="checkbox"
+              name="acceptTerms"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 rounded border-[var(--border)] accent-[var(--accent)]"
+            />
+            <span>
+              I agree to the{" "}
+              <Link
+                href="/legal/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+              >
+                Terms of Service &amp; Terms of Use
+              </Link>{" "}
+              and the{" "}
+              <Link
+                href="/legal/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              . This covers CRM, messaging, phone, listings, transactions, website, social,
+              lettings, billing, and the rest of the workspace modules.
+            </span>
+          </label>
+        </FormField>
 
         <Button type="submit" className="w-full rounded-[1rem]" size="lg">
           Continue to checkout

@@ -15,6 +15,7 @@ const pending = {
   phone: "+447700900111",
   orgName: "Northbridge Realty",
   plan: "team" as const,
+  acceptTerms: true as const,
 };
 
 describe("pending signup", () => {

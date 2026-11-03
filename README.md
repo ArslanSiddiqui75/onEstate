@@ -195,15 +195,16 @@ src/
 │   │   ├── organizations/
 │   │   ├── subscriptions/
 │   │   └── users/
+│   ├── legal/              # Terms of Service / Terms of Use + Privacy Policy
 │   ├── app/                # Product workspace
-│   │   ├── crm/            # CRM module
+│   │   ├── crm/            # CRM module (contacts include per-account DND)
 │   │   ├── listings/       # Listings module
 │   │   ├── transactions/   # Transactions module
 │   │   ├── website/        # Website builder module
 │   │   ├── social/         # Social media module
 │   │   ├── settings/       # Profile, team, routing, accounts, billing
 │   │   ├── login/
-│   │   └── signup/
+│   │   └── signup/         # Requires acceptance of Terms + Privacy
 │   └── api/                # API routes (Stripe, Twilio, Social OAuth)
 ├── components/             # UI and feature components
 ├── lib/                    # Core business logic, RBAC, session, data repositories

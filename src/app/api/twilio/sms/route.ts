@@ -8,6 +8,8 @@ import { fireLeadContactedIfFirst } from "@/lib/automations/engine";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { hasTwilioAccount } from "@/lib/twilio/numbers";
+import { profileHasDndForLead } from "@/lib/crm/dnd-server";
+import { DND_BLOCK_MESSAGE } from "@/lib/crm/dnd";
 
 const bodySchema = z.object({
   leadId: z.string().min(1),
@@ -101,13 +103,26 @@ export async function POST(request: Request) {
 
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, phone")
+    .select("id, phone, email")
     .eq("id", parsed.data.leadId)
     .eq("org_id", orgId)
     .maybeSingle();
 
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+
+  if (profile) {
+    const dnd = await profileHasDndForLead(supabase, {
+      orgId,
+      profileId: profile.userId,
+      leadId: String(lead.id),
+      email: lead.email ? String(lead.email) : null,
+      phone: lead.phone ? String(lead.phone) : parsed.data.to,
+    });
+    if (dnd) {
+      return NextResponse.json({ error: DND_BLOCK_MESSAGE }, { status: 403 });
+    }
   }
 
   const { data: phoneRows } = await supabase

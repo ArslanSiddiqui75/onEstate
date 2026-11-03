@@ -75,7 +75,8 @@ Critical groups: Supabase (`NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`
 | RBAC matrix | `src/lib/rbac/matrix.ts`, `src/lib/access.ts` |
 | Plans | `src/lib/plans/catalog.ts` |
 | Supabase repo | `src/lib/data/supabase-repository.ts` |
-| CRM routing / scoring | `src/lib/crm/{routing,scoring}.ts` |
+| CRM routing / scoring / personal DND | `src/lib/crm/{routing,scoring,dnd}.ts` |
+| Terms / Privacy | `/legal/terms`, `/legal/privacy` |
 | Automations | `src/lib/automations/engine.ts` |
 | Public sites | `src/lib/website/public-site.ts`, `src/proxy.ts` |
 | Types | `src/types/index.ts` |

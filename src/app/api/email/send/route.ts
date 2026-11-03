@@ -12,6 +12,8 @@ import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { fireLeadContactedIfFirst } from "@/lib/automations/engine";
+import { profileHasDndForLead } from "@/lib/crm/dnd-server";
+import { DND_BLOCK_MESSAGE } from "@/lib/crm/dnd";
 
 const bodySchema = z.object({
   leadId: z.string().min(1),
@@ -88,7 +90,7 @@ export async function POST(request: Request) {
 
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, email")
+    .select("id, email, phone")
     .eq("id", parsed.data.leadId)
     .eq("org_id", orgId)
     .maybeSingle();
@@ -98,6 +100,19 @@ export async function POST(request: Request) {
       { error: "Lead has no email address" },
       { status: 400 },
     );
+  }
+
+  if (profile) {
+    const dnd = await profileHasDndForLead(supabase, {
+      orgId,
+      profileId: profile.userId,
+      leadId: String(lead.id),
+      email: to,
+      phone: lead.phone ? String(lead.phone) : null,
+    });
+    if (dnd) {
+      return NextResponse.json({ error: DND_BLOCK_MESSAGE }, { status: 403 });
+    }
   }
 
   const result = await sendOutboundEmail(supabase, {

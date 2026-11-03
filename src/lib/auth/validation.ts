@@ -68,6 +68,9 @@ export const signupSchema = z.object({
   plan: z.enum(["solo", "team", "enterprise"], {
     error: "Please select a plan",
   }),
+  acceptTerms: z.literal(true, {
+    error: "Accept the Terms of Service to continue",
+  }),
 });
 
 export type SignupFormData = z.infer<typeof signupSchema>;

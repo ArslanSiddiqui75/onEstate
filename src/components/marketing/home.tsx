@@ -291,6 +291,8 @@ export function MarketingHome({
               <li><Link href="/app/login">Sign in</Link></li>
               <li><a href="#contact">Book a demo</a></li>
               <li><a href="#questions">Questions</a></li>
+              <li><Link href="/legal/terms">Terms of Service</Link></li>
+              <li><Link href="/legal/privacy">Privacy Policy</Link></li>
             </ul>
           </div>
         </div>

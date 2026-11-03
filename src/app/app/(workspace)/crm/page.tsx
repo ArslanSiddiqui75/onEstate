@@ -42,6 +42,7 @@ import { AutomationBuilder } from "@/components/crm/automation-builder";
 import { LeadRoutingPanel } from "@/components/crm/lead-routing-panel";
 import { scoreLead } from "@/lib/crm/scoring";
 import {
+  BellOff,
   Download,
   Eye,
   Inbox as InboxIcon,
@@ -149,6 +150,8 @@ export function CrmDesk({ view }: { view: CrmView }) {
     promoteContactToLead,
     sendSms,
     sendEmail,
+    isContactDnd,
+    setContactDnd,
     setLeadWorkflow,
     advanceSequence,
     createAutomation,
@@ -791,6 +794,8 @@ export function CrmDesk({ view }: { view: CrmView }) {
             setError={setError}
             market={market}
             userId={user.id}
+            isContactDnd={isContactDnd}
+            setContactDnd={setContactDnd}
             addContact={addContact}
             updateContact={updateContact}
             deleteContact={deleteContact}
@@ -825,6 +830,8 @@ export function CrmDesk({ view }: { view: CrmView }) {
             }
             sendSms={sendSms}
             sendEmail={sendEmail}
+            isContactDnd={isContactDnd}
+            setContactDnd={setContactDnd}
             addLead={addLead}
             promoteContactToLead={promoteContactToLead}
           />
@@ -1635,6 +1642,8 @@ interface ContactsDirectoryProps {
   setError: (v: string | null) => void;
   market: Market;
   userId: string;
+  isContactDnd: (contactId: string) => boolean;
+  setContactDnd: (contactId: string, enabled: boolean) => Promise<void>;
   addContact: (
     contact: Omit<Contact, "id" | "createdAt" | "updatedAt" | "market">,
   ) => Promise<void>;
@@ -1674,6 +1683,8 @@ function ContactsDirectory({
   setError,
   market,
   userId,
+  isContactDnd,
+  setContactDnd,
   addContact,
   updateContact,
   deleteContact,
@@ -1874,6 +1885,12 @@ function ContactsDirectory({
                             In pipeline · {linkedLead.stage}
                           </button>
                         ) : null}
+                        {isContactDnd(contact.id) ? (
+                          <Badge tone="warning">
+                            <BellOff className="mr-1 inline h-3 w-3" />
+                            DND · your account
+                          </Badge>
+                        ) : null}
                       </div>
                       <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--muted)]">
                         {contact.phone ? (
@@ -1913,8 +1930,46 @@ function ContactsDirectory({
                     </div>
                   </div>
 
+                  <div className="flex flex-wrap items-center gap-2 lg:max-w-[28rem] lg:shrink-0 lg:justify-end">
+                    <Button
+                      size="sm"
+                      variant={isContactDnd(contact.id) ? "secondary" : "ghost"}
+                      disabled={busy}
+                      aria-pressed={isContactDnd(contact.id)}
+                      aria-label={
+                        isContactDnd(contact.id)
+                          ? `Clear Do Not Disturb for ${contact.name}`
+                          : `Do Not Disturb ${contact.name} on your account`
+                      }
+                      onClick={() => {
+                        void (async () => {
+                          setBusy(true);
+                          setError(null);
+                          try {
+                            const next = !isContactDnd(contact.id);
+                            await setContactDnd(contact.id, next);
+                            toast.success(
+                              next
+                                ? "Do Not Disturb on for your account"
+                                : "Do Not Disturb cleared for your account",
+                            );
+                          } catch (err) {
+                            setError(
+                              err instanceof Error
+                                ? err.message
+                                : "Could not update Do Not Disturb",
+                            );
+                          } finally {
+                            setBusy(false);
+                          }
+                        })();
+                      }}
+                    >
+                      <BellOff className="h-3.5 w-3.5" />
+                      {isContactDnd(contact.id) ? "Clear DND" : "DND"}
+                    </Button>
                 {canEdit ? (
-                  <div className="flex flex-wrap items-center gap-2 lg:max-w-[24rem] lg:shrink-0 lg:justify-end">
+                  <>
                     <Button
                       size="sm"
                       variant="secondary"
@@ -1997,8 +2052,9 @@ function ContactsDirectory({
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                  </div>
+                  </>
                 ) : null}
+                  </div>
                 </div>
               </li>
             );

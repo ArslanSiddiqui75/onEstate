@@ -22,7 +22,8 @@ import type {
   Market,
   OrgMember,
 } from "@/types";
-import { ArrowLeft, Mail, Phone, Search, Send, SquarePen } from "lucide-react";
+import { findMatchingContact } from "@/lib/crm/contact-match";
+import { ArrowLeft, BellOff, Mail, Phone, Search, Send, SquarePen } from "lucide-react";
 
 type InboxFilter = "all" | "mine" | "reply" | "recent";
 type Channel = "sms" | "email";
@@ -145,6 +146,8 @@ export function ConversationInbox({
   onError,
   sendSms,
   sendEmail,
+  isContactDnd,
+  setContactDnd,
   addLead,
   promoteContactToLead,
 }: {
@@ -163,6 +166,8 @@ export function ConversationInbox({
   onError: (message: string | null) => void;
   sendSms: (input: { leadId: string; body: string }) => Promise<unknown>;
   sendEmail: (input: { leadId: string; subject: string; body: string }) => Promise<unknown>;
+  isContactDnd: (contactId: string) => boolean;
+  setContactDnd: (contactId: string, enabled: boolean) => Promise<void>;
   addLead: (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   promoteContactToLead: (
     contactId: string,
@@ -299,6 +304,15 @@ export function ConversationInbox({
 
   const threadOpen = Boolean(picked);
   const phone = shown ? leadPhone(shown) : "";
+  const linkedContact = shown
+    ? findMatchingContact(contacts, {
+        leadId: shown.id,
+        email: shown.email,
+        phone: shown.phone,
+        phones: shown.phones,
+      })
+    : undefined;
+  const personalDnd = Boolean(linkedContact && isContactDnd(linkedContact.id));
   const owner = shown
     ? members.find((member) => member.id === shown.assignedTo)?.name || "Unassigned"
     : "";
@@ -310,7 +324,7 @@ export function ConversationInbox({
         : null;
 
   async function send() {
-    if (!shown || sending || !draft.trim() || missingChannel) return;
+    if (!shown || sending || !draft.trim() || missingChannel || personalDnd) return;
     setSending(true);
     onError(null);
     try {
@@ -333,6 +347,26 @@ export function ConversationInbox({
       toast.error(msg);
     } finally {
       setSending(false);
+    }
+  }
+
+  async function toggleThreadDnd() {
+    if (!linkedContact) {
+      toast.error("Add this person as a contact first to use Do Not Disturb.");
+      return;
+    }
+    try {
+      const next = !isContactDnd(linkedContact.id);
+      await setContactDnd(linkedContact.id, next);
+      toast.success(
+        next
+          ? "Do Not Disturb on for your account"
+          : "Do Not Disturb cleared for your account",
+      );
+    } catch (err) {
+      const msg = asErrorMessage(err, "Could not update Do Not Disturb");
+      onError(msg);
+      toast.error(msg);
     }
   }
 
@@ -609,6 +643,22 @@ export function ConversationInbox({
               <Button
                 type="button"
                 size="sm"
+                variant={personalDnd ? "secondary" : "ghost"}
+                className="rounded-full"
+                aria-pressed={personalDnd}
+                aria-label={
+                  personalDnd
+                    ? "Clear Do Not Disturb for your account"
+                    : "Do Not Disturb this contact on your account"
+                }
+                onClick={() => void toggleThreadDnd()}
+              >
+                <BellOff className="h-3.5 w-3.5" aria-hidden />
+                {personalDnd ? "Clear DND" : "DND"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
                 variant="ghost"
                 className="rounded-full xl:hidden"
                 onClick={() => setDetailsOpen(true)}
@@ -616,6 +666,23 @@ export function ConversationInbox({
                 Details
               </Button>
             </header>
+
+            {personalDnd ? (
+              <div className="flex items-start gap-2 border-b border-[var(--border)] bg-[var(--warning-soft,rgba(180,120,20,0.12))] px-4 py-2.5 text-sm">
+                <BellOff className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
+                <p className="text-[var(--foreground)]">
+                  Do Not Disturb is on for <span className="font-semibold">your account</span> only.
+                  Teammates can still message this contact.{" "}
+                  <button
+                    type="button"
+                    className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
+                    onClick={() => void toggleThreadDnd()}
+                  >
+                    Clear DND
+                  </button>
+                </p>
+              </div>
+            ) : null}
 
             <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-4 py-4">
               {thread.length === 0 ? (
@@ -711,20 +778,27 @@ export function ConversationInbox({
               {missingChannel ? (
                 <p className="mb-2 text-xs text-[var(--muted)]">{missingChannel}</p>
               ) : null}
+              {personalDnd ? (
+                <p className="mb-2 text-xs text-[var(--muted)]">
+                  Sending is paused on your account while Do Not Disturb is on.
+                </p>
+              ) : null}
               {channel === "email" ? (
                 <Input
                   className="mb-2 h-9"
                   placeholder="Subject"
                   value={subject}
                   onChange={(event) => setSubject(event.target.value)}
+                  disabled={personalDnd}
                 />
               ) : null}
               <div className="flex items-end gap-2">
                 <Textarea
                   rows={1}
                   value={draft}
-                  placeholder="Type a message"
+                  placeholder={personalDnd ? "Do Not Disturb is on for your account" : "Type a message"}
                   className="max-h-36 min-h-[2.75rem] flex-1 resize-none py-2"
+                  disabled={personalDnd}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey) {
@@ -737,7 +811,7 @@ export function ConversationInbox({
                   type="submit"
                   size="icon"
                   className="rounded-full"
-                  disabled={sending || !draft.trim() || Boolean(missingChannel)}
+                  disabled={sending || !draft.trim() || Boolean(missingChannel) || personalDnd}
                   aria-label={channel === "email" ? "Send email" : "Send text"}
                 >
                   <Send className="h-4 w-4" />
