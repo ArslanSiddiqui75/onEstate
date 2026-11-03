@@ -49,7 +49,7 @@ async function syncLinkTokens(
   orgId: string,
   book: AgencyBook,
 ) {
-  await supabase.from("agency_link_tokens").delete().eq("org_id", orgId);
+  // Upsert first, then delete obsolete rows — never delete-all (race window).
   const seen = new Set<string>();
   const rows: { token: string; org_id: string; kind: "booking" | "portal" }[] = [];
   const push = (token: string, kind: "booking" | "portal") => {
@@ -66,6 +66,23 @@ async function syncLinkTokens(
       onConflict: "token",
     });
     if (error) throw error;
+  }
+  const keep = new Set(rows.map((row) => row.token));
+  const { data: existing, error: listError } = await supabase
+    .from("agency_link_tokens")
+    .select("token")
+    .eq("org_id", orgId);
+  if (listError) throw listError;
+  const obsolete = (existing || [])
+    .map((row) => String(row.token))
+    .filter((token) => !keep.has(token));
+  if (obsolete.length) {
+    const { error: deleteError } = await supabase
+      .from("agency_link_tokens")
+      .delete()
+      .eq("org_id", orgId)
+      .in("token", obsolete);
+    if (deleteError) throw deleteError;
   }
 }
 

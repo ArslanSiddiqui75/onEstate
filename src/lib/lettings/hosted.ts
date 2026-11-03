@@ -56,10 +56,7 @@ async function syncLettingsIndexes(
   orgId: string,
   book: LettingsBook,
 ) {
-  await supabase.from("lettings_report_tokens").delete().eq("org_id", orgId);
-  await supabase.from("lettings_repair_refs").delete().eq("org_id", orgId);
-  await supabase.from("lettings_inspection_refs").delete().eq("org_id", orgId);
-
+  // Upsert indexes first, then delete rows no longer in the book (avoid delete-all races).
   const tokens = book.properties
     .map((property) => ({
       token: property.reportToken.trim(),
@@ -68,12 +65,33 @@ async function syncLettingsIndexes(
     }))
     .filter((row) => TOKEN_RE.test(row.token));
   if (tokens.length) {
-    const { error } = await supabase.from("lettings_report_tokens").insert(tokens);
+    const { error } = await supabase.from("lettings_report_tokens").upsert(tokens, {
+      onConflict: "token",
+    });
     if (error) {
       if (error.code === "23505") {
         throw new Error("A repair link is already in use by another office.");
       }
       throw error;
+    }
+  }
+  {
+    const keep = new Set(tokens.map((row) => row.token));
+    const { data: existing, error: listError } = await supabase
+      .from("lettings_report_tokens")
+      .select("token")
+      .eq("org_id", orgId);
+    if (listError) throw listError;
+    const obsolete = (existing || [])
+      .map((row) => String(row.token))
+      .filter((token) => !keep.has(token));
+    if (obsolete.length) {
+      const { error } = await supabase
+        .from("lettings_report_tokens")
+        .delete()
+        .eq("org_id", orgId)
+        .in("token", obsolete);
+      if (error) throw error;
     }
   }
 
@@ -85,12 +103,33 @@ async function syncLettingsIndexes(
     }))
     .filter((row) => row.reference);
   if (refs.length) {
-    const { error } = await supabase.from("lettings_repair_refs").insert(refs);
+    const { error } = await supabase.from("lettings_repair_refs").upsert(refs, {
+      onConflict: "reference",
+    });
     if (error) {
       if (error.code === "23505") {
         throw new Error("A repair reference collided with another office. Try again.");
       }
       throw error;
+    }
+  }
+  {
+    const keep = new Set(refs.map((row) => row.reference));
+    const { data: existing, error: listError } = await supabase
+      .from("lettings_repair_refs")
+      .select("reference")
+      .eq("org_id", orgId);
+    if (listError) throw listError;
+    const obsolete = (existing || [])
+      .map((row) => String(row.reference))
+      .filter((reference) => !keep.has(reference));
+    if (obsolete.length) {
+      const { error } = await supabase
+        .from("lettings_repair_refs")
+        .delete()
+        .eq("org_id", orgId)
+        .in("reference", obsolete);
+      if (error) throw error;
     }
   }
 
@@ -99,8 +138,29 @@ async function syncLettingsIndexes(
     org_id: orgId,
   }));
   if (inspections.length) {
-    const { error } = await supabase.from("lettings_inspection_refs").insert(inspections);
+    const { error } = await supabase.from("lettings_inspection_refs").upsert(inspections, {
+      onConflict: "inspection_id",
+    });
     if (error) throw error;
+  }
+  {
+    const keep = new Set(inspections.map((row) => row.inspection_id));
+    const { data: existing, error: listError } = await supabase
+      .from("lettings_inspection_refs")
+      .select("inspection_id")
+      .eq("org_id", orgId);
+    if (listError) throw listError;
+    const obsolete = (existing || [])
+      .map((row) => String(row.inspection_id))
+      .filter((id) => !keep.has(id));
+    if (obsolete.length) {
+      const { error } = await supabase
+        .from("lettings_inspection_refs")
+        .delete()
+        .eq("org_id", orgId)
+        .in("inspection_id", obsolete);
+      if (error) throw error;
+    }
   }
 }
 

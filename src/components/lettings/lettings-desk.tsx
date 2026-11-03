@@ -219,14 +219,51 @@ function fail(err: unknown) {
 async function readPhoto(file: File | undefined) {
   if (!file || file.size === 0) return undefined;
   if (!file.type.startsWith("image/")) throw new Error("Choose a photo.");
-  if (file.size > 120_000) return { name: file.name };
+  if (file.size > 2_000_000) {
+    throw new Error("Photo is too large — choose one under 2 MB.");
+  }
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
     reader.onerror = () => reject(new Error("Could not read that photo."));
     reader.readAsDataURL(file);
   });
-  return { name: file.name, dataUrl };
+  if (dataUrl.length <= 160_000) return { name: file.name, dataUrl };
+  // Compress oversized images in-browser instead of silently dropping the bytes.
+  const compressed = await compressDataUrl(dataUrl, 120_000);
+  if (!compressed) {
+    throw new Error("Photo is too large after compression — try a smaller image.");
+  }
+  return { name: file.name, dataUrl: compressed };
+}
+
+async function compressDataUrl(dataUrl: string, maxChars: number) {
+  if (typeof document === "undefined") return null;
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("Could not compress that photo."));
+    el.src = dataUrl;
+  }).catch(() => null);
+  if (!img) return null;
+  const canvas = document.createElement("canvas");
+  let { width, height } = img;
+  const maxEdge = 1280;
+  if (width > maxEdge || height > maxEdge) {
+    const scale = maxEdge / Math.max(width, height);
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+  }
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, width, height);
+  for (const quality of [0.72, 0.55, 0.4, 0.28]) {
+    const next = canvas.toDataURL("image/jpeg", quality);
+    if (next.length <= maxChars) return next;
+  }
+  return null;
 }
 
 function urgencyTone(repair: Repair) {
