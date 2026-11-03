@@ -41,10 +41,22 @@ export function profileCanAccess(
  * `past_due` is intentionally omitted: Stripe dunning grace keeps the workspace
  * usable while collection retries; only unpaid / paused / canceled lock product.
  */
-const BLOCKED_WORKSPACE_STATUSES = new Set(["paused", "canceled", "unpaid", "incomplete_expired"]);
+export const BLOCKED_WORKSPACE_STATUSES = new Set([
+  "paused",
+  "canceled",
+  "unpaid",
+  "incomplete_expired",
+]);
 
 export function workspaceBlocked(profile: Pick<RequestProfile, "subscriptionStatus">): boolean {
-  return Boolean(profile.subscriptionStatus && BLOCKED_WORKSPACE_STATUSES.has(profile.subscriptionStatus));
+  return Boolean(
+    profile.subscriptionStatus && BLOCKED_WORKSPACE_STATUSES.has(profile.subscriptionStatus),
+  );
+}
+
+/** Client-safe soft-lock check (same set as API). */
+export function isSubscriptionSoftLocked(status: string | null | undefined): boolean {
+  return Boolean(status && BLOCKED_WORKSPACE_STATUSES.has(status));
 }
 
 export function forbiddenIfNoModule(

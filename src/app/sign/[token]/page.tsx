@@ -77,9 +77,13 @@ export default function PublicSignPage() {
     <main className="min-h-screen bg-[var(--background)] px-4 py-16 text-[var(--foreground)]">
       <div className="mx-auto max-w-lg rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-8 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
-          0neStreet e-sign
+          0neStreet e-sign · simulated
         </p>
         <h1 className="mt-2 font-display text-3xl">Review &amp; sign</h1>
+        <p className="mt-2 text-sm text-[var(--muted)]">
+          This signature is simulated for demo until Dropbox Sign is connected
+          end-to-end. It is not a live legal signature.
+        </p>
         {error ? (
           <p className="mt-4 text-sm text-[var(--danger)]">{error}</p>
         ) : !doc ? (

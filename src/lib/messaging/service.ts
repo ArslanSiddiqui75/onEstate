@@ -60,12 +60,15 @@ export async function findLeadByPhone(
 
   const { data: phoneRows } = await supabase
     .from("lead_phone_numbers")
-    .select("lead_id")
+    .select("lead_id, leads!inner(id, archived_at)")
     .eq("org_id", orgId)
     .in("number", variants)
+    .is("leads.archived_at", null)
     .limit(5);
 
-  const phoneLeadIds = [...new Set((phoneRows || []).map((row) => String(row.lead_id)))];
+  const phoneLeadIds = [
+    ...new Set((phoneRows || []).map((row) => String(row.lead_id))),
+  ];
   if (phoneLeadIds.length === 1) {
     return { leadId: phoneLeadIds[0], orgId };
   }
@@ -75,6 +78,7 @@ export async function findLeadByPhone(
     .from("leads")
     .select("id, phone")
     .eq("org_id", orgId)
+    .is("archived_at", null)
     .not("phone", "is", null);
 
   const matches: string[] = [];

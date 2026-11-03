@@ -44,7 +44,14 @@ export async function GET(request: Request) {
   if (hosted()) {
     const profile = await resolveProfileFromRequest(request);
     if (!profile) {
-      return NextResponse.json({ available: true, appointments: [], offers: [], approvals: [], portals: [] });
+      // Unauthenticated callers must not see available:true (masks publish failures).
+      return NextResponse.json({
+        available: false,
+        appointments: [],
+        offers: [],
+        approvals: [],
+        portals: [],
+      });
     }
     const { hostedInboxForOrg } = await import("@/lib/agency/hosted");
     try {

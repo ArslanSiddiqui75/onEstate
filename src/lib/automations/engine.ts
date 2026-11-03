@@ -819,6 +819,22 @@ export async function processAutomationRuns(
     return { processed: 0, completed: 0, waiting: 0, failed: 0 };
   }
 
+  // Soft-locked workspaces must not keep sending while paused/canceled/unpaid.
+  const orgIds = [...new Set(runs.map((row) => String(row.org_id)))];
+  const { data: orgRows } = await supabase
+    .from("organizations")
+    .select("id, subscription_status")
+    .in("id", orgIds);
+  const blocked = new Set(
+    (orgRows || [])
+      .filter((row) =>
+        ["paused", "canceled", "unpaid", "incomplete_expired"].includes(
+          String(row.subscription_status || ""),
+        ),
+      )
+      .map((row) => String(row.id)),
+  );
+
   const summary: ProcessSummary = {
     processed: 0,
     completed: 0,
@@ -828,6 +844,7 @@ export async function processAutomationRuns(
 
   for (const row of runs) {
     if (Date.now() > deadline) break;
+    if (blocked.has(String(row.org_id))) continue;
     const run = row as RunRow;
     // Compare-and-set: the cron, the CRM page and trigger calls can overlap, and
     // only the caller that flips the status may send this run's messages.

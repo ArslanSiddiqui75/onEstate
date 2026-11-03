@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     const profile = await resolveProfileFromRequest(request);
     if (!profile) {
       return NextResponse.json({
-        available: true,
+        available: false,
         repairs: [],
         confirmations: [],
         inspectionSigns: [],

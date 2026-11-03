@@ -453,8 +453,10 @@ Generated on ${new Date().toLocaleString()} by ${brand.name}.
 
                   <TabsContent value="esign" className="mt-4 space-y-4">
                     <p className="text-sm text-[var(--muted)]">
-                      Request a signature link for the buyer or seller. When email is
-                      configured the invite is sent; otherwise copy the link.
+                      Simulated e-sign until Dropbox Sign is connected end-to-end —
+                      not a live legal signature. Request a link for the buyer or
+                      seller; when email is configured the invite is sent, otherwise
+                      copy the link.
                     </p>
                     {canEdit ? (
                       <div className="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 sm:grid-cols-2">

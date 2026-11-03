@@ -48,6 +48,7 @@ import {
   sequenceVarsFromLead,
 } from "@/lib/sequences/catalog";
 import type { WorkspaceRepository } from "@/lib/data/repository";
+import { isSubscriptionSoftLocked } from "@/lib/server/require-module";
 import {
   createLocalRepository,
   findLocalWorkspaceByEmail,
@@ -1104,8 +1105,15 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     [authMode, getAuthToken],
   );
 
+  const assertWritable = useCallback(() => {
+    if (isSubscriptionSoftLocked(org?.subscriptionStatus)) {
+      throw new Error("This workspace is paused. Update billing to continue.");
+    }
+  }, [org?.subscriptionStatus]);
+
   const addLead = useCallback(
     async (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => {
+      assertWritable();
       if (!repoRef.current || !org || !user) return;
       const phones =
         lead.phone && !lead.phones?.length
@@ -1184,6 +1192,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
     },
     [
+      assertWritable,
       brand.market,
       contacts,
       fireAutomationTrigger,
@@ -1197,11 +1206,12 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
 
   const assignLead = useCallback(
     async (id: string, assignedTo: string) => {
+      assertWritable();
       if (!repoRef.current) return;
       await repoRef.current.updateLead(id, { assignedTo });
       await refresh();
     },
-    [refresh],
+    [assertWritable, refresh],
   );
 
   const saveLeadRouting = useCallback(
@@ -1271,6 +1281,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
 
   const updateLead = useCallback(
     async (id: string, patch: LeadPatch) => {
+      assertWritable();
       if (!repoRef.current) throw new Error("Workspace is not loaded");
       const current = leads.find((l) => l.id === id);
       if (!current) throw new Error("Lead not found");
@@ -1350,7 +1361,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
       return saved;
     },
-    [fireAutomationTrigger, leads, refresh, user?.name],
+    [assertWritable, fireAutomationTrigger, leads, refresh, user?.name],
   );
 
   const runAutomationNow = useCallback(
@@ -1891,6 +1902,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
 
   const sendSms = useCallback(
     async (input: { leadId: string; body: string }) => {
+      assertWritable();
       if (!repoRef.current || !org) {
         return { mode: "simulated" as const };
       }
@@ -1953,7 +1965,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
       return { mode: json.mode || "simulated" };
     },
-    [authMode, contacts, dndContactIds, getAuthToken, leads, org, refresh],
+    [assertWritable, authMode, contacts, dndContactIds, getAuthToken, leads, org, refresh],
   );
 
   const sendEmail = useCallback(
@@ -2017,7 +2029,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       await refresh();
       return { mode: json.mode || "simulated" };
     },
-    [authMode, contacts, dndContactIds, getAuthToken, leads, org, refresh],
+    [assertWritable, authMode, contacts, dndContactIds, getAuthToken, leads, org, refresh],
   );
 
   const logCall = useCallback(
