@@ -17,6 +17,14 @@ import type { AppointmentKind } from "@/lib/agency/types";
 import { appRedirectUrl } from "@/lib/http/same-origin";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { demoInboxEnabled } from "@/lib/server/demo-inbox";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
+
+const isRateLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 20 });
+
+function clientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for") || "";
+  return forwarded.split(",")[0].trim() || "unknown";
+}
 
 function redirectTo(request: Request, path: string, query: Record<string, string>) {
   const url = appRedirectUrl(request, path);
@@ -56,6 +64,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (isRateLimited(clientIp(request))) {
+    return NextResponse.json(
+      { error: "Too many requests — try again shortly" },
+      { status: 429 },
+    );
+  }
+
   const contentType = request.headers.get("content-type") || "";
   const formPost = !contentType.includes("application/json");
   let raw: Record<string, unknown> = {};

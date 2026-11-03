@@ -6,5 +6,7 @@ export async function GET() {
   return NextResponse.json({
     mode: caps.mode,
     outbound: caps.outbound,
+    smtpConfigured: caps.smtpConfigured,
+    resendForTransactional: caps.resendConfigured,
   });
 }

@@ -236,11 +236,9 @@ export function projectSubscriptionAction(
   }
 
   if (action === "retry_payment") {
-    next.status = "active";
-    next.mrr = billedMrr("active", sub.unitAmount);
-    next.lastPaymentStatus = "paid";
-    next.lastPaymentAt = now.toISOString();
-    summary = `Retried payment for ${account.name}. The account is active again.`;
+    // Never invent a paid invoice here — the admin route confirms Stripe first.
+    next.lastPaymentStatus = "pending";
+    summary = `Payment retry queued for ${account.name}. Status updates when Stripe confirms the charge.`;
   }
 
   if (action === "extend_trial") {

@@ -6,6 +6,7 @@ import type {
   LeadStage,
 } from "@/types";
 import { profileHasDndForLead } from "@/lib/crm/dnd-server";
+import { leadHasOptedOut } from "@/lib/messaging/opt-out";
 import { sendOutboundSms } from "@/lib/messaging/service";
 import { sendOutboundEmail } from "@/lib/email/service";
 import { isE164 } from "@/lib/phone/e164";
@@ -416,6 +417,10 @@ async function executeStep(
         }
       }
 
+      if (await leadHasOptedOut(supabase, { orgId: run.org_id, leadId: lead.id })) {
+        return { outcome: "skipped", detail: "Contact opted out of SMS" };
+      }
+
       const { data: phones } = await supabase
         .from("lead_phone_numbers")
         .select("number, consent, preferred")
@@ -431,9 +436,6 @@ async function executeStep(
           outcome: "skipped",
           detail: "Phone needs a country code (save as +92… or +44…, not 0333…)",
         };
-      }
-      if (preferred?.consent === "opted_out") {
-        return { outcome: "skipped", detail: "Contact opted out of SMS" };
       }
 
       // Texts must leave from this workspace's own number so replies route back.
@@ -473,6 +475,9 @@ async function executeStep(
     case "send_email": {
       const to = (lead.email || "").trim();
       if (!to) return { outcome: "skipped", detail: "Lead has no email address" };
+      if (await leadHasOptedOut(supabase, { orgId: run.org_id, leadId: lead.id })) {
+        return { outcome: "skipped", detail: "Contact opted out" };
+      }
 
       if (lead.assigned_to) {
         const dnd = await profileHasDndForLead(supabase, {
@@ -522,6 +527,9 @@ async function executeStep(
     }
 
     case "create_task": {
+      if (await leadHasOptedOut(supabase, { orgId: run.org_id, leadId: lead.id })) {
+        return { outcome: "skipped", detail: "Contact opted out" };
+      }
       const title = renderTemplate(step.config.taskTitle || "Follow up", vars);
       const { error } = await supabase.from("lead_tasks").insert({
         lead_id: lead.id,

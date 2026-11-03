@@ -93,10 +93,12 @@ Modules under `/app`: crm, listings, transactions, website, social, billing + te
 - Calls tab: `tel:` device dialer + log — **no** in-app WebRTC.
 - Website publish requires active/under-offer listings (UI, `saveWebsite`, and DB trigger agree); unpublished public URLs stay unavailable.
 - E-sign stays **simulated** until Dropbox Sign is wired end-to-end — a `DROPBOX_SIGN_API_KEY` alone does not mean live.
-- Apply on hosted (in order): `20261104120000_p0_honesty_hardening.sql`, `20261104140000_sell_ready_wave_a.sql` (invite tokens, terms columns, signup_checkout_intents).
+- Apply on hosted (in order): `20261104120000_p0_honesty_hardening.sql`, `20261104140000_sell_ready_wave_a.sql`, `20261104160000_sell_ready_wave_e.sql` (unmatched triage fields, profiles.email).
 - Team invites use `/app/invite?token=…` (no Checkout). Owner signup still pays via Stripe.
 - Org + admin cookies can coexist until sign-out (sign-out clears both; overlap banner in app).
-- Twilio can send to many countries; PK inbound SMS is not reliable — use CRM simulate inbound.
+- Twilio can send to many countries; PK inbound SMS is not reliable — use CRM **Simulate reply** in Conversations.
+- Conversations email uses **SMTP**; Resend is invites / e-sign only.
+- `past_due` keeps workspace access (Stripe dunning grace); `paused` / `canceled` / `unpaid` soft-lock product (billing still reachable).
 - Soft-archive via `archived_at` where implemented.
 - Next.js 16: read `node_modules/next/dist/docs/` / `AGENTS.md` before assuming old App Router habits; `src/proxy.ts` replaces classic middleware naming.
 

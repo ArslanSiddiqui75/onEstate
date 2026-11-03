@@ -334,7 +334,7 @@ export function createSupabaseRepository(
     async listMembers() {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, role, module_access")
+        .select("id, full_name, email, role, module_access")
         .eq("org_id", ctx.org.id);
       if (error) throw error;
       const { data: invites } = await supabase
@@ -346,7 +346,7 @@ export function createSupabaseRepository(
         (p): OrgMember => ({
           id: String(p.id),
           name: String(p.full_name),
-          email: "",
+          email: String(p.email || ""),
           role: p.role as OrgMember["role"],
           moduleAccess: readModuleGrants(p.module_access),
           avatarInitials: String(p.full_name)
@@ -440,6 +440,7 @@ export function createSupabaseRepository(
           territory: lead.territory,
           priority: lead.priority,
           listing_id: lead.listingId || null,
+          tags: lead.tags ?? [],
         })
         .select("*")
         .single();
@@ -515,6 +516,7 @@ export function createSupabaseRepository(
           ...(patch.score !== undefined ? { score: patch.score } : {}),
           ...(patch.territory !== undefined ? { territory: patch.territory } : {}),
           ...(patch.listingId !== undefined ? { listing_id: patch.listingId || null } : {}),
+          ...(patch.tags !== undefined ? { tags: patch.tags } : {}),
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
@@ -803,6 +805,10 @@ export function createSupabaseRepository(
       if (patch.syncReadiness !== undefined) row.sync_readiness = patch.syncReadiness;
       if (patch.lastSyncAt !== undefined) row.last_sync_at = patch.lastSyncAt;
       if (patch.nextMilestone !== undefined) row.next_milestone = patch.nextMilestone;
+      if (patch.tenure !== undefined) row.tenure = patch.tenure;
+      if (patch.mlsDisclosureComplete !== undefined) {
+        row.mls_disclosure_complete = patch.mlsDisclosureComplete;
+      }
 
       const { data, error } = await supabase
         .from("listings")

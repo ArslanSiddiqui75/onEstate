@@ -125,7 +125,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
             title: "The rest of the week, in the same login.",
             points: [
               "CRM with calls, SMS, and sequences",
-              "A branded site, scheduled social posts, and e-sign",
+              "A branded site, scheduled social posts, and deal documents",
               "Tasks, reports, teams, and a fee request on the deal",
             ],
             href: "#pricing",
@@ -160,7 +160,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
             title: "The rest of the week, in the same login.",
             points: [
               "CRM with calls, SMS, and sequences",
-              "A branded site, scheduled social posts, and e-sign",
+              "A branded site, scheduled social posts, and deal documents",
               "Tasks, reports, teams, and a fee request on the deal",
             ],
             href: "#pricing",
@@ -281,8 +281,8 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
                 body: "A description is written from the fields already on the record. You edit it before a vendor, a portal, or the public site ever sees it.",
               },
               {
-                title: "Documents and e-sign",
-                body: "Uploads, listing media, and e-sign live with the deal. The signature is on the file the progression already uses.",
+                title: "Documents and signatures",
+                body: "Uploads and listing media stay on the deal. Signature requests are simulated in-product until Dropbox Sign is connected end-to-end.",
               },
               {
                 title: "Website",
@@ -379,8 +379,8 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
                 body: "A description is written from the fields already on the record. You edit it before a seller or the public site sees it.",
               },
               {
-                title: "Documents and e-sign",
-                body: "Uploads, listing media, and e-sign live with the deal, on the same progression the checklist uses.",
+                title: "Documents and signatures",
+                body: "Uploads and listing media stay on the deal. Signature requests are simulated until Dropbox Sign is connected end-to-end.",
               },
               {
                 title: "Website",
@@ -420,7 +420,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
       {
         n: "04",
         title: `Through to ${exchange}`,
-        body: "Checklist, documents, e-sign, the fee request, and the referral note stay on that same record.",
+        body: "Checklist, documents, signature workflow, the fee request, and the referral note stay on that same record.",
       },
     ],
     clients: uk
@@ -480,7 +480,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
           "Progression through to exchange",
           "Listing packs for Rightmove, Zoopla, and OnTheMarket",
           "Listing drafts you edit before they go out",
-          "Documents, media, and e-sign",
+          "Documents, media, and simulated e-sign",
           "Branded website",
           "Social scheduling",
           "CRM with SMS, calls, and sequences",
@@ -503,7 +503,7 @@ export function getMarketingCopy(market: Market = getActiveBrand().market) {
           "Progression through to close",
           "Listing packs prepared for the MLS",
           "Listing drafts you edit before they go out",
-          "Documents, media, and e-sign",
+          "Documents, media, and simulated e-sign",
           "Branded website",
           "Social scheduling",
           "CRM with SMS, calls, and sequences",

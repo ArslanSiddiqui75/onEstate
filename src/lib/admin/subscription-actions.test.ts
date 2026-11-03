@@ -99,14 +99,14 @@ describe("subscription management actions", () => {
     expect(subscriptionActions(account({ status: "canceled", mrr: 0, canceledAt: now.toISOString() }))).toEqual([]);
   });
 
-  it("retries a past due US account in dollars and switches its plan", () => {
+  it("queues a payment retry without inventing a paid invoice", () => {
     const retried = projectSubscriptionAction(
       account({ market: "us", status: "past_due", lastPaymentStatus: "failed", unitAmount: 249, mrr: 249 }),
       "retry_payment",
       { now },
     );
-    expect(retried.subscription.status).toBe("active");
-    expect(retried.subscription.lastPaymentStatus).toBe("paid");
+    expect(retried.subscription.status).toBe("past_due");
+    expect(retried.subscription.lastPaymentStatus).toBe("pending");
     expect(retried.subscription.mrr).toBe(249);
 
     const solo = projectSubscriptionAction(

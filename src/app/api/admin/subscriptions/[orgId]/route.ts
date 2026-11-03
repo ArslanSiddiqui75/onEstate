@@ -119,6 +119,15 @@ export async function POST(
   let mode: "stripe" | "recorded" = "recorded";
   let note = "";
 
+  if (parsed.data.action === "retry_payment" && (!stripe || !stripeSubId)) {
+    return NextResponse.json(
+      {
+        error: `${regionLabel(market)} Stripe is not connected (or this account has no subscription id). Cannot invent a paid invoice.`,
+      },
+      { status: 409 },
+    );
+  }
+
   if (stripe && stripeSubId) {
     const changingToEnterprise = parsed.data.action === "change_plan" && parsed.data.plan === "enterprise";
     if (changingToEnterprise) {
@@ -142,6 +151,15 @@ export async function POST(
           plan: parsed.data.plan,
         });
         mode = "stripe";
+        if (parsed.data.action === "retry_payment") {
+          // Stripe accepted the retry; project active/paid now (webhook will reconcile).
+          next.subscription.status = "active";
+          next.subscription.mrr = Number(account.subscription.unitAmount) || next.subscription.mrr;
+          next.subscription.lastPaymentStatus = "paid";
+          next.subscription.lastPaymentAt = new Date().toISOString();
+          next.summary = `Retried payment for ${account.name}. The account is active again.`;
+          next.lifecycleStatus = "active";
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Stripe could not update this subscription.";
         return NextResponse.json({ error: message }, { status: 502 });

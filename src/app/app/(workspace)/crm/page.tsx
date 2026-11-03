@@ -117,6 +117,8 @@ export function CrmDesk({ view }: { view: CrmView }) {
     promoteContactToLead,
     sendSms,
     sendEmail,
+    receiveInboundSms,
+    getAuthToken,
     isContactDnd,
     setContactDnd,
     setLeadWorkflow,
@@ -799,6 +801,8 @@ export function CrmDesk({ view }: { view: CrmView }) {
             }
             sendSms={sendSms}
             sendEmail={sendEmail}
+            receiveInbound={receiveInboundSms}
+            getAuthToken={getAuthToken}
             isContactDnd={isContactDnd}
             setContactDnd={setContactDnd}
             addLead={addLead}

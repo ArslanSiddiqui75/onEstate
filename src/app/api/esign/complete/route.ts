@@ -5,12 +5,23 @@ import {
   completeEsignByToken,
   getEsignByToken,
 } from "@/lib/esign/service";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 
 const bodySchema = z.object({
   token: z.string().min(16),
 });
 
+const isRateLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 30 });
+
+function clientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for") || "";
+  return forwarded.split(",")[0].trim() || "unknown";
+}
+
 export async function GET(request: Request) {
+  if (isRateLimited(`get:${clientIp(request)}`)) {
+    return NextResponse.json({ error: "Too many requests — try again shortly" }, { status: 429 });
+  }
   const token = new URL(request.url).searchParams.get("token") || "";
   if (token.length < 16) {
     return NextResponse.json({ error: "Invalid token" }, { status: 400 });
@@ -35,6 +46,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (isRateLimited(`post:${clientIp(request)}`)) {
+    return NextResponse.json({ error: "Too many requests — try again shortly" }, { status: 429 });
+  }
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {

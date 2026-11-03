@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { DND_BLOCK_MESSAGE } from "@/lib/crm/dnd";
 import { profileHasDndForLead } from "@/lib/crm/dnd-server";
 import { sendOutboundEmail } from "@/lib/email/service";
+import { leadHasOptedOut } from "@/lib/messaging/opt-out";
 import { sendOutboundSms } from "@/lib/messaging/service";
 import { isE164 } from "@/lib/phone/e164";
 import {
@@ -34,6 +35,9 @@ async function executeSequenceStep(
   if (step.type === "sms") {
     const body = renderSequenceTemplate(step.body || "", vars).trim();
     if (!body) return { ok: false, detail: "Empty SMS body" };
+    if (await leadHasOptedOut(supabase, { orgId, leadId })) {
+      return { ok: false, detail: "Contact opted out of SMS" };
+    }
     const { data: phones } = await supabase
       .from("lead_phone_numbers")
       .select("number, consent, preferred")
@@ -48,9 +52,6 @@ async function executeSequenceStep(
         ok: false,
         detail: "Phone needs a country code (save as +92… or +44…, not 0333…).",
       };
-    }
-    if (preferred?.consent === "opted_out") {
-      return { ok: false, detail: "Contact opted out of SMS" };
     }
     const { data: orgRow } = await supabase
       .from("organizations")
@@ -76,6 +77,9 @@ async function executeSequenceStep(
   if (step.type === "email") {
     const to = (lead.email || "").trim();
     if (!to) return { ok: false, detail: "Lead has no email address" };
+    if (await leadHasOptedOut(supabase, { orgId, leadId })) {
+      return { ok: false, detail: "Contact opted out" };
+    }
     const subject = renderSequenceTemplate(
       step.subject || "Following up",
       vars,
@@ -91,6 +95,10 @@ async function executeSequenceStep(
     });
     if (!result.ok) return { ok: false, detail: result.error || "Email send failed" };
     return { ok: true, detail: `Email sent (${result.mode})` };
+  }
+
+  if (await leadHasOptedOut(supabase, { orgId, leadId })) {
+    return { ok: false, detail: "Contact opted out" };
   }
 
   const title = renderSequenceTemplate(step.label || "Follow up", vars);
@@ -150,6 +158,9 @@ export async function advanceEnrollment(
   if (!enrollment) return { ok: false, error: "Lead is not enrolled" };
   if (enrollment.status === "paused") {
     return { ok: false, error: "Enrollment is paused" };
+  }
+  if (enrollment.status === "cancelled" || enrollment.status === "canceled") {
+    return { ok: false, error: "Enrollment was cancelled (opt-out)" };
   }
 
   const steps = sequence.steps;

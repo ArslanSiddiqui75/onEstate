@@ -13,6 +13,14 @@ import {
   fileServerReport,
 } from "@/lib/lettings/server-inbox";
 import type { RepairChannel } from "@/lib/lettings/types";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
+
+const isRateLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 20 });
+
+function clientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for") || "";
+  return forwarded.split(",")[0].trim() || "unknown";
+}
 
 function redirectTo(request: Request, token: string, query: Record<string, string>) {
   const url = appRedirectUrl(request, `/report/${encodeURIComponent(token)}`);
@@ -26,6 +34,13 @@ function asChannel(value: unknown): RepairChannel {
 }
 
 export async function POST(request: Request) {
+  if (isRateLimited(clientIp(request))) {
+    return NextResponse.json(
+      { error: "Too many requests — try again shortly" },
+      { status: 429 },
+    );
+  }
+
   const contentType = request.headers.get("content-type") || "";
   const formPost = !contentType.includes("application/json");
   let raw: Record<string, unknown> = {};

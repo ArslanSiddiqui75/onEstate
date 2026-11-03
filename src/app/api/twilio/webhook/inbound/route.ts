@@ -16,6 +16,7 @@ async function captureUnmatched(
     body: string;
     sid: string;
     orgIds: string[];
+    needsOptOut?: boolean;
   },
 ) {
   const orgId =
@@ -28,6 +29,7 @@ async function captureUnmatched(
     body: input.body,
     provider_sid: input.sid || null,
     source: "twilio",
+    needs_opt_out: Boolean(input.needsOptOut),
   };
   const { error } = await supabase.from("unmatched_inbound_messages").insert(row);
   if (error && error.code !== "23505") {
@@ -74,7 +76,15 @@ export async function POST(request: Request) {
         leadId: match.leadId,
       });
     } else {
-      await captureUnmatched(supabase, { from, to, body, sid, orgIds });
+      // STOP without a matched lead still lands in triage (needs_opt_out flag).
+      await captureUnmatched(supabase, {
+        from,
+        to,
+        body,
+        sid,
+        orgIds,
+        needsOptOut: isOptOutMessage(body),
+      });
     }
   }
 

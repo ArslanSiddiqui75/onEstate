@@ -96,6 +96,7 @@ function ListingsDesk() {
     updateListing,
     archiveListing,
     listPortalConnections,
+    queuePortalSync,
     market,
     persistence,
     getAuthToken,
@@ -176,8 +177,8 @@ function ListingsDesk() {
 
         <TabsContent value="portals" className="mt-4">
           <Alert tone="warning" className="mb-4">
-            Rightmove, Zoopla, and OnTheMarket publishing is coming soon.
-            Live feeds need a commercial portal partnership.
+            Export-only feeds are ready now. Live HTTP push to Rightmove, Zoopla,
+            OnTheMarket, or MLS still needs a commercial portal partnership.
           </Alert>
           <motion.div
             variants={staggerContainer}
@@ -189,7 +190,7 @@ function ListingsDesk() {
               const provider = deliveryProviders.find((p) => p.id === connection.portal);
               return (
                 <motion.div key={connection.portal} variants={fadeUp}>
-                  <Card className="space-y-3 opacity-90">
+                  <Card className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <p className="text-sm font-medium">
@@ -199,11 +200,11 @@ function ListingsDesk() {
                           {provider?.summary || "Listing distribution feed"}
                         </p>
                       </div>
-                      <Badge tone="warning">Coming soon</Badge>
+                      <Badge tone="neutral">Export only</Badge>
                     </div>
                     <p className="inline-flex items-center gap-1.5 text-xs text-[var(--muted)]">
                       <Clock className="h-3.5 w-3.5" />
-                      Connect and live publish will unlock when partner access is live.
+                      Prepare a feed JSON from any listing — live partner push stays blocked until APIs are wired.
                     </p>
                   </Card>
                 </motion.div>
@@ -517,10 +518,21 @@ function ListingsDesk() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    disabled
-                    title="Portal publish is coming soon"
+                    title="Prepare export-only portal feed JSON"
+                    onClick={() => {
+                      void queuePortalSync(listing.id)
+                        .then((summary) => {
+                          toast.success(summary || "Portal feed prepared");
+                          setPortalLogListing({ ...listing });
+                        })
+                        .catch((err) =>
+                          toast.error(
+                            err instanceof Error ? err.message : "Could not prepare the feed",
+                          ),
+                        );
+                    }}
                   >
-                    Coming soon
+                    Prepare feed
                   </Button>
                   {listing.status !== "under_offer" ? (
                     <Button
@@ -702,6 +714,16 @@ function ListingsDesk() {
                       sqft: areaToSqft(market, String(form.get("sqft") || 0)),
                       description: String(form.get("description")),
                       imageUrl: coverUrl.trim(),
+                      ...(market === "uk"
+                        ? {
+                            tenure: String(form.get("tenure")) as
+                              | "freehold"
+                              | "leasehold",
+                          }
+                        : {
+                            mlsDisclosureComplete:
+                              form.get("mlsDisclosureComplete") === "on",
+                          }),
                     });
                     toast.success(`Updated "${title}"`);
                     setEditingListing(null);
@@ -738,6 +760,25 @@ function ListingsDesk() {
                 placeholder={market === "uk" ? "Floor area (sq m)" : "Floor area (sq ft)"}
                 defaultValue={sqftToArea(market, editingListing.sqft)}
               />
+              {market === "uk" ? (
+                <MenuSelect
+                  name="tenure"
+                  className="h-10 rounded-md border border-[var(--border)] px-3 text-sm sm:col-span-2"
+                  defaultValue={editingListing.tenure || "freehold"}
+                >
+                  <option value="freehold">Freehold</option>
+                  <option value="leasehold">Leasehold</option>
+                </MenuSelect>
+              ) : (
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    name="mlsDisclosureComplete"
+                    defaultChecked={Boolean(editingListing.mlsDisclosureComplete)}
+                  />
+                  MLS disclosures complete
+                </label>
+              )}
               <div className="space-y-2 sm:col-span-2">
                 {coverUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element

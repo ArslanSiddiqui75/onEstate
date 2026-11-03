@@ -473,6 +473,29 @@ const linkedinProvider: SocialProvider = {
       },
     ];
   },
+  async refresh(target) {
+    if (!target.refreshToken) return null;
+    const form = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: target.refreshToken,
+      client_id: process.env.LINKEDIN_CLIENT_ID || "",
+      client_secret: process.env.LINKEDIN_CLIENT_SECRET || "",
+    });
+    const res = await fetch("https://www.linkedin.com/oauth/v2/accessToken", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.access_token) return null;
+    return {
+      accessToken: json.access_token,
+      refreshToken: json.refresh_token || target.refreshToken,
+      expiresAt: json.expires_in
+        ? new Date(Date.now() + Number(json.expires_in) * 1000).toISOString()
+        : undefined,
+    };
+  },
   async publish(target, input) {
     try {
       const author = `urn:li:person:${target.externalAccountId}`;
@@ -480,7 +503,27 @@ const linkedinProvider: SocialProvider = {
       const media = input.media[0];
 
       if (media) {
-        const initRes = await fetch("https://api.linkedin.com/rest/images?action=initializeUpload", {
+        const isVideo = media.kind === "video";
+        const initUrl = isVideo
+          ? "https://api.linkedin.com/rest/videos?action=initializeUpload"
+          : "https://api.linkedin.com/rest/images?action=initializeUpload";
+        const initBody = isVideo
+          ? {
+              initializeUploadRequest: {
+                owner: author,
+                fileSizeBytes: undefined as number | undefined,
+                uploadCaptions: false,
+                uploadThumbnail: false,
+              },
+            }
+          : { initializeUploadRequest: { owner: author } };
+
+        const blob = await mediaToBlob(media);
+        if (isVideo) {
+          initBody.initializeUploadRequest.fileSizeBytes = blob.size;
+        }
+
+        const initRes = await fetch(initUrl, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${target.accessToken}`,
@@ -488,22 +531,34 @@ const linkedinProvider: SocialProvider = {
             "X-Restli-Protocol-Version": "2.0.0",
             "LinkedIn-Version": LINKEDIN_VERSION,
           },
-          body: JSON.stringify({ initializeUploadRequest: { owner: author } }),
+          body: JSON.stringify(initBody),
         });
         const initJson = await initRes.json();
-        if (!initRes.ok) throw new Error(initJson.message || "LinkedIn image upload init failed");
-        const uploadUrl = initJson.value?.uploadUrl as string | undefined;
-        const imageUrn = initJson.value?.image as string | undefined;
-        if (!uploadUrl || !imageUrn) throw new Error("LinkedIn did not return an upload target");
+        if (!initRes.ok) {
+          throw new Error(
+            initJson.message ||
+              (isVideo ? "LinkedIn video upload init failed" : "LinkedIn image upload init failed"),
+          );
+        }
+        const uploadUrl = (initJson.value?.uploadUrl ||
+          initJson.value?.uploadInstructions?.[0]?.uploadUrl) as string | undefined;
+        const mediaUrn = (initJson.value?.image || initJson.value?.video) as string | undefined;
+        if (!uploadUrl || !mediaUrn) throw new Error("LinkedIn did not return an upload target");
 
-        const blob = await mediaToBlob(media);
         const uploadRes = await fetch(uploadUrl, {
           method: "PUT",
-          headers: { Authorization: `Bearer ${target.accessToken}` },
+          headers: {
+            Authorization: `Bearer ${target.accessToken}`,
+            ...(isVideo ? { "Content-Type": "application/octet-stream" } : {}),
+          },
           body: blob,
         });
-        if (!uploadRes.ok) throw new Error("LinkedIn image upload failed");
-        content = { media: { id: imageUrn, title: input.caption.slice(0, 80) || "Image" } };
+        if (!uploadRes.ok) {
+          throw new Error(isVideo ? "LinkedIn video upload failed" : "LinkedIn image upload failed");
+        }
+        content = isVideo
+          ? { media: { id: mediaUrn, title: input.caption.slice(0, 80) || "Video" } }
+          : { media: { id: mediaUrn, title: input.caption.slice(0, 80) || "Image" } };
       } else if (input.linkUrl) {
         content = { article: { source: input.linkUrl, title: input.caption.slice(0, 80) || "Link" } };
       }

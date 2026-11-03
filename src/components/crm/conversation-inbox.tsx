@@ -146,6 +146,8 @@ export function ConversationInbox({
   onError,
   sendSms,
   sendEmail,
+  receiveInbound,
+  getAuthToken,
   isContactDnd,
   setContactDnd,
   addLead,
@@ -166,6 +168,13 @@ export function ConversationInbox({
   onError: (message: string | null) => void;
   sendSms: (input: { leadId: string; body: string }) => Promise<unknown>;
   sendEmail: (input: { leadId: string; subject: string; body: string }) => Promise<unknown>;
+  receiveInbound?: (input: {
+    leadId: string;
+    body: string;
+    channel?: "sms" | "email";
+    subject?: string;
+  }) => Promise<unknown>;
+  getAuthToken?: () => Promise<string | null>;
   isContactDnd: (contactId: string) => boolean;
   setContactDnd: (contactId: string, enabled: boolean) => Promise<void>;
   addLead: (lead: Omit<Lead, "id" | "createdAt" | "updatedAt">) => Promise<void>;
@@ -187,8 +196,48 @@ export function ConversationInbox({
   const [watchName, setWatchName] = useState<string | null>(null);
   const [watchContactId, setWatchContactId] = useState<string | null>(null);
   const [contactQuery, setContactQuery] = useState("");
+  const [unmatched, setUnmatched] = useState<
+    Array<{
+      id: string;
+      fromPhone: string;
+      body: string;
+      needsOptOut: boolean;
+      createdAt: string;
+    }>
+  >([]);
+  const [unmatchedBusy, setUnmatchedBusy] = useState<string | null>(null);
   const knownIds = useRef<Set<string>>(new Set());
   const scroller = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!getAuthToken) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await getAuthToken();
+        if (!token || cancelled) return;
+        const res = await fetch("/api/messaging/unmatched", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok || cancelled) return;
+        const json = (await res.json()) as {
+          items?: Array<{
+            id: string;
+            fromPhone: string;
+            body: string;
+            needsOptOut: boolean;
+            createdAt: string;
+          }>;
+        };
+        if (!cancelled) setUnmatched(json.items || []);
+      } catch {
+        // Triage is best-effort; inbox still works offline.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [getAuthToken, messages.length]);
 
   const latestByLead = useMemo(() => {
     const map = new Map<string, ConversationMessage>();
@@ -350,6 +399,29 @@ export function ConversationInbox({
     }
   }
 
+  async function simulateInboundReply() {
+    if (!shown || !receiveInbound || sending || !draft.trim()) return;
+    setSending(true);
+    onError(null);
+    try {
+      await receiveInbound({
+        leadId: shown.id,
+        body: draft.trim(),
+        channel,
+        subject: channel === "email" ? subject.trim() || undefined : undefined,
+      });
+      toast.success("Simulated inbound reply recorded");
+      setDraft("");
+      setSubject("");
+    } catch (err) {
+      const msg = asErrorMessage(err, "Could not simulate inbound");
+      onError(msg);
+      toast.error(msg);
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function toggleThreadDnd() {
     if (!linkedContact) {
       toast.error("Add this person as a contact first to use Do Not Disturb.");
@@ -466,8 +538,84 @@ export function ConversationInbox({
     );
   }
 
+  async function triageUnmatched(
+    id: string,
+    action: "dismiss" | "link",
+    leadId?: string,
+  ) {
+    if (!getAuthToken) return;
+    setUnmatchedBusy(id);
+    try {
+      const token = await getAuthToken();
+      if (!token) throw new Error("Sign in required");
+      const res = await fetch("/api/messaging/unmatched", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(
+          action === "dismiss" ? { action, id } : { action, id, leadId },
+        ),
+      });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(json.error || "Could not update that message");
+      setUnmatched((prev) => prev.filter((item) => item.id !== id));
+      if (action === "link" && leadId) onSelect(leadId);
+      toast.success(action === "dismiss" ? "Dismissed unmatched text" : "Linked to conversation");
+    } catch (err) {
+      toast.error(asErrorMessage(err, "Could not update that message"));
+    } finally {
+      setUnmatchedBusy(null);
+    }
+  }
+
   return (
-    <div className="flex min-h-0 flex-1 overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      {unmatched.length ? (
+        <div className="border-b border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
+          <p className="text-xs font-semibold text-[var(--foreground)]">
+            Unmatched inbound ({unmatched.length})
+          </p>
+          <ul className="mt-2 max-h-36 space-y-2 overflow-y-auto">
+            {unmatched.slice(0, 5).map((item) => (
+              <li
+                key={item.id}
+                className="rounded-xl border border-[var(--border)] bg-[var(--surface-solid)] px-3 py-2 text-xs"
+              >
+                <p className="font-medium">
+                  {item.fromPhone}
+                  {item.needsOptOut ? " · STOP" : ""}
+                </p>
+                <p className="mt-0.5 line-clamp-2 text-[var(--muted)]">{item.body}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {shown && canEdit ? (
+                    <button
+                      type="button"
+                      className="font-semibold text-[var(--foreground)] underline-offset-2 hover:underline"
+                      disabled={unmatchedBusy === item.id}
+                      onClick={() => void triageUnmatched(item.id, "link", shown.id)}
+                    >
+                      Link to open thread
+                    </button>
+                  ) : null}
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      className="font-semibold text-[var(--muted)] underline-offset-2 hover:underline"
+                      disabled={unmatchedBusy === item.id}
+                      onClick={() => void triageUnmatched(item.id, "dismiss")}
+                    >
+                      Dismiss
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
       <aside
         className={cn(
           "flex h-full min-h-0 w-full flex-col border-[var(--border)] lg:w-[21.5rem] lg:shrink-0 lg:border-r",
@@ -762,13 +910,26 @@ export function ConversationInbox({
                     Email
                   </button>
                 </div>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-[var(--muted)] hover:text-[var(--foreground)]"
-                  onClick={insertTemplate}
-                >
-                  Insert template
-                </button>
+                <div className="flex items-center gap-3">
+                  {receiveInbound && canEdit ? (
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-[var(--muted)] hover:text-[var(--foreground)]"
+                      disabled={sending || !draft.trim()}
+                      onClick={() => void simulateInboundReply()}
+                      title="Record this draft as an inbound reply (for demos and PK inbound testing)"
+                    >
+                      Simulate reply
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-[var(--muted)] hover:text-[var(--foreground)]"
+                    onClick={insertTemplate}
+                  >
+                    Insert template
+                  </button>
+                </div>
               </div>
               {missingChannel ? (
                 <p className="mb-2 text-xs text-[var(--muted)]">{missingChannel}</p>
@@ -850,6 +1011,7 @@ export function ConversationInbox({
           />
         </aside>
       ) : null}
+      </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-lg">

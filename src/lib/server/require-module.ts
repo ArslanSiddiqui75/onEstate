@@ -36,7 +36,11 @@ export function profileCanAccess(
   );
 }
 
-/** Admin-suspended, cancelled and unpaid workspaces keep billing access only. */
+/**
+ * Soft-lock statuses — billing module stays reachable.
+ * `past_due` is intentionally omitted: Stripe dunning grace keeps the workspace
+ * usable while collection retries; only unpaid / paused / canceled lock product.
+ */
 const BLOCKED_WORKSPACE_STATUSES = new Set(["paused", "canceled", "unpaid", "incomplete_expired"]);
 
 export function workspaceBlocked(profile: Pick<RequestProfile, "subscriptionStatus">): boolean {

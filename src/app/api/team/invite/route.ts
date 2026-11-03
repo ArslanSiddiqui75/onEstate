@@ -100,6 +100,38 @@ export async function POST(request: Request) {
   const name = parsed.data.name.replace(/[\r\n]+/g, " ").trim();
   const role = parsed.data.role as Role;
 
+  // Dedupe against people already on this workspace (profile email or auth email).
+  const { data: existingByEmail } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("org_id", profile.orgId)
+    .ilike("email", email)
+    .maybeSingle();
+  if (existingByEmail) {
+    return NextResponse.json(
+      { error: "That person is already a member of this workspace" },
+      { status: 409 },
+    );
+  }
+  const listed = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const authMatch = (listed.data?.users || []).find(
+    (user) => (user.email || "").trim().toLowerCase() === email,
+  );
+  if (authMatch) {
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", authMatch.id)
+      .eq("org_id", profile.orgId)
+      .maybeSingle();
+    if (existingProfile) {
+      return NextResponse.json(
+        { error: "That person is already a member of this workspace" },
+        { status: 409 },
+      );
+    }
+  }
+
   const { data: duplicateInvite } = await supabase
     .from("team_invites")
     .select("id")

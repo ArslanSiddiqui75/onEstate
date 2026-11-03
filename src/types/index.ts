@@ -216,6 +216,8 @@ export type ListingPatch = Partial<
     | "lastSyncAt"
     | "nextMilestone"
     | "complianceIssues"
+    | "tenure"
+    | "mlsDisclosureComplete"
   >
 >;
 

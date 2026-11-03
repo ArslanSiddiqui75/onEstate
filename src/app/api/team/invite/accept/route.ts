@@ -109,6 +109,7 @@ export async function POST(request: Request) {
       accepted_terms_at: termsAt,
       accepted_terms_version: TERMS_VERSION,
       full_name: fullName,
+      email,
     })
     .eq("id", created.user.id);
 

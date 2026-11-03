@@ -358,6 +358,9 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
   const onThisBook = (leadId?: string) => !leadId || !otherLeadIds.has(leadId);
   const listingTitle = new Map(input.listings.map((listing) => [listing.id, listing.title]));
 
+  // Date basis (sell-ready honesty):
+  // - Leads / listings / contacts / calls: createdAt → "new in range"
+  // - Deals: updatedAt only (deal model has no createdAt) → "touched in range"
   const rangedLeads = marketLeads.filter((lead) => dated(lead.createdAt));
   const openLeads = rangedLeads.filter((lead) => !lead.archivedAt);
   const archivedLeads = rangedLeads.filter((lead) => lead.archivedAt);
@@ -499,7 +502,7 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
         `${activeLeads.length} open`,
         budget > 0 ? `${money(budget, market)} of stated budget` : "",
         archivedLeads.length ? `${archivedLeads.length} archived` : "",
-        "Website, portal, and office enquiries are in this list.",
+        "Counted by lead created date in this range.",
       ]),
       [
         ...tally(openLeads.map((lead) => named(LEAD_STAGE, lead.stage))),
@@ -585,6 +588,7 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
         rangedListings.length - liveListings.length
           ? `${rangedListings.length - liveListings.length} archived`
           : "",
+        "Counted by listing created date in this range.",
       ]),
       tally(liveListings.map((listing) => named(LISTING_STATUS, listing.status))),
       [group("", records, "No listings in this range.")],
@@ -625,6 +629,7 @@ export function buildWorkspaceReport(input: WorkspaceReportInput): WorkspaceRepo
         `${liveDeals.length} live`,
         pipeline > 0 ? `${money(pipeline, market)} open pipeline` : "",
         rangedDeals.length - liveDeals.length ? `${rangedDeals.length - liveDeals.length} archived` : "",
+        "Counted by deal last-updated date in this range.",
       ]),
       tally(liveDeals.map((deal) => deal.stage || "No stage")),
       [group("", records, "No deals in this range.")],

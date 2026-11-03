@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { phoneLookupVariants } from "@/lib/messaging/service";
 
 /** True when this profile has personal DND on a contact linked to the lead. */
 export async function profileHasDndForLead(
@@ -31,13 +32,13 @@ export async function profileHasDndForLead(
   }
 
   if (input.phone) {
-    const digits = input.phone.replace(/\D/g, "");
-    if (digits.length >= 7) {
+    const variants = phoneLookupVariants(input.phone);
+    if (variants.length) {
       const { data: byPhone } = await supabase
         .from("contacts")
         .select("id")
         .eq("org_id", input.orgId)
-        .eq("phone", input.phone)
+        .in("phone", variants)
         .limit(20);
       for (const row of byPhone || []) contactIds.add(String(row.id));
     }
