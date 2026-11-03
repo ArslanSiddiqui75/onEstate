@@ -57,3 +57,33 @@ test("unknown booking links are not accepted", async ({ page }) => {
   await expect(page.getByText(/not recognised|isn’t taking online requests/i)).toBeVisible();
   await expect(page.locator("form[action='/api/agency']")).toHaveCount(0);
 });
+
+test("invite page loads without Checkout for a bogus token", async ({ page }) => {
+  const res = await page.goto("/app/invite?token=not-a-real-invite-token");
+  expect(res?.status()).toBeLessThan(500);
+  await expect(page.locator("body")).toContainText(/invite|invalid|expired|sign/i);
+  await expect(page.locator("text=/checkout|stripe/i")).toHaveCount(0);
+});
+
+test("unknown public site slug is unavailable", async ({ page }) => {
+  const res = await page.goto("/site/not-a-real-slug-xyz");
+  expect(res?.status()).toBeLessThan(500);
+  await expect(page.locator("body")).toContainText(/not found|unavailable|unpublished|doesn’t exist|does not exist/i);
+});
+
+test("bogus e-sign token is not recognised", async ({ page }) => {
+  await page.goto("/sign/too-short");
+  await expect(page.locator("body")).toContainText(/invalid|recognised|recognized|not found|simulated/i);
+});
+
+test("bogus repair report token is not recognised", async ({ page }) => {
+  await page.goto("/report/not-a-real-token");
+  await expect(page.locator("body")).toContainText(/not recognised|not recognized|isn’t|isn't|unavailable|unrecognised/i);
+});
+
+test("anonymous esign complete rejects bad tokens", async ({ request }) => {
+  const res = await request.post("/api/esign/complete", {
+    data: { token: "short" },
+  });
+  expect([400, 404, 429]).toContain(res.status());
+});
