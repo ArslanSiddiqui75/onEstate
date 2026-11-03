@@ -19,12 +19,15 @@ export function PhoneField({
   defaultValue,
   required,
   className,
+  onChangeValue,
 }: {
   name?: string;
   market: Market;
   defaultValue?: string;
   required?: boolean;
   className?: string;
+  /** Fires with the current E.164 value (or empty string) as the user edits. */
+  onChangeValue?: (e164: string) => void;
 }) {
   const split = splitE164(defaultValue || "");
   const fallbackDial = defaultDialCode(market);
@@ -38,6 +41,16 @@ export function PhoneField({
 
   const e164 = useMemo(() => toE164(national, dialCode), [national, dialCode]);
 
+  function setDial(next: string) {
+    setDialCode(next);
+    onChangeValue?.(toE164(national, next));
+  }
+
+  function setLocal(next: string) {
+    setNational(next);
+    onChangeValue?.(toE164(next, dialCode));
+  }
+
   return (
     <div className={className}>
       <div className="flex gap-2">
@@ -45,7 +58,7 @@ export function PhoneField({
           aria-label="Country code"
           className="h-10 w-[8.5rem] shrink-0 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-sm"
           value={dialCode}
-          onChange={(e) => setDialCode(e.target.value)}
+          onChange={(e) => setDial(e.target.value)}
         >
           {DIAL_CODES.map((row) => (
             <option key={row.code} value={row.code}>
@@ -59,7 +72,7 @@ export function PhoneField({
           placeholder="Local number"
           value={national}
           required={required}
-          onChange={(e) => setNational(e.target.value)}
+          onChange={(e) => setLocal(e.target.value)}
         />
       </div>
       <input type="hidden" name={name} value={e164} />

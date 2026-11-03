@@ -23,6 +23,7 @@ Live: https://on-estate.vercel.app · Repo: `ArslanSiddiqui75/onEstate` (`main`)
 - **Stay on Twilio** for SMS (WhatsApp later for international). Do not switch to RingCentral.
 - **Multiple org numbers** — a workspace may buy several Twilio numbers (capped), pick From per text/bulk, and keep one default for automations/sequences. Inbound still routes only to the org that owns that `To` number.
 - **Messaging compliance (US TCPA + UK PECR)** — STOP/START/HELP SMS keywords; email UNSUBSCRIBE; bulk/automation/sequence require opt-in; quiet hours on marketing SMS; workspace SMS/email auto-suspend on high opt-out rates (owner resume in Phone System).
+- **Business Profile** (`/app/settings/business-profile`) — trading/legal identity, regions, language, authorised representative, and email-compliance footer (stored on `organizations.business` jsonb).
 - **Portal HTTP** to Rightmove/Zoopla/MLS waits on commercial partner APIs (export-only today).
 - **Org switcher** — out of scope.
 - Do not commit `supabase/.temp/` or unsolicited `.github/` noise unless asked.

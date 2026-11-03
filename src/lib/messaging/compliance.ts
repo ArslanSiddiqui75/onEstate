@@ -197,10 +197,17 @@ export function ensureSmsComplianceFooter(body: string, kind: SendKind): string 
   return `${trimmed}\n\nReply STOP to opt out. Msg & data rates may apply.`;
 }
 
-export function ensureEmailComplianceFooter(body: string, kind: SendKind): string {
+export function ensureEmailComplianceFooter(
+  body: string,
+  kind: SendKind,
+  options?: { footer?: string; enabled?: boolean },
+): string {
   const trimmed = body.trim();
   if (!trimmed || kind === "manual") return trimmed;
+  if (options?.enabled === false) return trimmed;
   if (/\b(unsubscribe|opt[ -]?out|stop)\b/i.test(trimmed)) return trimmed;
+  const custom = (options?.footer || "").trim();
+  if (custom) return `${trimmed}\n\n—\n${custom}`;
   return `${trimmed}\n\n—\nTo unsubscribe, reply UNSUBSCRIBE.`;
 }
 
@@ -258,16 +265,22 @@ export function shouldSuspendChannel(input: {
 export async function loadOrgComplianceContext(
   supabase: SupabaseClient,
   orgId: string,
-): Promise<{ market: Market; compliance: MessagingComplianceState; orgName: string }> {
+): Promise<{
+  market: Market;
+  compliance: MessagingComplianceState;
+  orgName: string;
+  business: unknown;
+}> {
   const { data } = await supabase
     .from("organizations")
-    .select("name, market, messaging_compliance")
+    .select("name, market, messaging_compliance, business")
     .eq("id", orgId)
     .maybeSingle();
   return {
     market: data?.market === "us" ? "us" : "uk",
     orgName: String(data?.name || ""),
     compliance: readMessagingCompliance(data?.messaging_compliance),
+    business: data?.business ?? null,
   };
 }
 

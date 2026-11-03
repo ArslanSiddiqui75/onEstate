@@ -101,6 +101,14 @@ describe("compliance footers and suspension math", () => {
     expect(ensureSmsComplianceFooter("Hi there", "bulk")).toMatch(/STOP/i);
     expect(ensureEmailComplianceFooter("Hello", "sequence")).toMatch(/UNSUBSCRIBE/i);
     expect(ensureSmsComplianceFooter("Reply STOP please", "bulk")).toBe("Reply STOP please");
+    expect(
+      ensureEmailComplianceFooter("Hello", "bulk", {
+        footer: "Leave anytime via unsubscribe.",
+      }),
+    ).toContain("Leave anytime via unsubscribe.");
+    expect(
+      ensureEmailComplianceFooter("Hello", "bulk", { enabled: false }),
+    ).toBe("Hello");
   });
 
   it("escapes TwiML message bodies", () => {

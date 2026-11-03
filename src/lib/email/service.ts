@@ -14,6 +14,10 @@ import {
   loadOrgComplianceContext,
   type SendKind,
 } from "@/lib/messaging/compliance";
+import {
+  readBusinessProfile,
+  resolveUnsubscribeFooter,
+} from "@/lib/org/business-profile";
 
 export interface OutboundEmailInput {
   orgId: string;
@@ -68,7 +72,10 @@ export async function sendOutboundEmail(
       "unknown";
   }
 
-  const { market, compliance } = await loadOrgComplianceContext(supabase, input.orgId);
+  const { market, compliance, business } = await loadOrgComplianceContext(
+    supabase,
+    input.orgId,
+  );
   const gate = assertCanSendMessage({
     channel: "email",
     kind,
@@ -78,7 +85,12 @@ export async function sendOutboundEmail(
   });
   if (!gate.ok) return { ok: false, error: gate.error };
 
-  const body = ensureEmailComplianceFooter(input.body, kind);
+  const profile = readBusinessProfile(business);
+  const footerEnabled = profile?.compliance.emailUnsubscribeCompliant !== false;
+  const body = ensureEmailComplianceFooter(input.body, kind, {
+    enabled: footerEnabled,
+    footer: resolveUnsubscribeFooter(profile),
+  });
   if (!body) return { ok: false, error: "Email body is required" };
 
   const { data: orgRow } = await supabase

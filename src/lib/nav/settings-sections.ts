@@ -16,7 +16,15 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     short: "Workspace",
     eyebrow: "Workspace",
     title: "Settings",
-    description: "Contact details, workspace, and the brokerage business profile.",
+    description: "Contact details and brokerage workspace.",
+  },
+  {
+    href: "/app/settings/business-profile",
+    short: "Business Profile",
+    eyebrow: "Business Profile",
+    title: "Business Profile",
+    description:
+      "Trading name, legal registration, language, authorised representative, and email compliance.",
   },
   {
     href: "/app/settings/team",
