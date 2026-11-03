@@ -209,6 +209,20 @@ describe("RBAC matrix", () => {
       crm: false,
     });
   });
+
+  it("lets an owner set exact module access levels for a seat", () => {
+    expect(
+      hasModuleAccess({ role: "agent", moduleAccess: { website: "edit" } }, "team", "website", "edit"),
+    ).toBe(true);
+    expect(
+      hasModuleAccess({ role: "agent", moduleAccess: { website: "view" } }, "team", "website", "edit"),
+    ).toBe(false);
+    expect(nextModuleGrants("agent", undefined, "website", "edit")).toEqual({ website: "edit" });
+    expect(nextModuleGrants("agent", { listings: "view" }, "listings", "none")).toEqual({
+      listings: false,
+    });
+    expect(nextModuleGrants("agent", { website: "edit" }, "website", "none")).toBeUndefined();
+  });
 });
 
 describe("admin role guard", () => {

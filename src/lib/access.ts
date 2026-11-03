@@ -1,4 +1,4 @@
-import type { AccessLevel, ModuleGrants, ModuleId, PlanId, Role } from "@/types";
+import type { AccessLevel, ModuleGrants, ModuleGrantValue, ModuleId, PlanId, Role } from "@/types";
 import { getRoleAccess, canAccess } from "@/lib/rbac/matrix";
 import { planIncludesModule, PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 
@@ -11,10 +11,16 @@ export const MODULE_IDS: readonly ModuleId[] = [
   "billing",
 ];
 
+export const ACCESS_LEVELS: readonly AccessLevel[] = ["none", "view", "edit", "full"];
+
 export type AccessActor = Role | { role: Role; moduleAccess?: ModuleGrants | null };
 
 export function canManageModuleAccess(role: Role) {
   return role === "owner" || role === "broker";
+}
+
+function isAccessLevel(value: unknown): value is AccessLevel {
+  return value === "none" || value === "view" || value === "edit" || value === "full";
 }
 
 export function readModuleGrants(value: unknown): ModuleGrants | undefined {
@@ -22,23 +28,57 @@ export function readModuleGrants(value: unknown): ModuleGrants | undefined {
   const source = value as Record<string, unknown>;
   const grants: ModuleGrants = {};
   for (const id of MODULE_IDS) {
-    if (source[id] === true || source[id] === false) grants[id] = source[id];
+    const raw = source[id];
+    if (raw === true || raw === false) grants[id] = raw;
+    else if (isAccessLevel(raw)) grants[id] = raw;
   }
   return Object.keys(grants).length ? grants : undefined;
 }
 
-/** Store only the differences from the role. Turning a module back matches the role. */
+/** Normalize a grant into an access level for UI selects. */
+export function grantToAccessLevel(
+  role: Role,
+  module: ModuleId,
+  grant: ModuleGrantValue | undefined,
+): AccessLevel {
+  const base = getRoleAccess(role, module);
+  if (grant === undefined) return base;
+  if (grant === false) return "none";
+  if (grant === true) return base === "none" ? "view" : base;
+  return grant;
+}
+
+/**
+ * Store only differences from the role default.
+ * Passing the role's own level clears the override for that module.
+ */
 export function nextModuleGrants(
   role: Role,
   current: ModuleGrants | undefined,
   module: ModuleId,
-  enabled: boolean,
+  levelOrEnabled: AccessLevel | boolean,
 ): ModuleGrants | undefined {
-  const roleAllows = getRoleAccess(role, module) !== "none";
+  const roleLevel = getRoleAccess(role, module);
+  const nextLevel: AccessLevel =
+    typeof levelOrEnabled === "boolean"
+      ? levelOrEnabled
+        ? roleLevel === "none"
+          ? "view"
+          : roleLevel
+        : "none"
+      : levelOrEnabled;
+
   const next: ModuleGrants = { ...current };
-  if (enabled === roleAllows) delete next[module];
-  else next[module] = enabled;
-  return Object.keys(next).length ? next : undefined;
+  if (nextLevel === roleLevel) delete next[module];
+  else if (nextLevel === "none" && roleLevel !== "none") next[module] = false;
+  else if (nextLevel !== "none" && roleLevel === "none" && nextLevel === "view") next[module] = true;
+  else next[module] = nextLevel;
+
+  return Object.keys(next).length ? grantsOrUndefined(next) : undefined;
+}
+
+function grantsOrUndefined(grants: ModuleGrants): ModuleGrants | undefined {
+  return Object.keys(grants).length ? grants : undefined;
 }
 
 function actorRole(actor: AccessActor): Role {
@@ -59,9 +99,10 @@ export function resolveAccess(
   const base = getRoleAccess(role, module);
   if (role === "owner") return base;
   const override = actorGrants(actor)?.[module];
+  if (override === undefined) return base;
   if (override === false) return "none";
   if (override === true) return base === "none" ? "view" : base;
-  return base;
+  return override;
 }
 
 export function hasModuleAccess(
@@ -98,3 +139,10 @@ export function checkPortalLimit(
   if (portalFeeds === null) return { allowed: true, maxFeeds: null };
   return { allowed: currentPortalCount < portalFeeds, maxFeeds: portalFeeds };
 }
+
+export const ACCESS_LEVEL_LABELS: Record<AccessLevel, string> = {
+  none: "No access",
+  view: "View",
+  edit: "Edit",
+  full: "Full",
+};

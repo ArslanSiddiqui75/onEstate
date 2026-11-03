@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "@/components/ui/toast";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MenuSelect } from "@/components/ui/select";
@@ -26,7 +27,15 @@ import {
   parseContactImportCsv,
   removeTags,
 } from "@/lib/crm/contact-bulk";
+import {
+  BULK_ACTION_LABELS,
+  clearBulkActions,
+  loadBulkActions,
+  recordBulkAction,
+  type BulkActionRecord,
+} from "@/lib/crm/bulk-action-log";
 import { downloadCsv } from "@/lib/csv";
+import { formatDate } from "@/lib/utils";
 import type {
   Contact,
   ContactCategory,
@@ -38,11 +47,15 @@ import {
   BellOff,
   ChevronDown,
   Download,
+  Filter,
+  History,
   Mail,
+  MessageSquare,
   Pencil,
   Phone,
   Search,
   Sparkles,
+  Tag,
   Trash2,
   Upload,
   X,
@@ -69,6 +82,10 @@ const CATEGORY_TONE: Record<
   other: "neutral",
 };
 
+type DndFilter = "all" | "on" | "off";
+type PipelineFilter = "all" | "in" | "out";
+type ChannelFilter = "all" | "phone" | "email" | "both" | "none";
+
 export interface ContactsDirectoryProps {
   contacts: Contact[];
   leads: { id: string; name: string; stage: LeadStage }[];
@@ -79,6 +96,7 @@ export interface ContactsDirectoryProps {
   setError: (v: string | null) => void;
   market: Market;
   userId: string;
+  orgId: string;
   isContactDnd: (contactId: string) => boolean;
   setContactDnd: (contactId: string, enabled: boolean) => Promise<void>;
   addContact: (
@@ -107,6 +125,7 @@ export interface ContactsDirectoryProps {
     contactId: string,
     input: { type: LeadType; source?: string },
   ) => Promise<string | undefined>;
+  sendSms: (input: { leadId: string; body: string }) => Promise<unknown>;
   onOpenThread: (leadId: string, channel?: "sms" | "email") => void;
 }
 
@@ -120,18 +139,29 @@ export function ContactsDirectory({
   setError,
   market,
   userId,
+  orgId,
   isContactDnd,
   setContactDnd,
   addContact,
   updateContact,
   deleteContact,
   promoteContactToLead,
+  sendSms,
   onOpenThread,
 }: ContactsDirectoryProps) {
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<ContactCategory | "all">("all");
+  const [tagFilter, setTagFilter] = useState("all");
+  const [ownerFilter, setOwnerFilter] = useState("all");
+  const [dndFilter, setDndFilter] = useState<DndFilter>("all");
+  const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>("all");
+  const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
+  const [showFilters, setShowFilters] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showBulkSms, setShowBulkSms] = useState(false);
+  const [smsBody, setSmsBody] = useState("");
   const [csvText, setCsvText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
@@ -141,11 +171,47 @@ export function ContactsDirectory({
   const [bulkCategory, setBulkCategory] = useState<ContactCategory | "">("");
   const [bulkAssignee, setBulkAssignee] = useState("");
   const [bulkPromoteType, setBulkPromoteType] = useState<LeadType>("buyer");
+  const [history, setHistory] = useState<BulkActionRecord[]>([]);
+
+  useEffect(() => {
+    setHistory(loadBulkActions(orgId, userId));
+  }, [orgId, userId]);
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const contact of contacts) {
+      for (const tag of contact.tags) {
+        if (tag.trim()) set.add(tag.trim());
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [contacts]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return contacts
       .filter((c) => categoryFilter === "all" || c.category === categoryFilter)
+      .filter((c) => tagFilter === "all" || c.tags.some((tag) => tag === tagFilter))
+      .filter((c) => ownerFilter === "all" || c.assignedTo === ownerFilter)
+      .filter((c) => {
+        if (dndFilter === "all") return true;
+        const on = isContactDnd(c.id);
+        return dndFilter === "on" ? on : !on;
+      })
+      .filter((c) => {
+        if (pipelineFilter === "all") return true;
+        const inPipeline = Boolean(c.leadId && leads.some((lead) => lead.id === c.leadId));
+        return pipelineFilter === "in" ? inPipeline : !inPipeline;
+      })
+      .filter((c) => {
+        const hasPhone = Boolean(c.phone?.trim());
+        const hasEmail = Boolean(c.email?.trim());
+        if (channelFilter === "phone") return hasPhone;
+        if (channelFilter === "email") return hasEmail;
+        if (channelFilter === "both") return hasPhone && hasEmail;
+        if (channelFilter === "none") return !hasPhone && !hasEmail;
+        return true;
+      })
       .filter((c) => {
         if (!q) return true;
         return (
@@ -157,12 +223,35 @@ export function ContactsDirectory({
         );
       })
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [contacts, query, categoryFilter]);
+  }, [
+    categoryFilter,
+    channelFilter,
+    contacts,
+    dndFilter,
+    isContactDnd,
+    leads,
+    ownerFilter,
+    pipelineFilter,
+    query,
+    tagFilter,
+  ]);
 
   const editingContact = editingId ? contacts.find((c) => c.id === editingId) : null;
   const selectedContacts = contacts.filter((contact) => selectedIds.has(contact.id));
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((contact) => selectedIds.has(contact.id));
+  const activeFilterCount = [
+    categoryFilter !== "all",
+    tagFilter !== "all",
+    ownerFilter !== "all",
+    dndFilter !== "all",
+    pipelineFilter !== "all",
+    channelFilter !== "all",
+  ].filter(Boolean).length;
+
+  function logAction(input: Omit<BulkActionRecord, "id" | "at">) {
+    setHistory(recordBulkAction(orgId, userId, input));
+  }
 
   function toggleSelected(id: string) {
     setSelectedIds((current) => {
@@ -188,6 +277,15 @@ export function ContactsDirectory({
 
   function clearSelection() {
     setSelectedIds(new Set());
+  }
+
+  function resetFilters() {
+    setCategoryFilter("all");
+    setTagFilter("all");
+    setOwnerFilter("all");
+    setDndFilter("all");
+    setPipelineFilter("all");
+    setChannelFilter("all");
   }
 
   async function handleSubmit(form: FormData, existing?: Contact) {
@@ -283,6 +381,13 @@ export function ContactsDirectory({
         });
         imported += 1;
       }
+      logAction({
+        type: "import",
+        label: `Imported ${imported} contact${imported === 1 ? "" : "s"}`,
+        count: imported,
+        skipped: skipped.length,
+        detail: skipped.slice(0, 3).join(", ") || undefined,
+      });
       if (skipped.length) {
         toast.warning(
           `Skipped ${skipped.length}: ${skipped.slice(0, 3).join(", ")}${skipped.length > 3 ? "…" : ""}`,
@@ -293,6 +398,77 @@ export function ContactsDirectory({
       setShowBulkImport(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Bulk import failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendBulkSms() {
+    const body = smsBody.trim();
+    if (!body) {
+      toast.error("Write a message first");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    let ok = 0;
+    let failed = 0;
+    let skipped = 0;
+    try {
+      for (const contact of selectedContacts) {
+        if (!contact.phone?.trim()) {
+          skipped += 1;
+          continue;
+        }
+        if (isContactDnd(contact.id)) {
+          skipped += 1;
+          continue;
+        }
+        try {
+          let leadId =
+            contact.leadId && leads.some((lead) => lead.id === contact.leadId)
+              ? contact.leadId
+              : undefined;
+          if (!leadId) {
+            if (!canEdit) {
+              skipped += 1;
+              continue;
+            }
+            leadId = await promoteContactToLead(contact.id, {
+              type: "buyer",
+              source: "Bulk SMS",
+            });
+          }
+          if (!leadId) {
+            failed += 1;
+            continue;
+          }
+          await sendSms({ leadId, body });
+          ok += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+      logAction({
+        type: "sms",
+        label: `Bulk SMS to ${ok} contact${ok === 1 ? "" : "s"}`,
+        count: selectedContacts.length,
+        ok,
+        failed,
+        skipped,
+        detail: body.slice(0, 80),
+      });
+      if (ok) toast.success(`Sent ${ok} text${ok === 1 ? "" : "s"}`);
+      if (failed || skipped) {
+        toast.warning(
+          `${failed ? `${failed} failed` : ""}${failed && skipped ? ", " : ""}${
+            skipped ? `${skipped} skipped` : ""
+          }`,
+        );
+      }
+      if (!ok && !failed && skipped) toast.warning("Nothing to send — missing phones or DND");
+      setShowBulkSms(false);
+      setSmsBody("");
     } finally {
       setBusy(false);
     }
@@ -312,19 +488,24 @@ export function ContactsDirectory({
           />
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <MenuSelect
-            aria-label="Category"
-            className="w-full sm:w-52"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value as ContactCategory | "all")}
+          <Button
+            variant="secondary"
+            className="shrink-0"
+            aria-pressed={showFilters}
+            onClick={() => setShowFilters((v) => !v)}
           >
-            <option value="all">All categories</option>
-            {CONTACT_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {CATEGORY_LABELS[c]}
-              </option>
-            ))}
-          </MenuSelect>
+            <Filter className="h-3.5 w-3.5" />
+            Filters{activeFilterCount ? ` · ${activeFilterCount}` : ""}
+          </Button>
+          <Button
+            variant="secondary"
+            className="shrink-0"
+            aria-pressed={showHistory}
+            onClick={() => setShowHistory((v) => !v)}
+          >
+            <History className="h-3.5 w-3.5" />
+            Bulk log
+          </Button>
           {canEdit ? (
             <>
               <Button
@@ -354,8 +535,136 @@ export function ContactsDirectory({
         </div>
       </div>
 
+      {showFilters ? (
+        <div className="grid gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <MenuSelect
+            aria-label="Category filter"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as ContactCategory | "all")}
+          >
+            <option value="all">All categories</option>
+            {CONTACT_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {CATEGORY_LABELS[c]}
+              </option>
+            ))}
+          </MenuSelect>
+          <MenuSelect
+            aria-label="Tag filter"
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+          >
+            <option value="all">All tags</option>
+            {allTags.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </MenuSelect>
+          <MenuSelect
+            aria-label="Owner filter"
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value)}
+          >
+            <option value="all">All owners</option>
+            {members.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.name}
+              </option>
+            ))}
+          </MenuSelect>
+          <MenuSelect
+            aria-label="DND filter"
+            value={dndFilter}
+            onChange={(e) => setDndFilter(e.target.value as DndFilter)}
+          >
+            <option value="all">DND · any</option>
+            <option value="on">DND on</option>
+            <option value="off">DND off</option>
+          </MenuSelect>
+          <MenuSelect
+            aria-label="Pipeline filter"
+            value={pipelineFilter}
+            onChange={(e) => setPipelineFilter(e.target.value as PipelineFilter)}
+          >
+            <option value="all">Pipeline · any</option>
+            <option value="in">In pipeline</option>
+            <option value="out">Not in pipeline</option>
+          </MenuSelect>
+          <MenuSelect
+            aria-label="Channel filter"
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value as ChannelFilter)}
+          >
+            <option value="all">Channels · any</option>
+            <option value="phone">Has phone</option>
+            <option value="email">Has email</option>
+            <option value="both">Phone and email</option>
+            <option value="none">No phone or email</option>
+          </MenuSelect>
+          {activeFilterCount ? (
+            <div className="sm:col-span-2 lg:col-span-3">
+              <Button size="sm" variant="ghost" onClick={resetFilters}>
+                Clear filters
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showHistory ? (
+        <div className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div>
+              <p className="font-semibold">Bulk action log</p>
+              <p className="text-xs text-[var(--muted)]">
+                Imports, tags, SMS, and other bulk runs on this seat.
+              </p>
+            </div>
+            {history.length ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  clearBulkActions(orgId, userId);
+                  setHistory([]);
+                }}
+              >
+                Clear log
+              </Button>
+            ) : null}
+          </div>
+          {history.length === 0 ? (
+            <p className="text-sm text-[var(--muted)]">No bulk actions yet.</p>
+          ) : (
+            <ul className="space-y-2">
+              {history.map((row) => (
+                <li
+                  key={row.id}
+                  className="flex flex-col gap-1 rounded-xl border border-[var(--border)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{row.label}</p>
+                    <p className="text-xs text-[var(--muted)]">
+                      {BULK_ACTION_LABELS[row.type]}
+                      {row.detail ? ` · ${row.detail}` : ""}
+                      {row.ok != null || row.failed != null || row.skipped != null
+                        ? ` · ok ${row.ok ?? 0}, failed ${row.failed ?? 0}, skipped ${row.skipped ?? 0}`
+                        : ""}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-xs text-[var(--muted)]">
+                    {formatDate(row.at, market)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
+
       {selectedIds.size > 0 ? (
-        <div className="flex flex-col gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
+        <div className="space-y-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-semibold">
               {selectedIds.size} selected
@@ -372,11 +681,25 @@ export function ContactsDirectory({
                 size="sm"
                 variant="secondary"
                 disabled={busy}
+                onClick={() => setShowBulkSms(true)}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                Bulk SMS
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={busy}
                 onClick={() => {
                   downloadCsv(
                     `contacts_${new Date().toISOString().slice(0, 10)}.csv`,
                     contactsToCsv(selectedContacts),
                   );
+                  logAction({
+                    type: "export",
+                    label: `Exported ${selectedContacts.length} contact${selectedContacts.length === 1 ? "" : "s"}`,
+                    count: selectedContacts.length,
+                  });
                   toast.success("Exported selected contacts");
                 }}
               >
@@ -386,67 +709,11 @@ export function ContactsDirectory({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="secondary" disabled={busy}>
-                    Bulk actions
+                    More actions
                     <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  <DropdownMenuLabel>Tags</DropdownMenuLabel>
-                  <div className="px-2 pb-2">
-                    <Input
-                      value={bulkTags}
-                      onChange={(e) => setBulkTags(e.target.value)}
-                      placeholder="tag1, tag2"
-                      className="h-8"
-                      onKeyDown={(e) => e.stopPropagation()}
-                    />
-                    <div className="mt-2 flex gap-1.5">
-                      <Button
-                        size="sm"
-                        className="flex-1"
-                        disabled={busy || !bulkTags.trim()}
-                        onClick={() =>
-                          void runBulk(async () => {
-                            const tags = bulkTags
-                              .split(/[|,;]/)
-                              .map((tag) => tag.trim())
-                              .filter(Boolean);
-                            for (const contact of selectedContacts) {
-                              await updateContact(contact.id, {
-                                tags: mergeTags(contact.tags, tags),
-                              });
-                            }
-                            setBulkTags("");
-                          }, "Tags added")
-                        }
-                      >
-                        Add tags
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="flex-1"
-                        disabled={busy || !bulkTags.trim()}
-                        onClick={() =>
-                          void runBulk(async () => {
-                            const tags = bulkTags
-                              .split(/[|,;]/)
-                              .map((tag) => tag.trim())
-                              .filter(Boolean);
-                            for (const contact of selectedContacts) {
-                              await updateContact(contact.id, {
-                                tags: removeTags(contact.tags, tags),
-                              });
-                            }
-                            setBulkTags("");
-                          }, "Tags removed")
-                        }
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                  <DropdownMenuSeparator />
+                <DropdownMenuContent align="end" className="w-72">
                   <DropdownMenuLabel>Category</DropdownMenuLabel>
                   <div className="flex gap-1.5 px-2 pb-2">
                     <MenuSelect
@@ -471,6 +738,12 @@ export function ContactsDirectory({
                           for (const contact of selectedContacts) {
                             await updateContact(contact.id, { category: bulkCategory });
                           }
+                          logAction({
+                            type: "category",
+                            label: `Set category to ${CATEGORY_LABELS[bulkCategory]}`,
+                            count: selectedContacts.length,
+                            detail: CATEGORY_LABELS[bulkCategory],
+                          });
                         }, "Category updated")
                       }
                     >
@@ -501,6 +774,13 @@ export function ContactsDirectory({
                           for (const contact of selectedContacts) {
                             await updateContact(contact.id, { assignedTo: bulkAssignee });
                           }
+                          const owner = members.find((m) => m.id === bulkAssignee)?.name;
+                          logAction({
+                            type: "assign",
+                            label: `Assigned ${selectedContacts.length} contact${selectedContacts.length === 1 ? "" : "s"}`,
+                            count: selectedContacts.length,
+                            detail: owner,
+                          });
                         }, "Owner updated")
                       }
                     >
@@ -515,6 +795,11 @@ export function ContactsDirectory({
                         for (const contact of selectedContacts) {
                           await setContactDnd(contact.id, true);
                         }
+                        logAction({
+                          type: "dnd_on",
+                          label: `DND on for ${selectedContacts.length}`,
+                          count: selectedContacts.length,
+                        });
                       }, "Do Not Disturb on")
                     }
                   >
@@ -528,6 +813,11 @@ export function ContactsDirectory({
                         for (const contact of selectedContacts) {
                           await setContactDnd(contact.id, false);
                         }
+                        logAction({
+                          type: "dnd_off",
+                          label: `DND cleared for ${selectedContacts.length}`,
+                          count: selectedContacts.length,
+                        });
                       }, "Do Not Disturb cleared")
                     }
                   >
@@ -562,6 +852,12 @@ export function ContactsDirectory({
                             promoted += 1;
                           }
                           if (!promoted) throw new Error("Selected contacts are already leads");
+                          logAction({
+                            type: "promote",
+                            label: `Promoted ${promoted} contact${promoted === 1 ? "" : "s"}`,
+                            count: promoted,
+                            detail: bulkPromoteType,
+                          });
                         }, "Promoted to pipeline")
                       }
                     >
@@ -583,10 +879,16 @@ export function ContactsDirectory({
                             return;
                           }
                           void runBulk(async () => {
+                            const count = selectedContacts.length;
                             for (const contact of selectedContacts) {
                               await deleteContact(contact.id);
                             }
                             clearSelection();
+                            logAction({
+                              type: "delete",
+                              label: `Deleted ${count} contact${count === 1 ? "" : "s"}`,
+                              count,
+                            });
                           }, "Contacts deleted");
                         }}
                       >
@@ -597,6 +899,74 @@ export function ContactsDirectory({
                   ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+              <Tag className="h-3.5 w-3.5" />
+              Tags
+            </div>
+            <Input
+              value={bulkTags}
+              onChange={(e) => setBulkTags(e.target.value)}
+              placeholder="tag1, tag2"
+              className="h-9 flex-1"
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                disabled={busy || !bulkTags.trim()}
+                onClick={() =>
+                  void runBulk(async () => {
+                    const tags = bulkTags
+                      .split(/[|,;]/)
+                      .map((tag) => tag.trim())
+                      .filter(Boolean);
+                    for (const contact of selectedContacts) {
+                      await updateContact(contact.id, {
+                        tags: mergeTags(contact.tags, tags),
+                      });
+                    }
+                    logAction({
+                      type: "tags_add",
+                      label: `Added tags to ${selectedContacts.length}`,
+                      count: selectedContacts.length,
+                      detail: tags.join(", "),
+                    });
+                    setBulkTags("");
+                  }, "Tags added")
+                }
+              >
+                Add tags
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={busy || !bulkTags.trim()}
+                onClick={() =>
+                  void runBulk(async () => {
+                    const tags = bulkTags
+                      .split(/[|,;]/)
+                      .map((tag) => tag.trim())
+                      .filter(Boolean);
+                    for (const contact of selectedContacts) {
+                      await updateContact(contact.id, {
+                        tags: removeTags(contact.tags, tags),
+                      });
+                    }
+                    logAction({
+                      type: "tags_remove",
+                      label: `Removed tags from ${selectedContacts.length}`,
+                      count: selectedContacts.length,
+                      detail: tags.join(", "),
+                    });
+                    setBulkTags("");
+                  }, "Tags removed")
+                }
+              >
+                Remove tags
+              </Button>
             </div>
           </div>
         </div>
@@ -628,8 +998,8 @@ export function ContactsDirectory({
           />
         ) : (
           <EmptyState
-            title="No contacts match your search"
-            description="Try a different search term or category filter."
+            title="No contacts match your filters"
+            description="Try clearing filters or searching a different term."
           />
         )
       ) : (
@@ -722,9 +1092,17 @@ export function ContactsDirectory({
                       {contact.tags.length || contact.notes ? (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           {contact.tags.map((tag) => (
-                            <Badge key={tag} className="lowercase">
-                              {tag}
-                            </Badge>
+                            <button
+                              key={tag}
+                              type="button"
+                              className="inline-flex"
+                              onClick={() => {
+                                setTagFilter(tag);
+                                setShowFilters(true);
+                              }}
+                            >
+                              <Badge className="lowercase">{tag}</Badge>
+                            </button>
                           ))}
                           {contact.notes ? (
                             <p className="line-clamp-1 text-xs text-[var(--muted)]">{contact.notes}</p>
@@ -740,11 +1118,6 @@ export function ContactsDirectory({
                       variant={isContactDnd(contact.id) ? "secondary" : "ghost"}
                       disabled={busy}
                       aria-pressed={isContactDnd(contact.id)}
-                      aria-label={
-                        isContactDnd(contact.id)
-                          ? `Clear Do Not Disturb for ${contact.name}`
-                          : `Do Not Disturb ${contact.name}`
-                      }
                       onClick={() => {
                         void (async () => {
                           setBusy(true);
@@ -910,6 +1283,47 @@ export function ContactsDirectory({
                   {busy ? "Importing…" : "Import contacts"}
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showBulkSms ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="surface-panel w-full max-w-lg space-y-4 rounded-[1.75rem] p-6 shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold">Bulk SMS</h2>
+              <button
+                type="button"
+                onClick={() => setShowBulkSms(false)}
+                className="rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-muted)]"
+                aria-label="Close bulk SMS"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <Alert>
+              Sends to selected contacts with a phone number. Contacts on DND and rows without a
+              phone are skipped. People not yet in the pipeline are promoted first when you have
+              edit access.
+            </Alert>
+            <Textarea
+              rows={5}
+              value={smsBody}
+              onChange={(e) => setSmsBody(e.target.value)}
+              placeholder="Write the text…"
+            />
+            <p className="text-xs text-[var(--muted)]">
+              {selectedContacts.filter((c) => c.phone && !isContactDnd(c.id)).length} of{" "}
+              {selectedContacts.length} selected look ready to text.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setShowBulkSms(false)}>
+                Cancel
+              </Button>
+              <Button disabled={busy || !smsBody.trim()} onClick={() => void sendBulkSms()}>
+                {busy ? "Sending…" : "Send texts"}
+              </Button>
             </div>
           </div>
         </div>

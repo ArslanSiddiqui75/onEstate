@@ -10,7 +10,12 @@ const ASSIGNABLE = ["broker", "team_lead", "agent", "assistant", "accountant"] a
 const patchSchema = z
   .object({
     role: z.enum(ASSIGNABLE).optional(),
-    moduleAccess: z.record(z.string(), z.boolean()).optional(),
+    moduleAccess: z
+      .record(
+        z.string(),
+        z.union([z.boolean(), z.enum(["none", "view", "edit", "full"])]),
+      )
+      .optional(),
   })
   .refine((value) => value.role !== undefined || value.moduleAccess !== undefined, {
     message: "Nothing to update",

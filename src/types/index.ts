@@ -18,8 +18,12 @@ export type ModuleId =
 
 export type AccessLevel = "full" | "edit" | "view" | "none";
 
-/** Explicit module on/off for one person. Missing keys follow the role. */
-export type ModuleGrants = Partial<Record<ModuleId, boolean>>;
+/**
+ * Per-person module overrides. Missing keys follow the role.
+ * Booleans keep older on/off grants; access levels set exact permission.
+ */
+export type ModuleGrantValue = boolean | AccessLevel;
+export type ModuleGrants = Partial<Record<ModuleId, ModuleGrantValue>>;
 
 export type PlanId = "solo" | "team" | "enterprise";
 

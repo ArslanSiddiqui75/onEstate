@@ -761,12 +761,14 @@ export function CrmDesk({ view }: { view: CrmView }) {
             setError={setError}
             market={market}
             userId={user.id}
+            orgId={org.id}
             isContactDnd={isContactDnd}
             setContactDnd={setContactDnd}
             addContact={addContact}
             updateContact={updateContact}
             deleteContact={deleteContact}
             promoteContactToLead={promoteContactToLead}
+            sendSms={sendSms}
             onOpenThread={goToLeadThread}
           />
         </TabsContent>
