@@ -2,6 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizePhoneNumber } from "@/lib/utils";
 import { isE164 } from "@/lib/phone/e164";
 import { sendTwilioSms } from "@/lib/twilio/client";
+import {
+  assertCanSendMessage,
+  ensureSmsComplianceFooter,
+  loadOrgComplianceContext,
+  type SendKind,
+} from "@/lib/messaging/compliance";
 
 export interface InboundMessageInput {
   orgId: string;
@@ -211,6 +217,8 @@ export interface OutboundMessageInput {
   consent?: "unknown" | "opted_in" | "opted_out";
   threadId?: string;
   from?: string;
+  /** manual = 1:1 Conversations; bulk/automation/sequence need opted_in. */
+  kind?: SendKind;
 }
 
 export interface OutboundMessageResult {
@@ -248,10 +256,19 @@ export async function sendOutboundSms(
   supabase: SupabaseClient,
   input: OutboundMessageInput,
 ): Promise<OutboundMessageResult> {
-  if (input.consent === "opted_out") {
-    return { ok: false, error: "Cannot send SMS: contact opted out" };
-  }
-  const body = input.body.trim();
+  const kind = input.kind || "manual";
+  const { market, compliance } = await loadOrgComplianceContext(supabase, input.orgId);
+  const gate = assertCanSendMessage({
+    channel: "sms",
+    kind,
+    consent: input.consent,
+    market,
+    phoneE164: input.to,
+    compliance,
+  });
+  if (!gate.ok) return { ok: false, error: gate.error };
+
+  const body = ensureSmsComplianceFooter(input.body, kind);
   if (!body) return { ok: false, error: "Message body is required" };
   if (!isE164(input.to)) {
     return {

@@ -32,12 +32,17 @@ import { ensureDefaultSequences } from "@/lib/sequences/ensure";
 import { mapSequenceRow } from "@/lib/sequences/catalog";
 import { readBusinessProfile } from "@/lib/org/business-profile";
 import { readEmailDomain } from "@/lib/email/domain-model";
+import { readMessagingCompliance } from "@/lib/messaging/compliance";
 
 function mapLead(row: Record<string, unknown>, phones: Lead["phones"] = []): Lead {
   return {
     id: String(row.id),
     name: String(row.name),
     email: String(row.email || ""),
+    emailConsent:
+      row.email_consent === "opted_in" || row.email_consent === "opted_out"
+        ? row.email_consent
+        : "unknown",
     phone: String(row.phone || phones[0]?.number || ""),
     phones,
     type: row.lead_type as Lead["type"],
@@ -192,7 +197,7 @@ export function createSupabaseRepository(
     mode: "supabase",
 
     async getSnapshot() {
-      const [leads, contacts, listings, deals, members, messages, threads, callLogs, sequences, automations, enrollments, tasks, phoneNumbers] =
+      const [leads, contacts, listings, deals, members, messages, threads, callLogs, sequences, automations, enrollments, tasks, phoneNumbers, orgFresh] =
         await Promise.all([
           this.listLeads().catch((e) => { console.warn("listLeads error", e); return []; }),
           this.listContacts().catch((e) => { console.warn("listContacts error", e); return []; }),
@@ -207,12 +212,23 @@ export function createSupabaseRepository(
           this.listEnrollments().catch((e) => { console.warn("listEnrollments error", e); return []; }),
           this.listTasks().catch((e) => { console.warn("listTasks error", e); return []; }),
           loadOrgPhoneNumbers(supabase, ctx.org.id, ctx.org.phoneNumber).catch(() => ctx.org.phoneNumbers || []),
+          supabase
+            .from("organizations")
+            .select("messaging_compliance")
+            .eq("id", ctx.org.id)
+            .maybeSingle()
+            .then((r) => r.data, () => null),
         ]);
 
       ctx.org.phoneNumbers = phoneNumbers;
       const preferred =
         phoneNumbers.find((row) => row.isDefault)?.phoneNumber || phoneNumbers[0]?.phoneNumber;
       if (preferred) ctx.org.phoneNumber = preferred;
+      if (orgFresh) {
+        ctx.org.messagingCompliance = readMessagingCompliance(
+          (orgFresh as { messaging_compliance?: unknown }).messaging_compliance,
+        );
+      }
 
       const snapshot: WorkspaceSnapshot = {
         version: 1,
@@ -284,7 +300,7 @@ export function createSupabaseRepository(
       if (patch.business !== undefined) row.business = patch.business;
       if (patch.phoneNumber !== undefined) row.phone_number = patch.phoneNumber || null;
       if (patch.emailDomain !== undefined) row.email_domain = patch.emailDomain;
-      // phoneNumbers are owned by /api/phone/numbers (service role); client only mirrors.
+      // phoneNumbers / messagingCompliance are owned by service-role APIs; client only mirrors.
       if (Object.keys(row).length === 0) {
         if (patch.phoneNumbers !== undefined) {
           ctx.org.phoneNumbers = patch.phoneNumbers;
@@ -292,6 +308,9 @@ export function createSupabaseRepository(
             patch.phoneNumbers.find((n) => n.isDefault)?.phoneNumber ||
             patch.phoneNumbers[0]?.phoneNumber;
           if (preferred) ctx.org.phoneNumber = preferred;
+        }
+        if (patch.messagingCompliance !== undefined) {
+          ctx.org.messagingCompliance = patch.messagingCompliance;
         }
         return ctx.org;
       }
@@ -315,6 +334,9 @@ export function createSupabaseRepository(
         if (preferred) ctx.org.phoneNumber = preferred;
       }
       if (patch.emailDomain !== undefined) ctx.org.emailDomain = patch.emailDomain;
+      if (patch.messagingCompliance !== undefined) {
+        ctx.org.messagingCompliance = patch.messagingCompliance;
+      }
       return ctx.org;
     },
 
@@ -464,6 +486,7 @@ export function createSupabaseRepository(
           priority: lead.priority,
           listing_id: lead.listingId || null,
           tags: lead.tags ?? [],
+          email_consent: lead.emailConsent || "unknown",
         })
         .select("*")
         .single();
@@ -526,6 +549,9 @@ export function createSupabaseRepository(
         .update({
           ...(patch.name !== undefined ? { name: patch.name } : {}),
           ...(patch.email !== undefined ? { email: patch.email } : {}),
+          ...(patch.emailConsent !== undefined
+            ? { email_consent: patch.emailConsent || "unknown" }
+            : {}),
           ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
           ...(patch.type !== undefined ? { lead_type: patch.type } : {}),
           ...(patch.source !== undefined ? { source: patch.source } : {}),
@@ -1680,6 +1706,7 @@ export async function hydrateSupabaseSession(): Promise<{
       phoneNumber: org.phone_number ? String(org.phone_number) : undefined,
       phoneNumbers: await loadOrgPhoneNumbers(supabase, String(org.id), org.phone_number),
       emailDomain: readEmailDomain(org.email_domain),
+      messagingCompliance: readMessagingCompliance(org.messaging_compliance),
     },
   };
 }

@@ -203,6 +203,9 @@ export function createLocalRepository(
         if (preferred) snap.org.phoneNumber = preferred;
       }
       if (patch.emailDomain !== undefined) snap.org.emailDomain = patch.emailDomain;
+      if (patch.messagingCompliance !== undefined) {
+        snap.org.messagingCompliance = patch.messagingCompliance;
+      }
       commit(snap);
       return snap.org;
     },

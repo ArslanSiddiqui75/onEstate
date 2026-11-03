@@ -172,8 +172,18 @@ export function ConversationInbox({
   pinnedLeadId?: string | null;
   onSelect: (id: string | null) => void;
   onError: (message: string | null) => void;
-  sendSms: (input: { leadId: string; body: string; from?: string }) => Promise<unknown>;
-  sendEmail: (input: { leadId: string; subject: string; body: string }) => Promise<unknown>;
+  sendSms: (input: {
+    leadId: string;
+    body: string;
+    from?: string;
+    kind?: "manual" | "bulk" | "automation" | "sequence";
+  }) => Promise<unknown>;
+  sendEmail: (input: {
+    leadId: string;
+    subject: string;
+    body: string;
+    kind?: "manual" | "bulk" | "automation" | "sequence";
+  }) => Promise<unknown>;
   receiveInbound?: (input: {
     leadId: string;
     body: string;

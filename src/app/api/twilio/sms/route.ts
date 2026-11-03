@@ -19,6 +19,7 @@ const bodySchema = z.object({
   consent: z.enum(["unknown", "opted_in", "opted_out"]).default("unknown"),
   threadId: z.string().optional(),
   from: z.string().optional(),
+  kind: z.enum(["manual", "bulk", "automation", "sequence"]).default("manual"),
 });
 
 export async function POST(request: Request) {
@@ -178,9 +179,12 @@ export async function POST(request: Request) {
     leadId: parsed.data.leadId,
     to: parsed.data.to,
     body: parsed.data.body,
-    consent: parsed.data.consent,
+    consent: storedConsent === "opted_in" || storedConsent === "opted_out"
+      ? storedConsent
+      : parsed.data.consent,
     threadId: parsed.data.threadId,
     from,
+    kind: parsed.data.kind,
   });
   if (result.ok && result.mode !== "live") {
     return NextResponse.json(

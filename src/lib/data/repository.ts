@@ -46,6 +46,7 @@ export interface WorkspaceRepository {
     phoneNumber?: string;
     phoneNumbers?: WorkspaceOrg["phoneNumbers"];
     emailDomain?: EmailDomain;
+    messagingCompliance?: WorkspaceOrg["messagingCompliance"];
   }): Promise<WorkspaceOrg>;
   updateProfile(patch: { name: string; phone?: string }): Promise<WorkspaceUser>;
   saveLeadRouting(settings: LeadRoutingSettings): Promise<WorkspaceOrg>;

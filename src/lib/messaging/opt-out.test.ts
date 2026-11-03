@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOptOutMessage } from "@/lib/messaging/opt-out";
+import { isHelpMessage, isOptInMessage, isOptOutMessage } from "@/lib/messaging/opt-out";
 
 describe("isOptOutMessage", () => {
   it("accepts carrier keywords in any case", () => {
@@ -12,5 +12,10 @@ describe("isOptOutMessage", () => {
     for (const text of ["Please don't stop calling", "Can you cancel my viewing?", "yes", "", "stop texting me"]) {
       expect(isOptOutMessage(text)).toBe(false);
     }
+  });
+
+  it("accepts START and HELP", () => {
+    expect(isOptInMessage("START")).toBe(true);
+    expect(isHelpMessage("help")).toBe(true);
   });
 });

@@ -142,8 +142,12 @@ export default async function TermsPage() {
         <p>
           <strong>Agency-wide consent / opt-out.</strong> When a recipient opts out of SMS (or you
           mark a number opted out), that consent state applies to the phone number for the
-          workspace. The Service blocks further SMS to opted-out numbers. You must honour legal
-          opt-out and quiet-hours rules that apply to you.
+          workspace. Email unsubscribes are stored separately on the lead. The Service blocks
+          further SMS or email on the opted-out channel. Bulk, automation, and sequence sends
+          require explicit opt-in. Marketing SMS is limited to quiet hours (08:00–21:00 recipient
+          local time for US TCPA; Europe/London for UK PECR good practice). Carrier keywords STOP,
+          START, and HELP are honoured on SMS. High opt-out rates can automatically pause SMS
+          and/or email for the workspace until an owner resumes after review.
         </p>
         <p>
           <strong>Personal Do Not Disturb (DND).</strong> A signed-in user may place a contact on

@@ -11,6 +11,10 @@ import {
   verifyResendWebhook,
 } from "@/lib/email/webhook";
 import { recordInboundMessage } from "@/lib/messaging/service";
+import {
+  applyLeadEmailOptOut,
+  isEmailUnsubscribeMessage,
+} from "@/lib/messaging/opt-out";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 export const maxDuration = 30;
@@ -76,6 +80,14 @@ export async function POST(request: Request) {
   }
 
   const body = inboundBodyFromContent(content, meta.subject);
+  if (isEmailUnsubscribeMessage(meta.subject || "", body)) {
+    await applyLeadEmailOptOut(supabase, {
+      orgId: match.orgId,
+      leadId: match.leadId,
+      source: "email_unsubscribe",
+    });
+  }
+
   const result = await recordInboundMessage(supabase, {
     orgId: match.orgId,
     leadId: match.leadId,

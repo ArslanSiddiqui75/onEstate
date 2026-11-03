@@ -9,7 +9,7 @@ Client / ops remaining (not “more polish tickets”):
 - [ ] X publish only if paid API + explicit ask
 - [ ] Website visual refresh when design direction exists
 - [ ] External cron-job.org (or Pro) every few minutes for social + automation ticks + secrets set
-- [ ] Apply hosted migrations through `20261104180000_org_phone_numbers.sql` (wave1 + multi-number `organization_phone_numbers`)
+- [ ] Apply hosted migrations through `20261104190000_messaging_compliance.sql` (multi-number + messaging compliance / email_consent / consent_events channel)
 - [ ] Set `SOCIAL_ENABLE_X=1` only if paid X API is approved (default off)
 - [ ] Confirm Twilio status webhook URL matches `TWILIO_WEBHOOK_BASE_URL` / app URL
 - [ ] SMTP wired for Conversations; Resend only for invites/e-sign

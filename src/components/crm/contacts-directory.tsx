@@ -131,7 +131,12 @@ export interface ContactsDirectoryProps {
     contactId: string,
     input: { type: LeadType; source?: string },
   ) => Promise<string | undefined>;
-  sendSms: (input: { leadId: string; body: string; from?: string }) => Promise<unknown>;
+  sendSms: (input: {
+    leadId: string;
+    body: string;
+    from?: string;
+    kind?: "manual" | "bulk" | "automation" | "sequence";
+  }) => Promise<unknown>;
   onOpenThread: (leadId: string, channel?: "sms" | "email") => void;
 }
 
@@ -460,7 +465,12 @@ export function ContactsDirectory({
             failed += 1;
             continue;
           }
-          await sendSms({ leadId, body, from: bulkFrom || undefined });
+          await sendSms({
+            leadId,
+            body,
+            from: bulkFrom || undefined,
+            kind: "bulk",
+          });
           ok += 1;
         } catch {
           failed += 1;

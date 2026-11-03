@@ -453,6 +453,10 @@ export function CrmDesk({ view }: { view: CrmView }) {
                     await addLead({
                       name: leadName,
                       email: leadEmail,
+                      emailConsent: String(form.get("emailConsent") || "unknown") as
+                        | "unknown"
+                        | "opted_in"
+                        | "opted_out",
                       phone: leadPhone,
                       type: String(form.get("type")) as LeadType,
                       stage: "new",
@@ -540,9 +544,18 @@ export function CrmDesk({ view }: { view: CrmView }) {
                 className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
                 defaultValue="unknown"
               >
-                <option value="unknown">Consent unknown</option>
-                <option value="opted_in">Opted in</option>
-                <option value="opted_out">Opted out</option>
+                <option value="unknown">SMS consent unknown</option>
+                <option value="opted_in">SMS opted in</option>
+                <option value="opted_out">SMS opted out</option>
+              </MenuSelect>
+              <MenuSelect
+                name="emailConsent"
+                className="h-10 rounded-md border border-[var(--border)] px-3 text-sm"
+                defaultValue="unknown"
+              >
+                <option value="unknown">Email consent unknown</option>
+                <option value="opted_in">Email opted in</option>
+                <option value="opted_out">Email unsubscribed</option>
               </MenuSelect>
               <MenuSelect
                 name="priority"

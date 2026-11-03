@@ -1,7 +1,20 @@
 import { NextResponse } from "next/server";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { findLeadByPhone, findOrgIdsByPhone, recordInboundMessage } from "@/lib/messaging/service";
-import { applyLeadOptOut, isOptOutMessage } from "@/lib/messaging/opt-out";
+import {
+  applyLeadOptIn,
+  applyLeadOptOut,
+  isHelpMessage,
+  isOptInMessage,
+  isOptOutMessage,
+} from "@/lib/messaging/opt-out";
+import {
+  helpSmsReply,
+  loadOrgComplianceContext,
+  startSmsReply,
+  stopSmsReply,
+  twimlMessage,
+} from "@/lib/messaging/compliance";
 import { cancelNoReplyRuns } from "@/lib/automations/engine";
 import {
   assertTwilioSignature,
@@ -43,6 +56,13 @@ async function captureUnmatched(
   }
 }
 
+function xml(body: string) {
+  return new NextResponse(body, {
+    status: 200,
+    headers: { "Content-Type": "text/xml" },
+  });
+}
+
 export async function POST(request: Request) {
   const params = await readTwilioWebhookParams(request);
   const unauthorized = await assertTwilioSignature(request, params);
@@ -63,19 +83,38 @@ export async function POST(request: Request) {
     if (process.env.NODE_ENV === "production" || process.env.MESSAGING_MODE === "live") {
       return NextResponse.json({ error: "Inbound store unavailable" }, { status: 503 });
     }
-    return new NextResponse("<Response></Response>", {
-      status: 200,
-      headers: { "Content-Type": "text/xml" },
-    });
+    return xml("<Response></Response>");
   }
 
   const orgIds = await findOrgIdsByPhone(supabase, to);
   const match = orgIds.length === 1 ? await findLeadByPhone(supabase, from, orgIds[0]) : null;
+  const orgMeta =
+    orgIds.length === 1
+      ? await loadOrgComplianceContext(supabase, orgIds[0])
+      : { orgName: "", market: "uk" as const, compliance: {} };
+
   if (match) {
-    // Opt-outs are applied first so they hold even if storing the message fails.
+    let autoReply: string | null = null;
+
+    // Opt-outs / opt-ins / HELP first so they hold even if storing the message fails.
     if (isOptOutMessage(body)) {
-      await applyLeadOptOut(supabase, { orgId: match.orgId, leadId: match.leadId });
+      await applyLeadOptOut(supabase, {
+        orgId: match.orgId,
+        leadId: match.leadId,
+        source: "twilio_stop",
+      });
+      autoReply = stopSmsReply(orgMeta.orgName);
+    } else if (isOptInMessage(body)) {
+      await applyLeadOptIn(supabase, {
+        orgId: match.orgId,
+        leadId: match.leadId,
+        source: "twilio_start",
+      });
+      autoReply = startSmsReply(orgMeta.orgName);
+    } else if (isHelpMessage(body)) {
+      autoReply = helpSmsReply(orgMeta.orgName);
     }
+
     const recorded = await recordInboundMessage(supabase, {
       orgId: match.orgId,
       leadId: match.leadId,
@@ -91,6 +130,8 @@ export async function POST(request: Request) {
       orgId: match.orgId,
       leadId: match.leadId,
     });
+
+    if (autoReply) return xml(twimlMessage(autoReply));
   } else {
     // STOP without a matched lead still lands in triage (needs_opt_out flag).
     await captureUnmatched(supabase, {
@@ -101,10 +142,13 @@ export async function POST(request: Request) {
       orgIds,
       needsOptOut: isOptOutMessage(body),
     });
+    if (orgIds.length === 1 && isHelpMessage(body)) {
+      return xml(twimlMessage(helpSmsReply(orgMeta.orgName)));
+    }
+    if (orgIds.length === 1 && isOptOutMessage(body)) {
+      return xml(twimlMessage(stopSmsReply(orgMeta.orgName)));
+    }
   }
 
-  return new NextResponse("<Response></Response>", {
-    status: 200,
-    headers: { "Content-Type": "text/xml" },
-  });
+  return xml("<Response></Response>");
 }

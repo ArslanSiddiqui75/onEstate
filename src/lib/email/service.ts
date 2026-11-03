@@ -8,6 +8,12 @@ import {
 } from "@/lib/email/domain";
 import { inboundReplyTo } from "@/lib/email/inbound";
 import { ensureThread } from "@/lib/messaging/service";
+import {
+  assertCanSendMessage,
+  ensureEmailComplianceFooter,
+  loadOrgComplianceContext,
+  type SendKind,
+} from "@/lib/messaging/compliance";
 
 export interface OutboundEmailInput {
   orgId: string;
@@ -16,6 +22,8 @@ export interface OutboundEmailInput {
   subject: string;
   body: string;
   threadId?: string;
+  kind?: SendKind;
+  consent?: "unknown" | "opted_in" | "opted_out";
 }
 
 export interface OutboundEmailResult {
@@ -43,9 +51,34 @@ export async function sendOutboundEmail(
 ): Promise<OutboundEmailResult> {
   const to = input.to.trim().toLowerCase();
   const subject = input.subject.trim();
-  const body = input.body.trim();
+  const kind = input.kind || "manual";
   if (!looksLikeEmail(to)) return { ok: false, error: "Lead email is invalid" };
   if (!subject) return { ok: false, error: "Subject is required" };
+
+  let consent = input.consent;
+  if (!consent) {
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("email_consent")
+      .eq("id", input.leadId)
+      .eq("org_id", input.orgId)
+      .maybeSingle();
+    consent =
+      (lead?.email_consent as "unknown" | "opted_in" | "opted_out" | undefined) ||
+      "unknown";
+  }
+
+  const { market, compliance } = await loadOrgComplianceContext(supabase, input.orgId);
+  const gate = assertCanSendMessage({
+    channel: "email",
+    kind,
+    consent,
+    market,
+    compliance,
+  });
+  if (!gate.ok) return { ok: false, error: gate.error };
+
+  const body = ensureEmailComplianceFooter(input.body, kind);
   if (!body) return { ok: false, error: "Email body is required" };
 
   const { data: orgRow } = await supabase

@@ -6,7 +6,7 @@ import type {
   LeadStage,
 } from "@/types";
 import { profileHasDndForLead } from "@/lib/crm/dnd-server";
-import { leadHasOptedOut } from "@/lib/messaging/opt-out";
+import { leadEmailHasOptedOut, leadHasOptedOut } from "@/lib/messaging/opt-out";
 import { sendOutboundSms } from "@/lib/messaging/service";
 import { sendOutboundEmail } from "@/lib/email/service";
 import { isE164 } from "@/lib/phone/e164";
@@ -448,6 +448,7 @@ async function executeStep(
         to,
         body,
         from,
+        kind: "automation",
         consent:
           (preferred?.consent as "unknown" | "opted_in" | "opted_out") || "unknown",
       });
@@ -471,8 +472,8 @@ async function executeStep(
     case "send_email": {
       const to = (lead.email || "").trim();
       if (!to) return { outcome: "skipped", detail: "Lead has no email address" };
-      if (await leadHasOptedOut(supabase, { orgId: run.org_id, leadId: lead.id })) {
-        return { outcome: "skipped", detail: "Contact opted out" };
+      if (await leadEmailHasOptedOut(supabase, { orgId: run.org_id, leadId: lead.id })) {
+        return { outcome: "skipped", detail: "Contact unsubscribed from email" };
       }
 
       if (lead.assigned_to) {
@@ -504,6 +505,7 @@ async function executeStep(
         to,
         subject,
         body,
+        kind: "automation",
       });
       if (!result.ok) {
         return { outcome: "failed", detail: result.error || "Email send failed" };

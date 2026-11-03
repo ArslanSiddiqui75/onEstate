@@ -24,6 +24,7 @@ const bodySchema = z.object({
   domain: z.string().optional(),
   fromLocal: z.string().optional(),
   fromName: z.string().optional(),
+  kind: z.enum(["manual", "bulk", "automation", "sequence"]).default("manual"),
 });
 
 export async function POST(request: Request) {
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
 
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, email, phone")
+    .select("id, email, phone, email_consent")
     .eq("id", parsed.data.leadId)
     .eq("org_id", orgId)
     .maybeSingle();
@@ -122,6 +123,10 @@ export async function POST(request: Request) {
     subject: parsed.data.subject,
     body: parsed.data.body,
     threadId: parsed.data.threadId,
+    kind: parsed.data.kind,
+    consent:
+      (lead.email_consent as "unknown" | "opted_in" | "opted_out" | undefined) ||
+      "unknown",
   });
 
   if (!result.ok) {

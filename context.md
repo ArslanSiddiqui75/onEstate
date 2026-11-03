@@ -22,6 +22,7 @@ Live: https://on-estate.vercel.app · Repo: `ArslanSiddiqui75/onEstate` (`main`)
 - **No fake Stripe receipts.** Invoices stay empty until keys + a real checkout exist.
 - **Stay on Twilio** for SMS (WhatsApp later for international). Do not switch to RingCentral.
 - **Multiple org numbers** — a workspace may buy several Twilio numbers (capped), pick From per text/bulk, and keep one default for automations/sequences. Inbound still routes only to the org that owns that `To` number.
+- **Messaging compliance (US TCPA + UK PECR)** — STOP/START/HELP SMS keywords; email UNSUBSCRIBE; bulk/automation/sequence require opt-in; quiet hours on marketing SMS; workspace SMS/email auto-suspend on high opt-out rates (owner resume in Phone System).
 - **Portal HTTP** to Rightmove/Zoopla/MLS waits on commercial partner APIs (export-only today).
 - **Org switcher** — out of scope.
 - Do not commit `supabase/.temp/` or unsolicited `.github/` noise unless asked.
@@ -94,7 +95,7 @@ Modules under `/app`: crm, listings, transactions, website, social, billing + te
 - Calls tab: `tel:` device dialer + log — **no** in-app WebRTC.
 - Website publish requires active/under-offer listings (UI, `saveWebsite`, and DB trigger agree); unpublished public URLs stay unavailable.
 - E-sign stays **simulated** until Dropbox Sign is wired end-to-end — a `DROPBOX_SIGN_API_KEY` alone does not mean live.
-- Apply on hosted (in order): through `20261104180000_org_phone_numbers.sql` (multi-number table + wave1).
+- Apply on hosted (in order): through `20261104190000_messaging_compliance.sql` (multi-number + TCPA/PECR compliance).
 - Team invites use `/app/invite?token=…` (no Checkout). Owner signup still pays via Stripe.
 - Org + admin cookies can coexist until sign-out (sign-out clears both; overlap banner in app).
 - Twilio can send to many countries; PK inbound SMS is not reliable — use CRM **Simulate reply** in Conversations.

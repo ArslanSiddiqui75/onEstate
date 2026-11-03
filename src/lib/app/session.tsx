@@ -175,6 +175,7 @@ export interface AppOrg {
     isDefault: boolean;
   }>;
   emailDomain?: EmailDomain;
+  messagingCompliance?: WorkspaceOrg["messagingCompliance"];
 }
 
 interface AppState {
@@ -222,6 +223,7 @@ interface AppState {
     phoneNumber?: string;
     phoneNumbers?: AppOrg["phoneNumbers"];
     emailDomain?: EmailDomain;
+    messagingCompliance?: AppOrg["messagingCompliance"];
   }) => Promise<void>;
   updateProfile: (patch: { name: string; phone?: string }) => Promise<void>;
   refresh: () => Promise<void>;
@@ -321,11 +323,13 @@ interface AppState {
     leadId: string;
     body: string;
     from?: string;
+    kind?: "manual" | "bulk" | "automation" | "sequence";
   }) => Promise<{ mode: "live" | "simulated" }>;
   sendEmail: (input: {
     leadId: string;
     subject: string;
     body: string;
+    kind?: "manual" | "bulk" | "automation" | "sequence";
   }) => Promise<{ mode: "live" | "simulated" }>;
   /** Contact ids this signed-in account has on personal Do Not Disturb. */
   dndContactIds: string[];
@@ -446,6 +450,7 @@ function toAppOrg(org: WorkspaceOrg): AppOrg {
     phoneNumber: org.phoneNumber,
     phoneNumbers: org.phoneNumbers,
     emailDomain: org.emailDomain,
+    messagingCompliance: org.messagingCompliance,
   };
 }
 
@@ -858,6 +863,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       phoneNumber?: string;
       phoneNumbers?: AppOrg["phoneNumbers"];
       emailDomain?: EmailDomain;
+      messagingCompliance?: AppOrg["messagingCompliance"];
     }) => {
       if (!repoRef.current) return;
       const next = await repoRef.current.updateOrganization(patch);
@@ -1911,7 +1917,12 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const sendSms = useCallback(
-    async (input: { leadId: string; body: string; from?: string }) => {
+    async (input: {
+      leadId: string;
+      body: string;
+      from?: string;
+      kind?: "manual" | "bulk" | "automation" | "sequence";
+    }) => {
       assertWritable();
       if (!repoRef.current || !org) {
         return { mode: "simulated" as const };
@@ -1955,6 +1966,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           body: input.body,
           consent: phone?.consent || "unknown",
           from,
+          kind: input.kind || "manual",
         }),
       });
       const json = (await res.json()) as {
@@ -1988,7 +2000,12 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const sendEmail = useCallback(
-    async (input: { leadId: string; subject: string; body: string }) => {
+    async (input: {
+      leadId: string;
+      subject: string;
+      body: string;
+      kind?: "manual" | "bulk" | "automation" | "sequence";
+    }) => {
       if (!repoRef.current || !org) {
         return { mode: "simulated" as const };
       }
@@ -1999,6 +2016,9 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       }
       const to = (lead.email || "").trim();
       if (!to) throw new Error("Lead has no email address");
+      if (lead.emailConsent === "opted_out") {
+        throw new Error("Cannot send email: contact unsubscribed");
+      }
       const sending = org.emailDomain;
       if (!sending?.domain) {
         throw new Error("Connect your domain in Settings before sending email.");
@@ -2019,6 +2039,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           domain: sending.domain,
           fromLocal: sending.fromLocal,
           fromName: sending.fromName,
+          kind: input.kind || "manual",
         }),
       });
       const json = (await res.json()) as {

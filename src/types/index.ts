@@ -106,6 +106,8 @@ export interface Lead {
   id: string;
   name: string;
   email: string;
+  /** PECR / CAN-SPAM email marketing consent for this lead. */
+  emailConsent?: ConsentStatus;
   phone: string;
   phones?: PhoneContactMethod[];
   type: LeadType;

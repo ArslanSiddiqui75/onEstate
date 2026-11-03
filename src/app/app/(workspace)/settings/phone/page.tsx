@@ -62,12 +62,96 @@ export default function PhoneNumberSettingsPage() {
 
   if (!user || !org) return null;
 
+  const smsPaused = org.messagingCompliance?.sms?.suspendedAt;
+  const emailPaused = org.messagingCompliance?.email?.suspendedAt;
+
+  async function resumeChannel(channel: "sms" | "email") {
+    if (!org) return;
+    setBusy("default");
+    setError(null);
+    try {
+      if (persistence !== "supabase") {
+        const next = { ...(org.messagingCompliance || {}) };
+        delete next[channel];
+        next.acknowledgedAt = new Date().toISOString();
+        await updateWorkspace({ messagingCompliance: next });
+        toast.success(channel === "sms" ? "Texting resumed" : "Email resumed");
+        return;
+      }
+      const headers = await authHeaders();
+      const res = await fetch("/api/messaging/compliance", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({ channel, suspended: false }),
+      });
+      const json = (await res.json()) as {
+        compliance?: NonNullable<typeof org>["messagingCompliance"];
+        error?: string;
+      };
+      if (!res.ok) throw new Error(json.error || "Could not resume messaging.");
+      await updateWorkspace({ messagingCompliance: json.compliance });
+      toast.success(channel === "sms" ? "Texting resumed" : "Email resumed");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not resume messaging.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-[var(--muted)]">
         Buy numbers for this brokerage. Pick which one to send from in Conversations or bulk SMS.
-        Automations and sequences always use the default.
+        Automations and sequences always use the default. Marketing sends need opt-in (US TCPA /
+        UK PECR); quiet hours apply to bulk and automated texts.
       </p>
+
+      {smsPaused || emailPaused ? (
+        <Alert tone="danger">
+          <div className="space-y-3">
+            <p className="font-medium">Messaging paused after opt-outs</p>
+            {smsPaused ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm">
+                  {org.messagingCompliance?.sms?.reason || "SMS is suspended for this workspace."}
+                </p>
+                {isOwner ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={busy !== null}
+                    onClick={() => void resumeChannel("sms")}
+                  >
+                    Resume SMS
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+            {emailPaused ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm">
+                  {org.messagingCompliance?.email?.reason ||
+                    "Email is suspended for this workspace."}
+                </p>
+                {isOwner ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={busy !== null}
+                    onClick={() => void resumeChannel("email")}
+                  >
+                    Resume email
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </Alert>
+      ) : null}
 
       <Card className="space-y-3 p-5">
         <div className="flex items-baseline justify-between gap-3">

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { DND_BLOCK_MESSAGE } from "@/lib/crm/dnd";
 import { profileHasDndForLead } from "@/lib/crm/dnd-server";
 import { sendOutboundEmail } from "@/lib/email/service";
-import { leadHasOptedOut } from "@/lib/messaging/opt-out";
+import { leadEmailHasOptedOut, leadHasOptedOut } from "@/lib/messaging/opt-out";
 import { sendOutboundSms } from "@/lib/messaging/service";
 import { isE164 } from "@/lib/phone/e164";
 import { resolveDefaultFromNumber } from "@/lib/phone/org-numbers";
@@ -61,6 +61,7 @@ async function executeSequenceStep(
       to: dest,
       body,
       from,
+      kind: "sequence",
       consent:
         (preferred?.consent as "unknown" | "opted_in" | "opted_out") || "unknown",
     });
@@ -74,8 +75,8 @@ async function executeSequenceStep(
   if (step.type === "email") {
     const to = (lead.email || "").trim();
     if (!to) return { ok: false, detail: "Lead has no email address" };
-    if (await leadHasOptedOut(supabase, { orgId, leadId })) {
-      return { ok: false, detail: "Contact opted out" };
+    if (await leadEmailHasOptedOut(supabase, { orgId, leadId })) {
+      return { ok: false, detail: "Contact unsubscribed from email" };
     }
     const subject = renderSequenceTemplate(
       step.subject || "Following up",
@@ -89,6 +90,7 @@ async function executeSequenceStep(
       to,
       subject,
       body,
+      kind: "sequence",
     });
     if (!result.ok) return { ok: false, detail: result.error || "Email send failed" };
     return { ok: true, detail: `Email sent (${result.mode})` };

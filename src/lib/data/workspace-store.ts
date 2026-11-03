@@ -51,6 +51,13 @@ export interface WorkspaceOrg {
   }>;
   /** Sending domain connected with DNS. */
   emailDomain?: EmailDomain;
+  /** TCPA/PECR channel suspensions after high opt-out rates. */
+  messagingCompliance?: {
+    sms?: { suspendedAt?: string; reason?: string; by?: "system" | "owner" };
+    email?: { suspendedAt?: string; reason?: string; by?: "system" | "owner" };
+    lastEvaluatedAt?: string;
+    acknowledgedAt?: string;
+  };
 }
 
 export interface WorkspaceUser {
