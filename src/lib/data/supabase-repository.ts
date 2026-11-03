@@ -192,7 +192,7 @@ export function createSupabaseRepository(
     mode: "supabase",
 
     async getSnapshot() {
-      const [leads, contacts, listings, deals, members, messages, threads, callLogs, sequences, automations, enrollments, tasks] =
+      const [leads, contacts, listings, deals, members, messages, threads, callLogs, sequences, automations, enrollments, tasks, phoneNumbers] =
         await Promise.all([
           this.listLeads().catch((e) => { console.warn("listLeads error", e); return []; }),
           this.listContacts().catch((e) => { console.warn("listContacts error", e); return []; }),
@@ -206,7 +206,13 @@ export function createSupabaseRepository(
           this.listAutomations().catch((e) => { console.warn("listAutomations error", e); return []; }),
           this.listEnrollments().catch((e) => { console.warn("listEnrollments error", e); return []; }),
           this.listTasks().catch((e) => { console.warn("listTasks error", e); return []; }),
+          loadOrgPhoneNumbers(supabase, ctx.org.id, ctx.org.phoneNumber).catch(() => ctx.org.phoneNumbers || []),
         ]);
+
+      ctx.org.phoneNumbers = phoneNumbers;
+      const preferred =
+        phoneNumbers.find((row) => row.isDefault)?.phoneNumber || phoneNumbers[0]?.phoneNumber;
+      if (preferred) ctx.org.phoneNumber = preferred;
 
       const snapshot: WorkspaceSnapshot = {
         version: 1,
@@ -278,7 +284,17 @@ export function createSupabaseRepository(
       if (patch.business !== undefined) row.business = patch.business;
       if (patch.phoneNumber !== undefined) row.phone_number = patch.phoneNumber || null;
       if (patch.emailDomain !== undefined) row.email_domain = patch.emailDomain;
-      if (Object.keys(row).length === 0) return ctx.org;
+      // phoneNumbers are owned by /api/phone/numbers (service role); client only mirrors.
+      if (Object.keys(row).length === 0) {
+        if (patch.phoneNumbers !== undefined) {
+          ctx.org.phoneNumbers = patch.phoneNumbers;
+          const preferred =
+            patch.phoneNumbers.find((n) => n.isDefault)?.phoneNumber ||
+            patch.phoneNumbers[0]?.phoneNumber;
+          if (preferred) ctx.org.phoneNumber = preferred;
+        }
+        return ctx.org;
+      }
       const { error } = await supabase
         .from("organizations")
         .update(row)
@@ -291,6 +307,13 @@ export function createSupabaseRepository(
       }
       if (patch.business !== undefined) ctx.org.business = patch.business;
       if (patch.phoneNumber !== undefined) ctx.org.phoneNumber = patch.phoneNumber;
+      if (patch.phoneNumbers !== undefined) {
+        ctx.org.phoneNumbers = patch.phoneNumbers;
+        const preferred =
+          patch.phoneNumbers.find((n) => n.isDefault)?.phoneNumber ||
+          patch.phoneNumbers[0]?.phoneNumber;
+        if (preferred) ctx.org.phoneNumber = preferred;
+      }
       if (patch.emailDomain !== undefined) ctx.org.emailDomain = patch.emailDomain;
       return ctx.org;
     },
@@ -1655,9 +1678,39 @@ export async function hydrateSupabaseSession(): Promise<{
       onboardingCompleted: Boolean(org.onboarding_completed),
       business: readBusinessProfile(org.business),
       phoneNumber: org.phone_number ? String(org.phone_number) : undefined,
+      phoneNumbers: await loadOrgPhoneNumbers(supabase, String(org.id), org.phone_number),
       emailDomain: readEmailDomain(org.email_domain),
     },
   };
+}
+
+async function loadOrgPhoneNumbers(
+  supabase: ReturnType<typeof createBrowserSupabaseClient>,
+  orgId: string,
+  legacyDefault: unknown,
+) {
+  const { data, error } = await supabase
+    .from("organization_phone_numbers")
+    .select("id, phone_number, label, is_default")
+    .eq("org_id", orgId)
+    .order("created_at", { ascending: true });
+  if (!error && data && data.length > 0) {
+    return data.map((row) => ({
+      id: String(row.id),
+      phoneNumber: String(row.phone_number),
+      label: String(row.label || "") || undefined,
+      isDefault: Boolean(row.is_default),
+    }));
+  }
+  const legacy = legacyDefault ? String(legacyDefault) : "";
+  if (!legacy) return [];
+  return [
+    {
+      id: "legacy",
+      phoneNumber: legacy,
+      isDefault: true,
+    },
+  ];
 }
 
 // silence unused helper in some builds

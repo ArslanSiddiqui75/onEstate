@@ -12,6 +12,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { MenuSelect } from "@/components/ui/select";
 import { PhoneField } from "@/components/crm/phone-field";
 import {
+  FromNumberSelect,
+  defaultFromNumber,
+  resolveOwnedNumbers,
+} from "@/components/crm/from-number-select";
+import { useAppSession } from "@/lib/app/session";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -125,7 +131,7 @@ export interface ContactsDirectoryProps {
     contactId: string,
     input: { type: LeadType; source?: string },
   ) => Promise<string | undefined>;
-  sendSms: (input: { leadId: string; body: string }) => Promise<unknown>;
+  sendSms: (input: { leadId: string; body: string; from?: string }) => Promise<unknown>;
   onOpenThread: (leadId: string, channel?: "sms" | "email") => void;
 }
 
@@ -149,6 +155,8 @@ export function ContactsDirectory({
   sendSms,
   onOpenThread,
 }: ContactsDirectoryProps) {
+  const { org } = useAppSession();
+  const ownedNumbers = resolveOwnedNumbers(org);
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<ContactCategory | "all">("all");
   const [tagFilter, setTagFilter] = useState("all");
@@ -162,6 +170,7 @@ export function ContactsDirectory({
   const [showHistory, setShowHistory] = useState(false);
   const [showBulkSms, setShowBulkSms] = useState(false);
   const [smsBody, setSmsBody] = useState("");
+  const [bulkFrom, setBulkFrom] = useState(() => defaultFromNumber(ownedNumbers));
   const [csvText, setCsvText] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [promotingId, setPromotingId] = useState<string | null>(null);
@@ -176,6 +185,14 @@ export function ContactsDirectory({
   useEffect(() => {
     setHistory(loadBulkActions(orgId, userId));
   }, [orgId, userId]);
+
+  useEffect(() => {
+    const next = defaultFromNumber(ownedNumbers);
+    if (!next) return;
+    if (!ownedNumbers.some((row) => row.phoneNumber === bulkFrom)) {
+      setBulkFrom(next);
+    }
+  }, [bulkFrom, ownedNumbers]);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -443,7 +460,7 @@ export function ContactsDirectory({
             failed += 1;
             continue;
           }
-          await sendSms({ leadId, body });
+          await sendSms({ leadId, body, from: bulkFrom || undefined });
           ok += 1;
         } catch {
           failed += 1;
@@ -1307,6 +1324,12 @@ export function ContactsDirectory({
               phone are skipped. People not yet in the pipeline are promoted first when you have
               edit access.
             </Alert>
+            <FromNumberSelect
+              numbers={ownedNumbers}
+              value={bulkFrom}
+              onChange={setBulkFrom}
+              id="bulk-sms-from-number"
+            />
             <Textarea
               rows={5}
               value={smsBody}
@@ -1316,6 +1339,7 @@ export function ContactsDirectory({
             <p className="text-xs text-[var(--muted)]">
               {selectedContacts.filter((c) => c.phone && !isContactDnd(c.id)).length} of{" "}
               {selectedContacts.length} selected look ready to text.
+              {bulkFrom ? ` From ${bulkFrom}.` : ""}
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setShowBulkSms(false)}>

@@ -10,6 +10,7 @@ import { leadHasOptedOut } from "@/lib/messaging/opt-out";
 import { sendOutboundSms } from "@/lib/messaging/service";
 import { sendOutboundEmail } from "@/lib/email/service";
 import { isE164 } from "@/lib/phone/e164";
+import { resolveDefaultFromNumber } from "@/lib/phone/org-numbers";
 
 /**
  * Automation runtime.
@@ -438,13 +439,8 @@ async function executeStep(
         };
       }
 
-      // Texts must leave from this workspace's own number so replies route back.
-      const { data: orgRow } = await supabase
-        .from("organizations")
-        .select("phone_number")
-        .eq("id", run.org_id)
-        .maybeSingle();
-      const from = String(orgRow?.phone_number || "").trim() || undefined;
+      // Automations always use the workspace default so replies stay on one line.
+      const from = (await resolveDefaultFromNumber(supabase, run.org_id)) || undefined;
 
       const result = await sendOutboundSms(supabase, {
         orgId: run.org_id,

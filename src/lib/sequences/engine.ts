@@ -5,6 +5,7 @@ import { sendOutboundEmail } from "@/lib/email/service";
 import { leadHasOptedOut } from "@/lib/messaging/opt-out";
 import { sendOutboundSms } from "@/lib/messaging/service";
 import { isE164 } from "@/lib/phone/e164";
+import { resolveDefaultFromNumber } from "@/lib/phone/org-numbers";
 import {
   mapSequenceRow,
   renderSequenceTemplate,
@@ -53,17 +54,13 @@ async function executeSequenceStep(
         detail: "Phone needs a country code (save as +92… or +44…, not 0333…).",
       };
     }
-    const { data: orgRow } = await supabase
-      .from("organizations")
-      .select("phone_number")
-      .eq("id", orgId)
-      .maybeSingle();
+    const from = (await resolveDefaultFromNumber(supabase, orgId)) || undefined;
     const result = await sendOutboundSms(supabase, {
       orgId,
       leadId,
       to: dest,
       body,
-      from: String(orgRow?.phone_number || "").trim() || undefined,
+      from,
       consent:
         (preferred?.consent as "unknown" | "opted_in" | "opted_out") || "unknown",
     });

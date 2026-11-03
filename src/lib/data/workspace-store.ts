@@ -40,8 +40,15 @@ export interface WorkspaceOrg {
   onboardingCompleted?: boolean;
   /** Public brokerage details filled in on Settings. */
   business?: BusinessProfile;
-  /** Number bought for this brokerage. Texts send from here. */
+  /** Default number bought for this brokerage (automations / fallback From). */
   phoneNumber?: string;
+  /** All Twilio numbers owned by this brokerage. */
+  phoneNumbers?: Array<{
+    id: string;
+    phoneNumber: string;
+    label?: string;
+    isDefault: boolean;
+  }>;
   /** Sending domain connected with DNS. */
   emailDomain?: EmailDomain;
 }

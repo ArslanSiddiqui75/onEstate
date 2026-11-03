@@ -43,11 +43,21 @@ export async function findOrgIdsByPhone(
 ): Promise<string[]> {
   const variants = phoneLookupVariants(to);
   if (!variants.length) return [];
-  const { data } = await supabase
+
+  const { data: owned } = await supabase
+    .from("organization_phone_numbers")
+    .select("org_id")
+    .in("phone_number", variants);
+  const fromTable = (owned || []).map((row) => String(row.org_id));
+
+  // Legacy single-column fallback until every workspace is backfilled.
+  const { data: legacy } = await supabase
     .from("organizations")
     .select("id")
     .in("phone_number", variants);
-  return [...new Set((data || []).map((row) => String(row.id)))];
+  const fromOrg = (legacy || []).map((row) => String(row.id));
+
+  return [...new Set([...fromTable, ...fromOrg])];
 }
 
 export async function findLeadByPhone(

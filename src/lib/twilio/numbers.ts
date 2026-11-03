@@ -70,5 +70,8 @@ export async function buyNumber(phoneNumber: string) {
         }
       : {}),
   });
-  return purchased.phoneNumber;
+  return {
+    phoneNumber: purchased.phoneNumber,
+    sid: purchased.sid || undefined,
+  };
 }

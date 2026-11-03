@@ -44,6 +44,7 @@ export interface WorkspaceRepository {
     onboardingCompleted?: boolean;
     business?: BusinessProfile;
     phoneNumber?: string;
+    phoneNumbers?: WorkspaceOrg["phoneNumbers"];
     emailDomain?: EmailDomain;
   }): Promise<WorkspaceOrg>;
   updateProfile(patch: { name: string; phone?: string }): Promise<WorkspaceUser>;

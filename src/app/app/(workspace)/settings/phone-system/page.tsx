@@ -18,7 +18,7 @@ function PhoneSystem() {
   const [section, setSection] = useModuleSection("section", SECTIONS, "phone");
   const shown: PhoneSection = section === "routing" && !canRoute ? "phone" : section;
   const items: { id: PhoneSection; label: string }[] = [
-    { id: "phone", label: "Phone number" },
+    { id: "phone", label: "Phone numbers" },
     { id: "email", label: "Email domain" },
   ];
   if (canRoute) items.push({ id: "routing", label: "Lead routing" });

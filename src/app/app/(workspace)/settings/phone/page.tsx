@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppSession } from "@/lib/app/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
+import { MAX_ORG_PHONE_NUMBERS } from "@/lib/phone/org-numbers";
 
 interface ListedNumber {
   phoneNumber: string;
@@ -19,28 +20,141 @@ export default function PhoneNumberSettingsPage() {
   const [contains, setContains] = useState("");
   const [numbers, setNumbers] = useState<ListedNumber[]>([]);
   const [searched, setSearched] = useState(false);
-  const [busy, setBusy] = useState<"search" | "buy" | null>(null);
+  const [busy, setBusy] = useState<"search" | "buy" | "default" | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!user || !org) return null;
-  const isOwner = user.role === "owner";
+  const owned = useMemo(() => {
+    if (org?.phoneNumbers && org.phoneNumbers.length > 0) return org.phoneNumbers;
+    if (org?.phoneNumber) {
+      return [{ id: "legacy", phoneNumber: org.phoneNumber, isDefault: true }];
+    }
+    return [];
+  }, [org?.phoneNumber, org?.phoneNumbers]);
+
+  const isOwner = user?.role === "owner";
   const country = market === "us" ? "US" : "GB";
+  const atCap = owned.length >= MAX_ORG_PHONE_NUMBERS;
 
   async function authHeaders(): Promise<Record<string, string>> {
     const token = persistence === "supabase" ? await getAuthToken() : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
+  async function applyOwned(
+    payload: {
+      phoneNumber?: string;
+      defaultPhoneNumber?: string | null;
+      numbers?: Array<{ id: string; phoneNumber: string; label?: string; isDefault: boolean }>;
+    },
+  ) {
+    const nextNumbers = payload.numbers;
+    const defaultPhone =
+      payload.defaultPhoneNumber ||
+      nextNumbers?.find((row) => row.isDefault)?.phoneNumber ||
+      payload.phoneNumber ||
+      org?.phoneNumber;
+    await updateWorkspace({
+      phoneNumber: defaultPhone || undefined,
+      phoneNumbers: nextNumbers,
+    });
+  }
+
+  if (!user || !org) return null;
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-[var(--muted)]">
-        Buy a phone number for this brokerage. Texts from Conversations send from it.
+        Buy numbers for this brokerage. Pick which one to send from in Conversations or bulk SMS.
+        Automations and sequences always use the default.
       </p>
 
-      <Card className="space-y-2 p-5">
-        <h2 className="font-semibold">Current number</h2>
-        <p className="font-mono text-sm">{org.phoneNumber || "No number yet"}</p>
+      <Card className="space-y-3 p-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-semibold">Owned numbers</h2>
+          <p className="text-xs text-[var(--muted)]">
+            {owned.length}/{MAX_ORG_PHONE_NUMBERS}
+          </p>
+        </div>
+        {owned.length === 0 ? (
+          <p className="text-sm text-[var(--muted)]">No number yet</p>
+        ) : (
+          <ul className="divide-y divide-[var(--border)]">
+            {owned.map((row) => (
+              <li
+                key={row.id || row.phoneNumber}
+                className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="font-mono text-sm">{row.phoneNumber}</p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {row.isDefault ? "Default for automations and new texts" : "Available to send from"}
+                  </p>
+                </div>
+                {isOwner && !row.isDefault ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={busy === "default"}
+                    onClick={() => {
+                      setBusy("default");
+                      setError(null);
+                      void (async () => {
+                        try {
+                          if (persistence !== "supabase") {
+                            const next = owned.map((item) => ({
+                              ...item,
+                              isDefault: item.phoneNumber === row.phoneNumber,
+                            }));
+                            await applyOwned({
+                              phoneNumber: row.phoneNumber,
+                              defaultPhoneNumber: row.phoneNumber,
+                              numbers: next,
+                            });
+                          } else {
+                            const headers = await authHeaders();
+                            const res = await fetch("/api/phone/numbers", {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json", ...headers },
+                              body: JSON.stringify({
+                                phoneNumber: row.phoneNumber,
+                                isDefault: true,
+                              }),
+                            });
+                            const json = (await res.json()) as {
+                              phoneNumber?: string;
+                              defaultPhoneNumber?: string;
+                              numbers?: Array<{
+                                id: string;
+                                phoneNumber: string;
+                                label?: string;
+                                isDefault: boolean;
+                              }>;
+                              error?: string;
+                            };
+                            if (!res.ok) throw new Error(json.error || "Could not set default.");
+                            await applyOwned(json);
+                          }
+                          toast.success("Default number updated");
+                        } catch (err) {
+                          const msg =
+                            err instanceof Error ? err.message : "Could not set default.";
+                          setError(msg);
+                          toast.error(msg);
+                        } finally {
+                          setBusy(null);
+                        }
+                      })();
+                    }}
+                  >
+                    Make default
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
       {isOwner ? (
@@ -49,18 +163,21 @@ export default function PhoneNumberSettingsPage() {
             <h2 className="font-semibold">Buy a number</h2>
             <p className="text-sm text-[var(--muted)]">
               {country === "GB" ? "United Kingdom mobile numbers." : "United States local numbers."}
+              {atCap
+                ? ` You’ve reached the ${MAX_ORG_PHONE_NUMBERS}-number limit for this workspace.`
+                : ""}
             </p>
           </div>
           <form
             className="flex flex-col gap-2 sm:flex-row"
             onSubmit={(e) => {
               e.preventDefault();
+              if (atCap) return;
               setBusy("search");
               setError(null);
               const params = new URLSearchParams({ country, contains });
-              void authHeaders().then((headers) =>
-                fetch(`/api/phone/numbers?${params.toString()}`, { headers }),
-              )
+              void authHeaders()
+                .then((headers) => fetch(`/api/phone/numbers?${params.toString()}`, { headers }))
                 .then(async (res) => {
                   const json = (await res.json()) as {
                     numbers?: ListedNumber[];
@@ -85,8 +202,9 @@ export default function PhoneNumberSettingsPage() {
               inputMode="numeric"
               placeholder={country === "GB" ? "Contains, such as 161" : "Area code, such as 512"}
               aria-label="Digits to search for"
+              disabled={atCap}
             />
-            <Button type="submit" className="shrink-0" disabled={busy === "search"}>
+            <Button type="submit" className="shrink-0" disabled={busy === "search" || atCap}>
               {busy === "search" ? "Searching…" : "Search numbers"}
             </Button>
           </form>
@@ -106,28 +224,67 @@ export default function PhoneNumberSettingsPage() {
                   <Button
                     type="button"
                     size="sm"
-                    disabled={busy === "buy"}
+                    disabled={busy === "buy" || atCap}
                     onClick={() => {
                       setBusy("buy");
                       setBuying(row.phoneNumber);
                       setError(null);
-                      void authHeaders().then((headers) =>
-                        fetch("/api/phone/numbers", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json", ...headers },
-                          body: JSON.stringify({ phoneNumber: row.phoneNumber }),
-                        }),
-                      )
+                      void authHeaders()
+                        .then((headers) =>
+                          fetch("/api/phone/numbers", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", ...headers },
+                            body: JSON.stringify({ phoneNumber: row.phoneNumber }),
+                          }),
+                        )
                         .then(async (res) => {
-                          const json = (await res.json()) as { phoneNumber?: string; error?: string };
+                          const json = (await res.json()) as {
+                            phoneNumber?: string;
+                            defaultPhoneNumber?: string;
+                            numbers?: Array<{
+                              id: string;
+                              phoneNumber: string;
+                              label?: string;
+                              isDefault: boolean;
+                            }>;
+                            error?: string;
+                          };
                           if (!res.ok || !json.phoneNumber) {
                             throw new Error(json.error || "Could not buy that number.");
                           }
-                          await updateWorkspace({ phoneNumber: json.phoneNumber });
+                          if (persistence !== "supabase") {
+                            const makeDefault = owned.length === 0;
+                            const next = [
+                              ...owned.map((item) => ({
+                                ...item,
+                                isDefault: makeDefault ? false : item.isDefault,
+                              })),
+                              {
+                                id: json.phoneNumber,
+                                phoneNumber: json.phoneNumber,
+                                isDefault: makeDefault,
+                              },
+                            ];
+                            await applyOwned({
+                              phoneNumber: makeDefault
+                                ? json.phoneNumber
+                                : org.phoneNumber || json.phoneNumber,
+                              defaultPhoneNumber: makeDefault
+                                ? json.phoneNumber
+                                : org.phoneNumber || json.phoneNumber,
+                              numbers: next,
+                            });
+                          } else {
+                            await applyOwned(json);
+                          }
                           toast.success("Number added to this brokerage");
+                          setNumbers((current) =>
+                            current.filter((item) => item.phoneNumber !== row.phoneNumber),
+                          );
                         })
                         .catch((err) => {
-                          const msg = err instanceof Error ? err.message : "Could not buy that number.";
+                          const msg =
+                            err instanceof Error ? err.message : "Could not buy that number.";
                           setError(msg);
                           toast.error(msg);
                         })

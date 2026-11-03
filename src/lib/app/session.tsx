@@ -168,6 +168,12 @@ export interface AppOrg {
   onboardingCompleted?: boolean;
   business?: BusinessProfile;
   phoneNumber?: string;
+  phoneNumbers?: Array<{
+    id: string;
+    phoneNumber: string;
+    label?: string;
+    isDefault: boolean;
+  }>;
   emailDomain?: EmailDomain;
 }
 
@@ -214,6 +220,7 @@ interface AppState {
     onboardingCompleted?: boolean;
     business?: BusinessProfile;
     phoneNumber?: string;
+    phoneNumbers?: AppOrg["phoneNumbers"];
     emailDomain?: EmailDomain;
   }) => Promise<void>;
   updateProfile: (patch: { name: string; phone?: string }) => Promise<void>;
@@ -313,6 +320,7 @@ interface AppState {
   sendSms: (input: {
     leadId: string;
     body: string;
+    from?: string;
   }) => Promise<{ mode: "live" | "simulated" }>;
   sendEmail: (input: {
     leadId: string;
@@ -436,6 +444,7 @@ function toAppOrg(org: WorkspaceOrg): AppOrg {
     onboardingCompleted: org.onboardingCompleted,
     business: org.business,
     phoneNumber: org.phoneNumber,
+    phoneNumbers: org.phoneNumbers,
     emailDomain: org.emailDomain,
   };
 }
@@ -847,6 +856,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       onboardingCompleted?: boolean;
       business?: BusinessProfile;
       phoneNumber?: string;
+      phoneNumbers?: AppOrg["phoneNumbers"];
       emailDomain?: EmailDomain;
     }) => {
       if (!repoRef.current) return;
@@ -1901,7 +1911,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const sendSms = useCallback(
-    async (input: { leadId: string; body: string }) => {
+    async (input: { leadId: string; body: string; from?: string }) => {
       assertWritable();
       if (!repoRef.current || !org) {
         return { mode: "simulated" as const };
@@ -1923,6 +1933,15 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         throw new Error("Cannot send SMS: contact opted out");
       }
 
+      const owned = (org.phoneNumbers || [])
+        .map((row) => row.phoneNumber)
+        .filter(Boolean);
+      const from =
+        (input.from && owned.includes(input.from) ? input.from : undefined) ||
+        org.phoneNumbers?.find((row) => row.isDefault)?.phoneNumber ||
+        org.phoneNumber ||
+        undefined;
+
       const token = authMode === "supabase" ? await getAuthToken() : null;
       const res = await fetch("/api/twilio/sms", {
         method: "POST",
@@ -1935,7 +1954,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           to,
           body: input.body,
           consent: phone?.consent || "unknown",
-          from: org.phoneNumber || undefined,
+          from,
         }),
       });
       const json = (await res.json()) as {

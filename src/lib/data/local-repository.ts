@@ -195,6 +195,13 @@ export function createLocalRepository(
       }
       if (patch.business !== undefined) snap.org.business = patch.business;
       if (patch.phoneNumber !== undefined) snap.org.phoneNumber = patch.phoneNumber;
+      if (patch.phoneNumbers !== undefined) {
+        snap.org.phoneNumbers = patch.phoneNumbers;
+        const preferred =
+          patch.phoneNumbers.find((row) => row.isDefault)?.phoneNumber ||
+          patch.phoneNumbers[0]?.phoneNumber;
+        if (preferred) snap.org.phoneNumber = preferred;
+      }
       if (patch.emailDomain !== undefined) snap.org.emailDomain = patch.emailDomain;
       commit(snap);
       return snap.org;

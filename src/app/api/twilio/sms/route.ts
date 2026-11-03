@@ -8,6 +8,7 @@ import { fireLeadContactedIfFirst } from "@/lib/automations/engine";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { hasTwilioAccount } from "@/lib/twilio/numbers";
+import { resolveOutboundFromNumber } from "@/lib/phone/org-numbers";
 import { profileHasDndForLead } from "@/lib/crm/dnd-server";
 import { DND_BLOCK_MESSAGE } from "@/lib/crm/dnd";
 
@@ -159,12 +160,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: orgRow } = await supabase
-    .from("organizations")
-    .select("phone_number")
-    .eq("id", orgId)
-    .maybeSingle();
-  const from = String(orgRow?.phone_number || process.env.TWILIO_FROM_NUMBER || "").trim();
+  // Client may pick any number this workspace owns; otherwise use the default.
+  const from = (
+    (await resolveOutboundFromNumber(supabase, orgId, parsed.data.from)) ||
+    process.env.TWILIO_FROM_NUMBER ||
+    ""
+  ).trim();
   if (!hasTwilioAccount() || !isE164(from)) {
     return NextResponse.json(
       { error: "Buy a phone number in Settings before sending texts." },

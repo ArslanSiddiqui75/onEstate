@@ -24,6 +24,12 @@ import type {
 } from "@/types";
 import { findMatchingContact } from "@/lib/crm/contact-match";
 import { ArrowLeft, BellOff, Mail, Phone, Search, Send, SquarePen } from "lucide-react";
+import {
+  FromNumberSelect,
+  defaultFromNumber,
+  resolveOwnedNumbers,
+} from "@/components/crm/from-number-select";
+import { useAppSession } from "@/lib/app/session";
 
 type InboxFilter = "all" | "mine" | "reply" | "recent";
 type Channel = "sms" | "email";
@@ -166,7 +172,7 @@ export function ConversationInbox({
   pinnedLeadId?: string | null;
   onSelect: (id: string | null) => void;
   onError: (message: string | null) => void;
-  sendSms: (input: { leadId: string; body: string }) => Promise<unknown>;
+  sendSms: (input: { leadId: string; body: string; from?: string }) => Promise<unknown>;
   sendEmail: (input: { leadId: string; subject: string; body: string }) => Promise<unknown>;
   receiveInbound?: (input: {
     leadId: string;
@@ -183,6 +189,9 @@ export function ConversationInbox({
     input: { type: Lead["type"]; source?: string },
   ) => Promise<string | undefined>;
 }) {
+  const { org } = useAppSession();
+  const ownedNumbers = resolveOwnedNumbers(org);
+  const [fromNumber, setFromNumber] = useState(() => defaultFromNumber(ownedNumbers));
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<InboxFilter>("all");
   const [channel, setChannel] = useState<Channel>("sms");
@@ -208,6 +217,14 @@ export function ConversationInbox({
   const [unmatchedBusy, setUnmatchedBusy] = useState<string | null>(null);
   const knownIds = useRef<Set<string>>(new Set());
   const scroller = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const next = defaultFromNumber(ownedNumbers);
+    if (!next) return;
+    if (!ownedNumbers.some((row) => row.phoneNumber === fromNumber)) {
+      setFromNumber(next);
+    }
+  }, [fromNumber, ownedNumbers]);
 
   useEffect(() => {
     if (!getAuthToken) return;
@@ -385,7 +402,11 @@ export function ConversationInbox({
         });
         toast.success("Email sent");
       } else {
-        await sendSms({ leadId: shown.id, body: draft.trim() });
+        await sendSms({
+          leadId: shown.id,
+          body: draft.trim(),
+          from: fromNumber || undefined,
+        });
         toast.success("Text sent");
       }
       setDraft("");
@@ -947,7 +968,15 @@ export function ConversationInbox({
                   onChange={(event) => setSubject(event.target.value)}
                   disabled={personalDnd}
                 />
-              ) : null}
+              ) : (
+                <FromNumberSelect
+                  className="mb-2"
+                  numbers={ownedNumbers}
+                  value={fromNumber}
+                  onChange={setFromNumber}
+                  id="conversation-from-number"
+                />
+              )}
               <div className="flex items-end gap-2">
                 <Textarea
                   rows={1}
