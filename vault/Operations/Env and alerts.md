@@ -21,4 +21,6 @@
 - Hobby Vercel cron is **daily only** (`vercel.json` uses `0 0 * * *` as a safety net). Point cron-job.org (or Pro) every few minutes at `/api/social/cron/publish` and `/api/automations/cron/run` with `X-Cron-Secret` (or `Authorization: Bearer <CRON_SECRET>`). Without that, waits and scheduled social posts stall.
 - Prefer header `X-Cron-Secret` over query `?secret=` (special characters break query secrets).
 - E-sign stays simulated until Dropbox Sign is wired — `DROPBOX_SIGN_API_KEY` / `ESIGN_MODE=live` alone must not be marketed as live.
-- Apply `supabase/migrations/20261104120000_p0_honesty_hardening.sql` on hosted (RBAC string levels, unmatched inbound, documents storage RLS, website publish gate).
+- Apply hosted migrations through `20261104140000_sell_ready_wave_a.sql` (honesty hardening + invite tokens + `signup_checkout_intents` + profile terms columns).
+- Invites: share `/app/invite?token=…` only — never paid `/app/signup` for joiners.
+- Twilio: outbound SMS sets `statusCallback` to `{TWILIO_WEBHOOK_BASE_URL||NEXT_PUBLIC_APP_URL}/api/twilio/webhook/status`.
