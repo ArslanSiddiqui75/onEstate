@@ -9,7 +9,7 @@ import { MODULE_LABELS, ROLE_LABELS } from "@/lib/rbac/matrix";
 import { canInvite } from "@/lib/rbac/invites";
 import {
   ACCESS_LEVEL_LABELS,
-  ACCESS_LEVELS,
+  allowedAccessLevels,
   canManageModuleAccess,
   grantToAccessLevel,
   hasModuleAccess,
@@ -285,7 +285,7 @@ export default function TeamSettingsPage() {
                                 )
                               }
                             >
-                              {ACCESS_LEVELS.map((option) => (
+                              {allowedAccessLevels(member.role, module).map((option) => (
                                 <option key={option} value={option}>
                                   {ACCESS_LEVEL_LABELS[option]}
                                 </option>

@@ -17,6 +17,8 @@
 
 ## Ops notes
 
-- Set `CRON_SECRET` equal to `SOCIAL_CRON_SECRET` on Vercel when using platform cron bearer.
-- Hobby Vercel cron is daily — use an external ping for frequent social/automation ticks.
+- Set `CRON_SECRET` equal to `SOCIAL_CRON_SECRET` / `AUTOMATION_CRON_SECRET` on Vercel when using platform cron bearer.
+- Hobby Vercel cron is **daily only** (`vercel.json` uses `0 0 * * *` as a safety net). Point cron-job.org (or Pro) every few minutes at `/api/social/cron/publish` and `/api/automations/cron/run` with `X-Cron-Secret` (or `Authorization: Bearer <CRON_SECRET>`). Without that, waits and scheduled social posts stall.
 - Prefer header `X-Cron-Secret` over query `?secret=` (special characters break query secrets).
+- E-sign stays simulated until Dropbox Sign is wired — `DROPBOX_SIGN_API_KEY` / `ESIGN_MODE=live` alone must not be marketed as live.
+- Apply `supabase/migrations/20261104120000_p0_honesty_hardening.sql` on hosted (RBAC string levels, unmatched inbound, documents storage RLS, website publish gate).

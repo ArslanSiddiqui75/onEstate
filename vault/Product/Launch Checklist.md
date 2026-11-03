@@ -8,6 +8,8 @@ Client / ops remaining (not “more polish tickets”):
 - [ ] WhatsApp (later) — keep Twilio until then
 - [ ] X publish only if paid API + explicit ask
 - [ ] Website visual refresh when design direction exists
+- [ ] External cron-job.org (or Pro) every few minutes for social + automation ticks + secrets set
+- [ ] Apply `20261104120000_p0_honesty_hardening.sql` on hosted Supabase
 
 Already done in product/code (verify on live after deploy):
 
@@ -16,3 +18,4 @@ Already done in product/code (verify on live after deploy):
 - [x] Session isolation on sign-out
 - [x] Website publish guard (needs live listings)
 - [x] Deep UI pass on `main`
+- [x] P0 honesty: RBAC ceilings, e-sign simulated label, DND on sequences/automations, unmatched inbound capture, documents storage RLS, agency/lettings CAS, cron schedule honesty

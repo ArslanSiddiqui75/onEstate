@@ -61,7 +61,7 @@ Migrations: apply `supabase/migrations/` in order on hosted (or Supabase CLI loc
 
 Critical groups: Supabase (`NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`), brand (`NEXT_PUBLIC_BRAND`), Stripe, Twilio + `MESSAGING_MODE`, Resend email, `PLATFORM_ADMIN_PASSWORD` (server-only admin login), social OAuth + `SOCIAL_TOKEN_ENCRYPTION_KEY`, cron secrets (`CRON_SECRET` / `SOCIAL_CRON_SECRET` / `AUTOMATION_CRON_SECRET` — production cron fails closed if unset).
 
-- Vercel Hobby: platform cron is **daily** only — use cron-job.org for frequent social/automation ticks (`X-Cron-Secret`).
+- Vercel Hobby: platform cron is **daily** only (`vercel.json` is `0 0 * * *`). Point cron-job.org (or upgrade) every few minutes at `/api/social/cron/publish` and `/api/automations/cron/run` with `X-Cron-Secret` (or `Authorization: Bearer <CRON_SECRET>`). Without that, waits and scheduled social posts stall.
 - Duplicate org names (e.g. several `tp`): shell shows workspace id; wrong email → empty Social accounts.
 - Production app URL: `NEXT_PUBLIC_APP_URL=https://on-estate.vercel.app`
 
@@ -91,7 +91,9 @@ Modules under `/app`: crm, listings, transactions, website, social, billing + te
 
 - Dual persistence: Supabase when configured, else durable localStorage demo mode.
 - Calls tab: `tel:` device dialer + log — **no** in-app WebRTC.
-- Website publish requires active/under-offer listings; unpublished public URLs stay unavailable.
+- Website publish requires active/under-offer listings (UI, `saveWebsite`, and DB trigger agree); unpublished public URLs stay unavailable.
+- E-sign stays **simulated** until Dropbox Sign is wired end-to-end — a `DROPBOX_SIGN_API_KEY` alone does not mean live.
+- Apply `20261104120000_p0_honesty_hardening.sql` on hosted (RBAC string levels, unmatched inbound, documents storage RLS, publish gate).
 - Org + admin cookies can coexist until sign-out (sign-out clears both; overlap banner in app).
 - Twilio can send to many countries; PK inbound SMS is not reliable — use CRM simulate inbound.
 - Soft-archive via `archived_at` where implemented.

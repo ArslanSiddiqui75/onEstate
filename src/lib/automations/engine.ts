@@ -5,6 +5,7 @@ import type {
   AutomationTrigger,
   LeadStage,
 } from "@/types";
+import { profileHasDndForLead } from "@/lib/crm/dnd-server";
 import { sendOutboundSms } from "@/lib/messaging/service";
 import { sendOutboundEmail } from "@/lib/email/service";
 import { isE164 } from "@/lib/phone/e164";
@@ -398,6 +399,23 @@ async function executeStep(
       const body = renderTemplate(step.config.body || "", vars).trim();
       if (!body) return { outcome: "skipped", detail: "Empty SMS body" };
 
+      // Honor the assignee's personal DND so automations don't text muted contacts.
+      if (lead.assigned_to) {
+        const dnd = await profileHasDndForLead(supabase, {
+          orgId: run.org_id,
+          profileId: String(lead.assigned_to),
+          leadId: lead.id,
+          email: lead.email,
+          phone: lead.phone,
+        });
+        if (dnd) {
+          return {
+            outcome: "skipped",
+            detail: "Skipped — assignee has Do Not Disturb on this contact",
+          };
+        }
+      }
+
       const { data: phones } = await supabase
         .from("lead_phone_numbers")
         .select("number, consent, preferred")
@@ -455,6 +473,22 @@ async function executeStep(
     case "send_email": {
       const to = (lead.email || "").trim();
       if (!to) return { outcome: "skipped", detail: "Lead has no email address" };
+
+      if (lead.assigned_to) {
+        const dnd = await profileHasDndForLead(supabase, {
+          orgId: run.org_id,
+          profileId: String(lead.assigned_to),
+          leadId: lead.id,
+          email: lead.email,
+          phone: lead.phone,
+        });
+        if (dnd) {
+          return {
+            outcome: "skipped",
+            detail: "Skipped — assignee has Do Not Disturb on this contact",
+          };
+        }
+      }
 
       const subject = renderTemplate(
         step.config.subject || "Following up",

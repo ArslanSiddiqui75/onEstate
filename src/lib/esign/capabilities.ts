@@ -18,13 +18,24 @@ export function dropboxSignConfigured() {
   return Boolean((process.env.DROPBOX_SIGN_API_KEY || "").trim());
 }
 
+/**
+ * E-sign stays simulated until Dropbox Sign (or another provider) is wired
+ * end-to-end in `requestEsign`. A configured API key alone must not flip the
+ * UI/API to "live" — that would be a false production claim.
+ */
 export function getEsignCapabilities(): EsignCapabilities {
   const setting = readMode();
-  const live = dropboxSignConfigured() && setting !== "simulated";
-  const useLive = setting === "live" ? dropboxSignConfigured() : live;
+  if (
+    (setting === "live" || dropboxSignConfigured()) &&
+    process.env.NODE_ENV !== "test"
+  ) {
+    console.warn(
+      "[esign] DROPBOX_SIGN_API_KEY / ESIGN_MODE=live is set, but live Dropbox Sign is not wired yet — staying simulated.",
+    );
+  }
   return {
-    mode: useLive ? "live" : "simulated",
-    provider: useLive ? "dropbox_sign" : "simulated",
+    mode: "simulated",
+    provider: "simulated",
     canEmailInvite: Boolean(
       process.env.RESEND_API_KEY && (process.env.EMAIL_FROM || "").trim(),
     ),

@@ -672,7 +672,11 @@ export function createLocalRepository(
       const snap = requireSnapshot();
       assertCanPublishWebsite(
         Boolean(site.published),
-        snap.listings.filter(isActiveRecord).length,
+        snap.listings.filter(
+          (listing) =>
+            isActiveRecord(listing) &&
+            (listing.status === "active" || listing.status === "under_offer"),
+        ).length,
       );
       snap.website = { ...site, updatedAt: new Date().toISOString() };
       commit(snap);

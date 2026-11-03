@@ -1453,7 +1453,8 @@ export function createSupabaseRepository(
           .from("listings")
           .select("id", { count: "exact", head: true })
           .eq("org_id", ctx.org.id)
-          .is("archived_at", null);
+          .is("archived_at", null)
+          .in("status", ["active", "under_offer"]);
         if (listingError) throw listingError;
         assertCanPublishWebsite(true, count ?? 0);
       }

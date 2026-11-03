@@ -212,16 +212,37 @@ describe("RBAC matrix", () => {
 
   it("lets an owner set exact module access levels for a seat", () => {
     expect(
-      hasModuleAccess({ role: "agent", moduleAccess: { website: "edit" } }, "team", "website", "edit"),
+      hasModuleAccess({ role: "agent", moduleAccess: { website: "view" } }, "team", "website", "view"),
     ).toBe(true);
     expect(
       hasModuleAccess({ role: "agent", moduleAccess: { website: "view" } }, "team", "website", "edit"),
     ).toBe(false);
-    expect(nextModuleGrants("agent", undefined, "website", "edit")).toEqual({ website: "edit" });
+    // Agent website ceiling is none — unlock clamps to view (stored as true).
+    expect(nextModuleGrants("agent", undefined, "website", "edit")).toEqual({ website: true });
     expect(nextModuleGrants("agent", { listings: "view" }, "listings", "none")).toEqual({
       listings: false,
     });
-    expect(nextModuleGrants("agent", { website: "edit" }, "website", "none")).toBeUndefined();
+    expect(nextModuleGrants("agent", { website: true }, "website", "none")).toBeUndefined();
+  });
+
+  it("clamps personal grants to the role matrix ceiling", () => {
+    // Stored "edit" above agent's website none → resolves as view only.
+    expect(
+      hasModuleAccess({ role: "agent", moduleAccess: { website: "edit" } }, "team", "website", "view"),
+    ).toBe(true);
+    expect(
+      hasModuleAccess({ role: "agent", moduleAccess: { website: "edit" } }, "team", "website", "edit"),
+    ).toBe(false);
+    // Agent listings ceiling is edit — full is clamped back to role default (no override).
+    expect(nextModuleGrants("agent", undefined, "listings", "full")).toBeUndefined();
+    // Below-ceiling reduction still stores.
+    expect(nextModuleGrants("agent", undefined, "listings", "view")).toEqual({
+      listings: "view",
+    });
+    // Assistant transactions is none — unlock clamps to view (boolean true).
+    expect(nextModuleGrants("assistant", undefined, "transactions", "edit")).toEqual({
+      transactions: true,
+    });
   });
 });
 
@@ -334,7 +355,7 @@ describe("admin impersonation role", () => {
 
 describe("website publish guard", () => {
   it("refuses publish with zero listings", () => {
-    expect(() => assertCanPublishWebsite(true, 0)).toThrow(/listing/i);
+    expect(() => assertCanPublishWebsite(true, 0)).toThrow(/active listing/i);
     expect(() => assertCanPublishWebsite(true, 1)).not.toThrow();
     expect(() => assertCanPublishWebsite(false, 0)).not.toThrow();
   });

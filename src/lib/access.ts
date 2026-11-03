@@ -1,5 +1,5 @@
 import type { AccessLevel, ModuleGrants, ModuleGrantValue, ModuleId, PlanId, Role } from "@/types";
-import { getRoleAccess, canAccess } from "@/lib/rbac/matrix";
+import { accessRank, getRoleAccess, canAccess } from "@/lib/rbac/matrix";
 import { planIncludesModule, PLAN_FEATURE_FLAGS } from "@/lib/plans/catalog";
 
 export const MODULE_IDS: readonly ModuleId[] = [
@@ -21,6 +21,29 @@ export function canManageModuleAccess(role: Role) {
 
 function isAccessLevel(value: unknown): value is AccessLevel {
   return value === "none" || value === "view" || value === "edit" || value === "full";
+}
+
+/**
+ * Cap a requested level so personal grants never exceed the role matrix ceiling.
+ * Roles with `none` can only be unlocked to `view` (same as the legacy boolean true).
+ */
+export function clampAccessToRoleCeiling(
+  roleLevel: AccessLevel,
+  requested: AccessLevel,
+): AccessLevel {
+  if (requested === "none") return "none";
+  if (roleLevel === "none") return "view";
+  return accessRank(requested) <= accessRank(roleLevel) ? requested : roleLevel;
+}
+
+/** Levels an owner/broker may assign for this seat + module. */
+export function allowedAccessLevels(role: Role, module: ModuleId): AccessLevel[] {
+  const ceiling = getRoleAccess(role, module);
+  return ACCESS_LEVELS.filter((level) => {
+    if (level === "none") return true;
+    if (ceiling === "none") return level === "view";
+    return accessRank(level) <= accessRank(ceiling);
+  });
 }
 
 export function readModuleGrants(value: unknown): ModuleGrants | undefined {
@@ -45,12 +68,13 @@ export function grantToAccessLevel(
   if (grant === undefined) return base;
   if (grant === false) return "none";
   if (grant === true) return base === "none" ? "view" : base;
-  return grant;
+  return clampAccessToRoleCeiling(base, grant);
 }
 
 /**
  * Store only differences from the role default.
  * Passing the role's own level clears the override for that module.
+ * Requested levels are clamped to the role ceiling.
  */
 export function nextModuleGrants(
   role: Role,
@@ -59,7 +83,7 @@ export function nextModuleGrants(
   levelOrEnabled: AccessLevel | boolean,
 ): ModuleGrants | undefined {
   const roleLevel = getRoleAccess(role, module);
-  const nextLevel: AccessLevel =
+  const rawLevel: AccessLevel =
     typeof levelOrEnabled === "boolean"
       ? levelOrEnabled
         ? roleLevel === "none"
@@ -67,6 +91,7 @@ export function nextModuleGrants(
           : roleLevel
         : "none"
       : levelOrEnabled;
+  const nextLevel = clampAccessToRoleCeiling(roleLevel, rawLevel);
 
   const next: ModuleGrants = { ...current };
   if (nextLevel === roleLevel) delete next[module];
@@ -102,7 +127,7 @@ export function resolveAccess(
   if (override === undefined) return base;
   if (override === false) return "none";
   if (override === true) return base === "none" ? "view" : base;
-  return override;
+  return clampAccessToRoleCeiling(base, override);
 }
 
 export function hasModuleAccess(

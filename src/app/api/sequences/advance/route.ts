@@ -38,6 +38,7 @@ export async function POST(request: Request) {
     orgId: profile.orgId,
     leadId: parsed.data.leadId,
     sequenceId: parsed.data.sequenceId,
+    profileId: profile.userId,
   });
 
   if (!result.ok) {

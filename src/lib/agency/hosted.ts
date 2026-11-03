@@ -8,12 +8,16 @@ import type {
   PortalRecord,
   PortalRole,
 } from "@/lib/agency/types";
+import { BookConflictError } from "@/lib/books/conflict";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 type ServiceClient = NonNullable<ReturnType<typeof createServiceSupabaseClient>>;
 
+export type AgencyBookSnap = { book: AgencyBook; updatedAt: string };
+
 const ROLES: PortalRole[] = ["vendor", "buyer", "landlord", "tenant"];
 const TOKEN_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{2,80}$/;
+const CAS_RETRIES = 3;
 
 function asBook(raw: unknown, bookingToken: string): AgencyBook {
   const base = seedAgencyBook();
@@ -65,25 +69,38 @@ async function syncLinkTokens(
   }
 }
 
-export async function loadHostedAgencyBook(orgId: string): Promise<AgencyBook | null> {
+export async function loadHostedAgencyBookSnap(
+  orgId: string,
+): Promise<AgencyBookSnap | null> {
   const supabase = createServiceSupabaseClient();
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("agency_books")
-    .select("booking_token, data")
+    .select("booking_token, data, updated_at")
     .eq("org_id", orgId)
     .maybeSingle();
   if (error) throw error;
   if (!data) {
     const bookingToken = `book-${orgId.replace(/-/g, "").slice(0, 12)}`;
     const empty = asBook(null, bookingToken);
-    await saveHostedAgencyBook(orgId, empty);
-    return empty;
+    return saveHostedAgencyBook(orgId, empty, { expectedUpdatedAt: null });
   }
-  return asBook(data.data, String(data.booking_token));
+  return {
+    book: asBook(data.data, String(data.booking_token)),
+    updatedAt: String(data.updated_at),
+  };
 }
 
-export async function saveHostedAgencyBook(orgId: string, book: AgencyBook): Promise<AgencyBook> {
+export async function loadHostedAgencyBook(orgId: string): Promise<AgencyBook | null> {
+  const snap = await loadHostedAgencyBookSnap(orgId);
+  return snap?.book ?? null;
+}
+
+export async function saveHostedAgencyBook(
+  orgId: string,
+  book: AgencyBook,
+  options?: { expectedUpdatedAt?: string | null },
+): Promise<AgencyBookSnap> {
   const supabase = createServiceSupabaseClient();
   if (!supabase) throw new Error("Hosted mode required");
   const bookingToken = normalizeToken(book.bookingToken || `book-${orgId.slice(0, 8)}`);
@@ -99,23 +116,97 @@ export async function saveHostedAgencyBook(orgId: string, book: AgencyBook): Pro
     fees: book.fees || [],
     referrals: book.referrals || [],
   };
-  const { error } = await supabase.from("agency_books").upsert(
-    {
-      org_id: orgId,
+  const now = new Date().toISOString();
+  const expected = options?.expectedUpdatedAt;
+
+  if (expected === null || expected === undefined) {
+    // First create (null) or legacy callers without CAS — insert-only when null.
+    if (expected === null) {
+      const { data, error } = await supabase
+        .from("agency_books")
+        .insert({
+          org_id: orgId,
+          booking_token: bookingToken,
+          data: next,
+          updated_at: now,
+        })
+        .select("updated_at")
+        .maybeSingle();
+      if (error) {
+        if (error.code === "23505") {
+          throw new BookConflictError();
+        }
+        throw error;
+      }
+      await syncLinkTokens(supabase, orgId, next);
+      return { book: next, updatedAt: String(data?.updated_at || now) };
+    }
+    const { data, error } = await supabase
+      .from("agency_books")
+      .upsert(
+        {
+          org_id: orgId,
+          booking_token: bookingToken,
+          data: next,
+          updated_at: now,
+        },
+        { onConflict: "org_id" },
+      )
+      .select("updated_at")
+      .maybeSingle();
+    if (error) {
+      if (error.code === "23505") {
+        throw new Error("That booking link is already in use by another office.");
+      }
+      throw error;
+    }
+    await syncLinkTokens(supabase, orgId, next);
+    return { book: next, updatedAt: String(data?.updated_at || now) };
+  }
+
+  const { data, error } = await supabase
+    .from("agency_books")
+    .update({
       booking_token: bookingToken,
       data: next,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "org_id" },
-  );
+      updated_at: now,
+    })
+    .eq("org_id", orgId)
+    .eq("updated_at", expected)
+    .select("updated_at")
+    .maybeSingle();
   if (error) {
     if (error.code === "23505") {
       throw new Error("That booking link is already in use by another office.");
     }
     throw error;
   }
+  if (!data) throw new BookConflictError();
   await syncLinkTokens(supabase, orgId, next);
-  return next;
+  return { book: next, updatedAt: String(data.updated_at) };
+}
+
+async function mutateAgencyBook(
+  orgId: string,
+  mutator: (book: AgencyBook) => AgencyBook,
+): Promise<AgencyBookSnap> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < CAS_RETRIES; attempt++) {
+    const snap = await loadHostedAgencyBookSnap(orgId);
+    if (!snap) throw new Error("Hosted mode required");
+    try {
+      return await saveHostedAgencyBook(orgId, mutator(snap.book), {
+        expectedUpdatedAt: snap.updatedAt,
+      });
+    } catch (err) {
+      if (err instanceof BookConflictError) {
+        lastError = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new BookConflictError();
 }
 
 async function orgIdForLinkToken(
@@ -182,7 +273,6 @@ export async function hostedRegisterPortal(input: {
   if (name.length < 2 || !address || !TOKEN_RE.test(token)) {
     throw new Error("Add a name, address and link token.");
   }
-  const book = (await loadHostedAgencyBook(input.orgId))!;
   const portal: PortalRecord = {
     token,
     role: input.role as PortalRole,
@@ -192,11 +282,10 @@ export async function hostedRegisterPortal(input: {
     leadId: input.leadId?.trim() || undefined,
     lettingsToken: input.lettingsToken?.trim() || undefined,
   };
-  const next = {
+  await mutateAgencyBook(input.orgId, (book) => ({
     ...book,
     portals: [portal, ...book.portals.filter((item) => item.token !== token)],
-  };
-  await saveHostedAgencyBook(input.orgId, next);
+  }));
   return portal;
 }
 
@@ -214,12 +303,11 @@ export async function hostedBooking(input: {
   if (!supabase) throw new Error("Hosted mode required");
   const orgId = await orgIdForLinkToken(supabase, input.bookToken, "booking");
   if (!orgId) throw new Error("This booking link is not recognised.");
-  const book = (await loadHostedAgencyBook(orgId))!;
   const appointment = createAppointment({ ...input, bookToken: normalizeToken(input.bookToken) });
-  await saveHostedAgencyBook(orgId, {
+  await mutateAgencyBook(orgId, (book) => ({
     ...book,
     appointments: [appointment, ...book.appointments],
-  });
+  }));
   return appointment;
 }
 
@@ -231,33 +319,31 @@ export async function hostedOffer(input: {
 }): Promise<ClientOffer> {
   const portal = await hostedPortal(input.token);
   if (!portal) throw new Error("This client link is not recognised.");
-  const book = (await loadHostedAgencyBook(portal.orgId))!;
   const offer = createOffer({
     address: portal.address,
     buyerName: input.buyerName,
     amount: input.amount,
     notes: input.notes,
   });
-  await saveHostedAgencyBook(portal.orgId, {
+  await mutateAgencyBook(portal.orgId, (book) => ({
     ...book,
     offers: [offer, ...book.offers],
-  });
+  }));
   return offer;
 }
 
 export async function hostedApproval(token: string, feedback?: string) {
   const portal = await hostedPortal(token);
   if (!portal) throw new Error("This client link is not recognised.");
-  const book = (await loadHostedAgencyBook(portal.orgId))!;
   const at = new Date().toISOString();
-  await saveHostedAgencyBook(portal.orgId, {
+  await mutateAgencyBook(portal.orgId, (book) => ({
     ...book,
     portals: book.portals.map((item) =>
       item.token === portal.token
         ? { ...item, approvedAt: at, feedback: feedback?.trim() || item.feedback }
         : item,
     ),
-  });
+  }));
 }
 
 export async function hostedAppointment(token: string, id: string): Promise<Appointment | null> {

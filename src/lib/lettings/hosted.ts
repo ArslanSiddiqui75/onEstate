@@ -13,11 +13,15 @@ import type {
   Repair,
   RepairChannel,
 } from "@/lib/lettings/types";
+import { BookConflictError } from "@/lib/books/conflict";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 type ServiceClient = NonNullable<ReturnType<typeof createServiceSupabaseClient>>;
 
+export type LettingsBookSnap = { book: LettingsBook; updatedAt: string };
+
 const TOKEN_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{2,80}$/;
+const CAS_RETRIES = 3;
 
 function asBook(raw: unknown): LettingsBook {
   if (!raw || typeof raw !== "object") {
@@ -100,27 +104,34 @@ async function syncLettingsIndexes(
   }
 }
 
-export async function loadHostedLettingsBook(orgId: string): Promise<LettingsBook | null> {
+export async function loadHostedLettingsBookSnap(
+  orgId: string,
+): Promise<LettingsBookSnap | null> {
   const supabase = createServiceSupabaseClient();
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("lettings_books")
-    .select("data")
+    .select("data, updated_at")
     .eq("org_id", orgId)
     .maybeSingle();
   if (error) throw error;
   if (!data) {
     const empty = asBook(null);
-    await saveHostedLettingsBook(orgId, empty);
-    return empty;
+    return saveHostedLettingsBook(orgId, empty, { expectedUpdatedAt: null });
   }
-  return asBook(data.data);
+  return { book: asBook(data.data), updatedAt: String(data.updated_at) };
+}
+
+export async function loadHostedLettingsBook(orgId: string): Promise<LettingsBook | null> {
+  const snap = await loadHostedLettingsBookSnap(orgId);
+  return snap?.book ?? null;
 }
 
 export async function saveHostedLettingsBook(
   orgId: string,
   book: LettingsBook,
-): Promise<LettingsBook> {
+  options?: { expectedUpdatedAt?: string | null },
+): Promise<LettingsBookSnap> {
   const supabase = createServiceSupabaseClient();
   if (!supabase) throw new Error("Hosted mode required");
   const next = asBook(book);
@@ -129,17 +140,81 @@ export async function saveHostedLettingsBook(
       throw new Error("Every property needs a repair link made of letters, numbers, dots, dashes or underscores.");
     }
   }
-  const { error } = await supabase.from("lettings_books").upsert(
-    {
-      org_id: orgId,
+  const now = new Date().toISOString();
+  const expected = options?.expectedUpdatedAt;
+
+  if (expected === null || expected === undefined) {
+    if (expected === null) {
+      const { data, error } = await supabase
+        .from("lettings_books")
+        .insert({
+          org_id: orgId,
+          data: next,
+          updated_at: now,
+        })
+        .select("updated_at")
+        .maybeSingle();
+      if (error) {
+        if (error.code === "23505") throw new BookConflictError();
+        throw error;
+      }
+      await syncLettingsIndexes(supabase, orgId, next);
+      return { book: next, updatedAt: String(data?.updated_at || now) };
+    }
+    const { data, error } = await supabase
+      .from("lettings_books")
+      .upsert(
+        {
+          org_id: orgId,
+          data: next,
+          updated_at: now,
+        },
+        { onConflict: "org_id" },
+      )
+      .select("updated_at")
+      .maybeSingle();
+    if (error) throw error;
+    await syncLettingsIndexes(supabase, orgId, next);
+    return { book: next, updatedAt: String(data?.updated_at || now) };
+  }
+
+  const { data, error } = await supabase
+    .from("lettings_books")
+    .update({
       data: next,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "org_id" },
-  );
+      updated_at: now,
+    })
+    .eq("org_id", orgId)
+    .eq("updated_at", expected)
+    .select("updated_at")
+    .maybeSingle();
   if (error) throw error;
+  if (!data) throw new BookConflictError();
   await syncLettingsIndexes(supabase, orgId, next);
-  return next;
+  return { book: next, updatedAt: String(data.updated_at) };
+}
+
+async function mutateLettingsBook(
+  orgId: string,
+  mutator: (book: LettingsBook) => LettingsBook,
+): Promise<LettingsBookSnap> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < CAS_RETRIES; attempt++) {
+    const snap = await loadHostedLettingsBookSnap(orgId);
+    if (!snap) throw new Error("Hosted mode required");
+    try {
+      return await saveHostedLettingsBook(orgId, mutator(snap.book), {
+        expectedUpdatedAt: snap.updatedAt,
+      });
+    } catch (err) {
+      if (err instanceof BookConflictError) {
+        lastError = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new BookConflictError();
 }
 
 export async function hostedPropertyByReportToken(
@@ -191,18 +266,26 @@ export async function hostedReport(input: {
     located.property.rooms.find((item) => item.id === input.roomId) ??
     located.property.rooms[0];
   if (!room) throw new Error("Choose a room.");
-  const repair = createRepair(located.book, {
-    propertyId: located.property.id,
-    roomId: room.id,
-    body: input.body,
-    channel: input.channel,
-    photo: input.photo,
+  let created: Repair | null = null;
+  await mutateLettingsBook(located.orgId, (book) => {
+    const property =
+      book.properties.find((item) => item.id === located.property.id) ||
+      book.properties.find((item) => item.reportToken === input.token.trim());
+    const nextRoom =
+      property?.rooms.find((item) => item.id === input.roomId) ?? property?.rooms[0];
+    if (!property || !nextRoom) throw new Error("Choose a room.");
+    const repair = createRepair(book, {
+      propertyId: property.id,
+      roomId: nextRoom.id,
+      body: input.body,
+      channel: input.channel,
+      photo: input.photo,
+    });
+    created = repair;
+    return { ...book, repairs: [repair, ...book.repairs] };
   });
-  await saveHostedLettingsBook(located.orgId, {
-    ...located.book,
-    repairs: [repair, ...located.book.repairs],
-  });
-  return repair;
+  if (!created) throw new Error("Could not save that repair.");
+  return created;
 }
 
 export async function hostedConfirmation(input: {
@@ -219,14 +302,15 @@ export async function hostedConfirmation(input: {
     .eq("reference", reference)
     .maybeSingle();
   if (!data?.org_id) throw new Error("That repair reference was not found.");
-  const book = (await loadHostedLettingsBook(String(data.org_id)))!;
-  const before = book.repairs.find((item) => item.reference.toUpperCase() === reference);
-  const next = tryConfirmRepair(book, reference, input.tenantName, new Date().toISOString());
-  const after = next.repairs.find((item) => item.reference.toUpperCase() === reference);
-  if (!before || before.status === after?.status) {
-    throw new Error("That repair cannot be confirmed yet.");
-  }
-  await saveHostedLettingsBook(String(data.org_id), next);
+  await mutateLettingsBook(String(data.org_id), (book) => {
+    const before = book.repairs.find((item) => item.reference.toUpperCase() === reference);
+    const next = tryConfirmRepair(book, reference, input.tenantName, new Date().toISOString());
+    const after = next.repairs.find((item) => item.reference.toUpperCase() === reference);
+    if (!before || before.status === after?.status) {
+      throw new Error("That repair cannot be confirmed yet.");
+    }
+    return next;
+  });
 }
 
 export async function hostedInspectionSign(input: {
@@ -242,14 +326,14 @@ export async function hostedInspectionSign(input: {
     .eq("inspection_id", input.inspectionId)
     .maybeSingle();
   if (!data?.org_id) throw new Error("That inspection is not on this link.");
-  const book = (await loadHostedLettingsBook(String(data.org_id)))!;
-  const next = trySignInspection(
-    book,
-    input.inspectionId,
-    input.tenantName,
-    new Date().toISOString(),
+  await mutateLettingsBook(String(data.org_id), (book) =>
+    trySignInspection(
+      book,
+      input.inspectionId,
+      input.tenantName,
+      new Date().toISOString(),
+    ),
   );
-  await saveHostedLettingsBook(String(data.org_id), next);
 }
 
 export async function hostedFindRepair(reference: string): Promise<Repair | null> {

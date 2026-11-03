@@ -235,10 +235,11 @@ The browser tests start `next dev` on port 43123 (or reuse one that is already r
 
 With Supabase configured, the diary, public booking links, client portals, and the landlord desk persist on the server. They no longer need `DEMO_PUBLIC_INBOX`.
 
-1. Apply every migration in `supabase/migrations/`, including `20261029010000_agency_and_lettings_books.sql`.
+1. Apply every migration in `supabase/migrations/`, including `20261029010000_agency_and_lettings_books.sql` and `20261104120000_p0_honesty_hardening.sql`.
 2. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 3. Set Stripe, Twilio, Resend, cron, admin, and Namecheap secrets from `.env.example`.
-4. Deploy. After the first sign-in, open Diary and Lettings once so each workspace gets a hosted book and public link tokens.
-5. Copy the booking / client / repair links from the app — seeded demo tokens (`harbour`, `elm-grove`) are local-only.
+4. On Vercel Hobby, platform cron is daily only — wire cron-job.org every few minutes to `/api/social/cron/publish` and `/api/automations/cron/run` with `X-Cron-Secret`.
+5. Deploy. After the first sign-in, open Diary and Lettings once so each workspace gets a hosted book and public link tokens.
+6. Copy the booking / client / repair links from the app — seeded demo tokens (`harbour`, `elm-grove`) are local-only.
 
 Without Supabase, local demo mode still uses browser storage and the file inbox (non-production only).

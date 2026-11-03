@@ -2,7 +2,7 @@
 
 import { MenuSelect } from "@/components/ui/select";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useModuleSection } from "@/lib/nav/module-section";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -87,7 +87,7 @@ type Section = "repairs" | "rent" | "properties";
 
 async function fetchHostedLettings(
   getAuthToken: () => Promise<string | null>,
-): Promise<LettingsBook | null> {
+): Promise<{ book: LettingsBook; updatedAt: string } | null> {
   const token = await getAuthToken();
   if (!token) return null;
   const res = await fetch("/api/lettings/book", {
@@ -95,15 +95,20 @@ async function fetchHostedLettings(
     cache: "no-store",
   });
   if (!res.ok) return null;
-  const json = (await res.json()) as { available?: boolean; book?: LettingsBook };
-  if (!json.available || !json.book) return null;
-  return json.book;
+  const json = (await res.json()) as {
+    available?: boolean;
+    book?: LettingsBook;
+    updatedAt?: string | null;
+  };
+  if (!json.available || !json.book || !json.updatedAt) return null;
+  return { book: json.book, updatedAt: json.updatedAt };
 }
 
 async function putHostedLettings(
   getAuthToken: () => Promise<string | null>,
   book: LettingsBook,
-): Promise<LettingsBook> {
+  expectedUpdatedAt: string | null,
+): Promise<{ book: LettingsBook; updatedAt: string }> {
   const token = await getAuthToken();
   if (!token) throw new Error("Sign in required");
   const res = await fetch("/api/lettings/book", {
@@ -112,20 +117,24 @@ async function putHostedLettings(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(book),
+    body: JSON.stringify({ ...book, expectedUpdatedAt }),
   });
   const json = (await res.json().catch(() => null)) as
-    | { book?: LettingsBook; error?: string }
+    | { book?: LettingsBook; updatedAt?: string; error?: string }
     | null;
-  if (!res.ok || !json?.book) {
+  if (res.status === 409) {
+    throw new Error(json?.error || "This was updated elsewhere. Refresh and try again.");
+  }
+  if (!res.ok || !json?.book || !json.updatedAt) {
     throw new Error(json?.error || "Could not save lettings");
   }
-  return json.book;
+  return { book: json.book, updatedAt: json.updatedAt };
 }
 
 function useLettingsBook(orgId: string) {
   const { persistence, getAuthToken } = useAppSession();
   const [book, setBook] = useState<LettingsBook>(() => seedBook());
+  const updatedAtRef = useRef<string | null>(null);
   useEffect(() => {
     let cancel = false;
     const refresh = () => {
@@ -134,7 +143,8 @@ function useLettingsBook(orgId: string) {
           try {
             const hosted = await fetchHostedLettings(getAuthToken);
             if (!cancel && hosted) {
-              setBook(hosted);
+              updatedAtRef.current = hosted.updatedAt;
+              setBook(hosted.book);
               return;
             }
           } catch {
@@ -181,10 +191,19 @@ function useLettingsBook(orgId: string) {
     commit(next: LettingsBook) {
       setBook(next);
       if (persistence === "supabase") {
-        void putHostedLettings(getAuthToken, next)
-          .then((saved) => setBook(saved))
+        void putHostedLettings(getAuthToken, next, updatedAtRef.current)
+          .then((saved) => {
+            updatedAtRef.current = saved.updatedAt;
+            setBook(saved.book);
+          })
           .catch((err) => {
             toast.error(err instanceof Error ? err.message : "Could not save lettings");
+            void fetchHostedLettings(getAuthToken).then((hosted) => {
+              if (hosted) {
+                updatedAtRef.current = hosted.updatedAt;
+                setBook(hosted.book);
+              }
+            });
           });
         return;
       }

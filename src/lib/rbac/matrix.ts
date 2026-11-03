@@ -93,12 +93,16 @@ export function getRoleAccess(role: Role, module: ModuleId): AccessLevel {
   return RBAC_MATRIX[role][module];
 }
 
-export function canAccess(level: AccessLevel, required: AccessLevel): boolean {
+export function accessRank(level: AccessLevel): number {
   const rank: Record<AccessLevel, number> = {
     none: 0,
     view: 1,
     edit: 2,
     full: 3,
   };
-  return rank[level] >= rank[required];
+  return rank[level];
+}
+
+export function canAccess(level: AccessLevel, required: AccessLevel): boolean {
+  return accessRank(level) >= accessRank(required);
 }

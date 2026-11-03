@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { DND_BLOCK_MESSAGE } from "@/lib/crm/dnd";
+import { profileHasDndForLead } from "@/lib/crm/dnd-server";
 import { sendOutboundEmail } from "@/lib/email/service";
 import { sendOutboundSms } from "@/lib/messaging/service";
 import { isE164 } from "@/lib/phone/e164";
@@ -106,7 +108,13 @@ async function executeSequenceStep(
 
 export async function advanceEnrollment(
   supabase: SupabaseClient,
-  input: { orgId: string; leadId: string; sequenceId: string },
+  input: {
+    orgId: string;
+    leadId: string;
+    sequenceId: string;
+    /** Profile advancing the step — personal DND is checked for SMS/email. */
+    profileId?: string;
+  },
 ): Promise<AdvanceResult> {
   const { data: seqRow, error: seqError } = await supabase
     .from("message_sequences")
@@ -161,6 +169,22 @@ export async function advanceEnrollment(
 
   const step = steps[currentStep];
   const vars = sequenceVarsFromLead(lead);
+
+  if (
+    input.profileId &&
+    (step.type === "sms" || step.type === "email")
+  ) {
+    const dnd = await profileHasDndForLead(supabase, {
+      orgId: input.orgId,
+      profileId: input.profileId,
+      leadId: input.leadId,
+      email: lead.email ? String(lead.email) : null,
+      phone: lead.phone ? String(lead.phone) : null,
+    });
+    if (dnd) {
+      return { ok: false, error: DND_BLOCK_MESSAGE, currentStep };
+    }
+  }
 
   // Claim this step before sending so a double click or two agents can't both send it.
   const { data: claimed } = await supabase
