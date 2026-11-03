@@ -371,22 +371,14 @@ function ShellFrame({
         >
           <div className="relative flex items-center justify-center px-5 pt-4">
             <Link href={basePath} aria-label="OneStreet" className="flex justify-center">
-              <img
-                src="/brand/loader-mark-light.webp"
-                alt=""
-                width={512}
-                height={601}
-                draggable={false}
-                className="h-[6.75rem] w-auto dark:hidden"
-              />
-              {/* Floor glow is part of the dark render, so the house needs a taller frame to match the light mark. */}
+              {/* Floor-glow reflection mark — same asset and size in light and dark. */}
               <img
                 src="/brand/loader-mark-dark.webp"
                 alt=""
                 width={524}
                 height={706}
                 draggable={false}
-                className="hidden h-[8.6rem] w-auto dark:block"
+                className="h-[8.6rem] w-auto"
               />
             </Link>
             <button
