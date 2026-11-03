@@ -1888,7 +1888,7 @@ function ContactsDirectory({
                         {isContactDnd(contact.id) ? (
                           <Badge tone="warning">
                             <BellOff className="mr-1 inline h-3 w-3" />
-                            DND · your account
+                            DND
                           </Badge>
                         ) : null}
                       </div>
@@ -1939,7 +1939,7 @@ function ContactsDirectory({
                       aria-label={
                         isContactDnd(contact.id)
                           ? `Clear Do Not Disturb for ${contact.name}`
-                          : `Do Not Disturb ${contact.name} on your account`
+                          : `Do Not Disturb ${contact.name}`
                       }
                       onClick={() => {
                         void (async () => {
@@ -1949,9 +1949,7 @@ function ContactsDirectory({
                             const next = !isContactDnd(contact.id);
                             await setContactDnd(contact.id, next);
                             toast.success(
-                              next
-                                ? "Do Not Disturb on for your account"
-                                : "Do Not Disturb cleared for your account",
+                              next ? "Do Not Disturb on" : "Do Not Disturb cleared",
                             );
                           } catch (err) {
                             setError(

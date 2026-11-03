@@ -50,4 +50,4 @@ export function leadIsDndForUser(
 }
 
 export const DND_BLOCK_MESSAGE =
-  "You have this contact on Do Not Disturb. Turn DND off on the contact to message them from your account.";
+  "This contact is on Do Not Disturb. Turn DND off to message them.";

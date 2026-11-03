@@ -358,11 +358,7 @@ export function ConversationInbox({
     try {
       const next = !isContactDnd(linkedContact.id);
       await setContactDnd(linkedContact.id, next);
-      toast.success(
-        next
-          ? "Do Not Disturb on for your account"
-          : "Do Not Disturb cleared for your account",
-      );
+      toast.success(next ? "Do Not Disturb on" : "Do Not Disturb cleared");
     } catch (err) {
       const msg = asErrorMessage(err, "Could not update Do Not Disturb");
       onError(msg);
@@ -648,8 +644,8 @@ export function ConversationInbox({
                 aria-pressed={personalDnd}
                 aria-label={
                   personalDnd
-                    ? "Clear Do Not Disturb for your account"
-                    : "Do Not Disturb this contact on your account"
+                    ? "Clear Do Not Disturb"
+                    : "Do Not Disturb this contact"
                 }
                 onClick={() => void toggleThreadDnd()}
               >
@@ -671,8 +667,7 @@ export function ConversationInbox({
               <div className="flex items-start gap-2 border-b border-[var(--border)] bg-[var(--warning-soft,rgba(180,120,20,0.12))] px-4 py-2.5 text-sm">
                 <BellOff className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warning)]" aria-hidden />
                 <p className="text-[var(--foreground)]">
-                  Do Not Disturb is on for <span className="font-semibold">your account</span> only.
-                  Teammates can still message this contact.{" "}
+                  Do Not Disturb is on. Teammates can still message this contact.{" "}
                   <button
                     type="button"
                     className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline"
@@ -780,7 +775,7 @@ export function ConversationInbox({
               ) : null}
               {personalDnd ? (
                 <p className="mb-2 text-xs text-[var(--muted)]">
-                  Sending is paused on your account while Do Not Disturb is on.
+                  Sending is paused while Do Not Disturb is on.
                 </p>
               ) : null}
               {channel === "email" ? (
@@ -796,7 +791,7 @@ export function ConversationInbox({
                 <Textarea
                   rows={1}
                   value={draft}
-                  placeholder={personalDnd ? "Do Not Disturb is on for your account" : "Type a message"}
+                  placeholder={personalDnd ? "Do Not Disturb is on" : "Type a message"}
                   className="max-h-36 min-h-[2.75rem] flex-1 resize-none py-2"
                   disabled={personalDnd}
                   onChange={(event) => setDraft(event.target.value)}
