@@ -23,23 +23,55 @@ import type {
   OrgMember,
 } from "@/types";
 import { findMatchingContact } from "@/lib/crm/contact-match";
-import { ArrowLeft, BellOff, Mail, Phone, Search, Send, SquarePen } from "lucide-react";
+import {
+  ArrowDownUp,
+  ArrowLeft,
+  BellOff,
+  Clock3,
+  Inbox,
+  InboxIcon,
+  ListFilter,
+  Mail,
+  Phone,
+  Search,
+  Send,
+  SquarePen,
+  Star,
+} from "lucide-react";
 import {
   FromNumberSelect,
   defaultFromNumber,
   resolveOwnedNumbers,
 } from "@/components/crm/from-number-select";
 import { useAppSession } from "@/lib/app/session";
+import {
+  loadStarredLeadIds,
+  toggleStarredLeadId,
+} from "@/lib/crm/conversation-stars";
 
-type InboxFilter = "all" | "mine" | "reply" | "recent";
+type InboxFilter = "unread" | "all" | "recent" | "starred";
 type Channel = "sms" | "email";
+type SortOrder = "newest" | "oldest";
+type RefineFilter = "everyone" | "mine";
 
-const FILTERS: { id: InboxFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "mine", label: "Assigned to me" },
-  { id: "reply", label: "Needs reply" },
-  { id: "recent", label: "Recent" },
+const FILTERS: {
+  id: InboxFilter;
+  label: string;
+  Icon: typeof Inbox;
+}[] = [
+  { id: "unread", label: "Unread", Icon: Inbox },
+  { id: "all", label: "All", Icon: InboxIcon },
+  { id: "recent", label: "Recent", Icon: Clock3 },
+  { id: "starred", label: "Starred", Icon: Star },
 ];
+
+function formatBadgeCount(count: number) {
+  if (count <= 0) return "";
+  if (count < 1000) return String(count);
+  const thousands = count / 1000;
+  const rounded = thousands >= 10 ? Math.round(thousands) : Math.round(thousands * 10) / 10;
+  return `${rounded}K`;
+}
 
 function leadPhone(lead: Lead) {
   return (
@@ -200,10 +232,15 @@ export function ConversationInbox({
   ) => Promise<string | undefined>;
 }) {
   const { org } = useAppSession();
+  const orgId = org?.id || "";
   const ownedNumbers = resolveOwnedNumbers(org);
   const [fromNumber, setFromNumber] = useState(() => defaultFromNumber(ownedNumbers));
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<InboxFilter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
+  const [refine, setRefine] = useState<RefineFilter>("everyone");
+  const [refineOpen, setRefineOpen] = useState(false);
+  const [starredIds, setStarredIds] = useState<Set<string>>(() => new Set());
   const [channel, setChannel] = useState<Channel>("sms");
   const [draft, setDraft] = useState("");
   const [subject, setSubject] = useState("");
@@ -235,6 +272,10 @@ export function ConversationInbox({
       setFromNumber(next);
     }
   }, [fromNumber, ownedNumbers]);
+
+  useEffect(() => {
+    setStarredIds(loadStarredLeadIds(orgId, userId));
+  }, [orgId, userId]);
 
   useEffect(() => {
     if (!getAuthToken) return;
@@ -278,35 +319,43 @@ export function ConversationInbox({
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const weekAgo = Date.now() - 7 * 86_400_000;
-    return leads
-      .filter((lead) => {
-        const last = latestByLead.get(lead.id);
-        if (filter === "mine" && lead.assignedTo !== userId) return false;
-        if (filter === "reply" && last?.direction !== "inbound") return false;
-        if (filter === "recent" && new Date(activityAt(lead, last)).getTime() < weekAgo) {
-          return false;
-        }
-        if (!q) return true;
-        const phone = leadPhone(lead);
-        return (
-          lead.name.toLowerCase().includes(q) ||
-          (lead.email || "").toLowerCase().includes(q) ||
-          phone.toLowerCase().includes(q) ||
-          previewText(last).toLowerCase().includes(q)
-        );
-      })
-      .sort((a, b) =>
-        activityAt(b, latestByLead.get(b.id)).localeCompare(
-          activityAt(a, latestByLead.get(a.id)),
-        ),
+    const filtered = leads.filter((lead) => {
+      const last = latestByLead.get(lead.id);
+      if (refine === "mine" && lead.assignedTo !== userId) return false;
+      if (filter === "unread" && last?.direction !== "inbound") return false;
+      if (filter === "recent" && new Date(activityAt(lead, last)).getTime() < weekAgo) {
+        return false;
+      }
+      if (filter === "starred" && !starredIds.has(lead.id)) return false;
+      if (!q) return true;
+      const phone = leadPhone(lead);
+      return (
+        lead.name.toLowerCase().includes(q) ||
+        (lead.email || "").toLowerCase().includes(q) ||
+        phone.toLowerCase().includes(q) ||
+        previewText(last).toLowerCase().includes(q)
       );
-  }, [filter, latestByLead, leads, query, userId]);
+    });
+    filtered.sort((a, b) => {
+      const cmp = activityAt(b, latestByLead.get(b.id)).localeCompare(
+        activityAt(a, latestByLead.get(a.id)),
+      );
+      return sortOrder === "newest" ? cmp : -cmp;
+    });
+    return filtered;
+  }, [filter, latestByLead, leads, query, refine, sortOrder, starredIds, userId]);
 
-  const replyCount = useMemo(
+  const unreadCount = useMemo(
     () =>
       leads.filter((lead) => latestByLead.get(lead.id)?.direction === "inbound").length,
     [latestByLead, leads],
   );
+
+  function toggleStar(leadId: string) {
+    if (!orgId || !userId) return;
+    const nextStarred = !starredIds.has(leadId);
+    setStarredIds(toggleStarredLeadId(orgId, userId, leadId, nextStarred));
+  }
 
   const picked = leads.find((lead) => lead.id === selectedLeadId) ?? null;
   const shown = picked ?? rows[0] ?? null;
@@ -653,23 +702,136 @@ export function ConversationInbox({
           threadOpen && "max-lg:hidden",
         )}
       >
-        {canEdit ? (
-          <div className="px-3 pt-3">
-            <Button
-              type="button"
-              size="sm"
-              className="h-9 w-full rounded-full"
-              onClick={() => {
-                setFormKey((key) => key + 1);
-                setContactQuery("");
-                setCreateOpen(true);
-              }}
-            >
-              <SquarePen className="h-3.5 w-3.5" />
-              New conversation
-            </Button>
+        <div className="border-b border-[var(--border)] px-3 pb-2 pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-base font-semibold tracking-tight">Team inbox</h2>
+            <div className="flex items-center gap-0.5">
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-label="Refine conversations"
+                  aria-expanded={refineOpen}
+                  aria-pressed={refine !== "everyone"}
+                  onClick={() => setRefineOpen((open) => !open)}
+                  className={cn(
+                    "rounded-full p-2 text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]",
+                    (refineOpen || refine !== "everyone") && "text-[var(--accent)]",
+                  )}
+                >
+                  <ListFilter className="h-4 w-4" />
+                </button>
+                {refineOpen ? (
+                  <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-elevated)] py-1 shadow-lg">
+                    <button
+                      type="button"
+                      className={cn(
+                        "block w-full px-3 py-2 text-left text-sm",
+                        refine === "everyone"
+                          ? "bg-[var(--accent-soft)] font-semibold text-[var(--foreground)]"
+                          : "text-[var(--muted)] hover:bg-[var(--surface-muted)]",
+                      )}
+                      onClick={() => {
+                        setRefine("everyone");
+                        setRefineOpen(false);
+                      }}
+                    >
+                      Everyone
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        "block w-full px-3 py-2 text-left text-sm",
+                        refine === "mine"
+                          ? "bg-[var(--accent-soft)] font-semibold text-[var(--foreground)]"
+                          : "text-[var(--muted)] hover:bg-[var(--surface-muted)]",
+                      )}
+                      onClick={() => {
+                        setRefine("mine");
+                        setRefineOpen(false);
+                      }}
+                    >
+                      Assigned to me
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                aria-label={
+                  sortOrder === "newest" ? "Sort oldest first" : "Sort newest first"
+                }
+                onClick={() =>
+                  setSortOrder((current) => (current === "newest" ? "oldest" : "newest"))
+                }
+                className="rounded-full p-2 text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+              >
+                <ArrowDownUp className="h-4 w-4" />
+              </button>
+              {canEdit ? (
+                <button
+                  type="button"
+                  aria-label="New conversation"
+                  onClick={() => {
+                    setFormKey((key) => key + 1);
+                    setContactQuery("");
+                    setCreateOpen(true);
+                  }}
+                  className="rounded-full p-2 text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                >
+                  <SquarePen className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
           </div>
-        ) : null}
+
+          <div
+            className="mt-3 grid grid-cols-4 gap-1"
+            role="tablist"
+            aria-label="Filter conversations"
+          >
+            {FILTERS.map((item) => {
+              const active = filter === item.id;
+              const Icon = item.Icon;
+              const badge =
+                item.id === "unread" ? formatBadgeCount(unreadCount) : "";
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setFilter(item.id)}
+                  className={cn(
+                    "relative flex flex-col items-center gap-1 rounded-lg px-1 pb-2 pt-1 text-[11px] font-medium transition",
+                    active
+                      ? "text-[var(--foreground)]"
+                      : "text-[var(--muted)] hover:text-[var(--foreground)]",
+                  )}
+                >
+                  <span className="relative inline-flex h-7 w-7 items-center justify-center">
+                    <Icon
+                      className={cn("h-5 w-5", item.id === "starred" && active && "fill-current")}
+                      strokeWidth={active ? 2.25 : 1.75}
+                    />
+                    {badge ? (
+                      <span className="absolute -right-2 -top-1 rounded-full bg-[var(--accent)] px-1 py-px text-[9px] font-bold leading-none text-[var(--accent-foreground)]">
+                        {badge}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span>{item.label}</span>
+                  <span
+                    className={cn(
+                      "absolute inset-x-3 bottom-0 h-0.5 rounded-full",
+                      active ? "bg-[var(--accent)]" : "bg-transparent",
+                    )}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="relative px-3 pb-2 pt-2">
           <Search className="pointer-events-none absolute left-6 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--muted)]" />
           <input
@@ -680,33 +842,6 @@ export function ConversationInbox({
             aria-label="Search conversations"
             className="h-9 w-full rounded-full border border-[var(--border)] bg-[var(--surface-muted)] pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[var(--ring)]"
           />
-        </div>
-        <div
-          className="flex gap-1 overflow-x-auto px-3 pb-2"
-          role="group"
-          aria-label="Filter conversations"
-        >
-          {FILTERS.map((item) => {
-            const active = filter === item.id;
-            const count = item.id === "reply" ? replyCount : 0;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setFilter(item.id)}
-                className={cn(
-                  "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
-                  active
-                    ? "bg-[var(--foreground)] text-[var(--canvas)]"
-                    : "text-[var(--muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]",
-                )}
-              >
-                {item.label}
-                {count > 0 ? <span className="ml-1 tabular-nums">{count}</span> : null}
-              </button>
-            );
-          })}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
           {rows.length === 0 ? (
@@ -724,41 +859,71 @@ export function ConversationInbox({
             rows.map((lead) => {
               const last = latestByLead.get(lead.id);
               const active = shown?.id === lead.id;
-              const needsReply = last?.direction === "inbound";
+              const unread = last?.direction === "inbound";
+              const starred = starredIds.has(lead.id);
               return (
-                <button
+                <div
                   key={lead.id}
-                  type="button"
-                  onClick={() => onSelect(lead.id)}
                   className={cn(
-                    "flex w-full items-start gap-3 border-b border-[var(--border)] px-3 py-3 text-left",
+                    "group flex w-full items-start gap-2 border-b border-[var(--border)] pr-1",
                     active
                       ? "bg-[var(--accent-soft)] shadow-[inset_3px_0_0_var(--accent)]"
                       : "hover:bg-[var(--surface-muted)]",
                   )}
                 >
-                  <Avatar name={lead.name} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="truncate text-sm font-semibold">{lead.name}</span>
-                      <span className="shrink-0 text-[11px] text-[var(--muted)]">
-                        {formatStamp(activityAt(lead, last), market)}
-                      </span>
-                    </span>
-                    <span className="mt-0.5 flex items-center gap-2">
-                      <span className="truncate text-[13px] text-[var(--muted)]">
-                        {last?.channel === "email" ? "Email · " : last ? "Text · " : ""}
-                        {previewText(last)}
-                      </span>
-                      {needsReply ? (
+                  <button
+                    type="button"
+                    onClick={() => onSelect(lead.id)}
+                    className="flex min-w-0 flex-1 items-start gap-3 px-3 py-3 text-left"
+                  >
+                    <Avatar name={lead.name} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline justify-between gap-2">
                         <span
-                          className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]"
-                          aria-label="Needs a reply"
-                        />
-                      ) : null}
+                          className={cn(
+                            "truncate text-sm",
+                            unread ? "font-bold" : "font-semibold",
+                          )}
+                        >
+                          {lead.name}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-[var(--muted)]">
+                          {formatStamp(activityAt(lead, last), market)}
+                        </span>
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "truncate text-[13px]",
+                            unread ? "font-medium text-[var(--foreground)]" : "text-[var(--muted)]",
+                          )}
+                        >
+                          {last?.channel === "email" ? "Email · " : last ? "Text · " : ""}
+                          {previewText(last)}
+                        </span>
+                        {unread ? (
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]"
+                            aria-label="Unread"
+                          />
+                        ) : null}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={starred ? "Unstar conversation" : "Star conversation"}
+                    aria-pressed={starred}
+                    onClick={() => toggleStar(lead.id)}
+                    className={cn(
+                      "mt-3 shrink-0 rounded-full p-2 text-[var(--muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--foreground)]",
+                      starred && "text-[var(--accent)]",
+                      !starred && "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+                    )}
+                  >
+                    <Star className={cn("h-3.5 w-3.5", starred && "fill-current")} />
+                  </button>
+                </div>
               );
             })
           )}
@@ -791,6 +956,24 @@ export function ConversationInbox({
                   {phone || shown.email || "No contact details"}
                 </p>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+                aria-label={
+                  starredIds.has(shown.id) ? "Unstar conversation" : "Star conversation"
+                }
+                aria-pressed={starredIds.has(shown.id)}
+                onClick={() => toggleStar(shown.id)}
+              >
+                <Star
+                  className={cn(
+                    "h-4 w-4",
+                    starredIds.has(shown.id) && "fill-current text-[var(--accent)]",
+                  )}
+                />
+              </Button>
               {phone ? (
                 <Button
                   type="button"
