@@ -99,10 +99,17 @@ export default function CheckoutPage() {
           market,
           email: pending.email,
           orgName: pending.orgName,
+          acceptTerms: true as const,
         }),
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || "Checkout failed");
+      if (!res.ok) {
+        if (typeof data?.inviteUrl === "string") {
+          window.location.assign(data.inviteUrl);
+          return;
+        }
+        throw new Error(data?.error || "Checkout failed");
+      }
       if (data?.mode === "live" && typeof data.url === "string") {
         window.location.assign(data.url);
         return;

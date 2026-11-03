@@ -70,6 +70,8 @@ describe("signup checkout decision", () => {
       email: pending.email,
       org_name: pending.orgName,
       source: "signup",
+      accept_terms: "false",
+      terms_version: "",
     });
     expect(Object.keys(metadata)).not.toContain("password");
   });

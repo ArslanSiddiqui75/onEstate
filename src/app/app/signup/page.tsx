@@ -29,6 +29,12 @@ export default function AppSignupPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const inviteToken = params.get("token") || params.get("invite");
+    if (inviteToken) {
+      router.replace(`/app/invite?token=${encodeURIComponent(inviteToken)}`);
+      return;
+    }
     const pending = loadPendingSignup();
     if (pending) {
       setName(pending.name);
@@ -39,9 +45,11 @@ export default function AppSignupPage() {
       setPlan(pending.plan);
       setAcceptTerms(Boolean(pending.acceptTerms));
     }
-    const requested = new URLSearchParams(window.location.search).get("plan");
+    const emailParam = params.get("email");
+    if (emailParam && !pending) setEmail(emailParam);
+    const requested = params.get("plan");
     if (isPlanId(requested)) setPlan(requested);
-  }, []);
+  }, [router]);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

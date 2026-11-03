@@ -711,6 +711,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         const supabase = createBrowserSupabaseClient();
         if (input.password) {
           // Password-based signup (instant, no email confirmation needed)
+          const termsAt = new Date().toISOString();
           const { error } = await supabase.auth.signUp({
             email: input.email,
             password: input.password,
@@ -722,6 +723,8 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
                 brand: brand.id,
                 market: brand.market,
                 plan: input.plan,
+                accepted_terms_at: termsAt,
+                accepted_terms_version: "2026-11-04",
               },
             },
           });

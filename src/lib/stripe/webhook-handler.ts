@@ -150,6 +150,33 @@ export async function handleStripeWebhook(request: Request, only?: Market) {
         typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
       const customerId =
         typeof session.customer === "string" ? session.customer : session.customer?.id;
+
+      // Durable signup intent — survives abandoned browsers until attach.
+      if (session.metadata?.source === "signup") {
+        await supabase.from("signup_checkout_intents").upsert(
+          {
+            stripe_session_id: session.id,
+            email: (
+              session.customer_details?.email ||
+              session.customer_email ||
+              session.metadata.email ||
+              ""
+            )
+              .trim()
+              .toLowerCase(),
+            org_name: session.metadata.org_name || "Workspace",
+            plan: session.metadata.plan || "solo",
+            market: session.metadata.market || market,
+            accept_terms: session.metadata.accept_terms === "true",
+            status: "paid",
+            stripe_customer_id: customerId || null,
+            stripe_subscription_id: subscriptionId || null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "stripe_session_id" },
+        );
+      }
+
       if (orgId && subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         const patch = subscriptionPatch(subscription);

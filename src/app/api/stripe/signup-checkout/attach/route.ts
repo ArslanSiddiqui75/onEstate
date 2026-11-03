@@ -111,6 +111,28 @@ export async function POST(request: Request) {
     if (error) {
       return NextResponse.json({ error: "Could not link the Stripe subscription." }, { status: 502 });
     }
+
+    if (metadata.accept_terms === "true") {
+      await supabase
+        .from("profiles")
+        .update({
+          accepted_terms_at: new Date().toISOString(),
+          accepted_terms_version: metadata.terms_version || "2026-11-04",
+        })
+        .eq("id", profile.userId);
+    }
+
+    await supabase
+      .from("signup_checkout_intents")
+      .update({
+        status: "attached",
+        attached_org_id: profile.orgId,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("stripe_session_id", sessionId);
+
     return NextResponse.json({ ok: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not link the Stripe subscription.";

@@ -4,6 +4,8 @@ import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { checkSeatLimit } from "@/lib/access";
 import { canInvite, canInviteRole } from "@/lib/rbac/invites";
+import { newInviteToken } from "@/lib/team/invite-token";
+import { workspaceBlocked } from "@/lib/server/require-module";
 import type { PlanId, Role } from "@/types";
 
 const bodySchema = z.object({
@@ -31,6 +33,12 @@ export async function POST(request: Request) {
   const profile = await resolveProfileFromRequest(request);
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+  if (workspaceBlocked(profile)) {
+    return NextResponse.json(
+      { error: "This workspace is paused. Update billing before inviting teammates." },
+      { status: 402 },
+    );
   }
 
   const json = await request.json().catch(() => null);
@@ -107,6 +115,16 @@ export async function POST(request: Request) {
     );
   }
 
+  // Clear prior accepted/revoked rows so a re-invite can insert cleanly if the
+  // partial unique index isn't applied yet on hosted.
+  await supabase
+    .from("team_invites")
+    .delete()
+    .eq("org_id", profile.orgId)
+    .eq("email", email)
+    .neq("status", "pending");
+
+  const token = newInviteToken();
   const { error: insertError } = await supabase.from("team_invites").insert({
     org_id: profile.orgId,
     email,
@@ -114,6 +132,7 @@ export async function POST(request: Request) {
     role,
     invited_by: profile.userId,
     status: "pending",
+    token,
   });
 
   if (insertError) {
@@ -141,7 +160,7 @@ export async function POST(request: Request) {
     });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
-  const signupUrl = `${appUrl}/app/signup?email=${encodeURIComponent(email)}`;
+  const inviteUrl = `${appUrl}/app/invite?token=${encodeURIComponent(token)}`;
 
   let emailed = false;
   const resendKey = process.env.RESEND_API_KEY;
@@ -158,7 +177,7 @@ export async function POST(request: Request) {
           from,
           to: email,
           subject: `You're invited to ${org.name} on 0neStreet`,
-          text: `Hi ${name},\n\nYou've been invited to join ${org.name} as ${role.replace("_", " ")}.\n\nCreate your account to accept:\n${signupUrl}\n\nUse this email address when signing up.`,
+          text: `Hi ${name},\n\nYou've been invited to join ${org.name} as ${role.replace("_", " ")}.\n\nAccept the invite (no payment):\n${inviteUrl}\n\nUse ${email} when you create your password.`,
         }),
       });
       emailed = res.ok;
@@ -170,9 +189,10 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     emailed,
-    signupUrl,
+    inviteUrl,
+    signupUrl: inviteUrl,
     message: emailed
       ? `Invite sent to ${email}`
-      : `Invite saved for ${email}. Share the signup link with them.`,
+      : `Invite saved for ${email}. Share the invite link with them.`,
   });
 }

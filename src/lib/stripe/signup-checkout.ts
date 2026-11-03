@@ -28,6 +28,8 @@ export function signupCheckoutMetadata(input: {
   market: Market;
   email: string;
   orgName: string;
+  acceptTerms?: boolean;
+  termsVersion?: string;
 }) {
   return {
     plan: input.plan,
@@ -35,6 +37,8 @@ export function signupCheckoutMetadata(input: {
     email: input.email,
     org_name: input.orgName,
     source: "signup",
+    accept_terms: input.acceptTerms ? "true" : "false",
+    terms_version: input.termsVersion || "",
   };
 }
 
