@@ -25,14 +25,6 @@ export const PLATFORM_ADMIN_ACCOUNTS: PlatformAdminUser[] = [
   },
 ];
 
-/** Compile-time stripped from production client bundles. */
-export const DEV_ADMIN_PASSWORD_HINT =
-  process.env.NODE_ENV === "production" ? "" : "CertifiedAdmin1!";
-
-export function isPlatformAdminDevHintsEnabled() {
-  return process.env.NODE_ENV !== "production";
-}
-
 export function adminCanManageBilling(role: PlatformAdminRole) {
   return role === "super_admin" || role === "billing_admin";
 }

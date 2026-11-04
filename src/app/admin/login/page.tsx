@@ -5,27 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
-import {
-  PLATFORM_ADMIN_ACCOUNTS,
-  DEV_ADMIN_PASSWORD_HINT,
-  isPlatformAdminDevHintsEnabled,
-} from "@/lib/admin/accounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
-import { Avatar } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { toast } from "@/components/ui/toast";
 
 export default function AdminLoginPage() {
   const { signIn } = useAdminSession();
   const router = useRouter();
-  const hints = isPlatformAdminDevHintsEnabled();
   const emailId = useId();
   const passwordId = useId();
 
-  const [email, setEmail] = useState(hints ? "admin@certified.local" : "");
-  const [password, setPassword] = useState(hints ? DEV_ADMIN_PASSWORD_HINT : "");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -160,7 +153,7 @@ export default function AdminLoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@0nestreet.com"
                     autoComplete="username"
-                    autoFocus={!hints}
+                    autoFocus
                     className="h-12 rounded-[1rem] px-4 text-[15px]"
                   />
                 </div>
@@ -205,40 +198,6 @@ export default function AdminLoginPage() {
                   {loading ? "Signing in…" : "Enter the console"}
                 </Button>
               </form>
-
-              {hints ? (
-                <div className="mt-8">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                    Local operators
-                  </p>
-                  <ul className="mt-3 grid gap-2">
-                    {PLATFORM_ADMIN_ACCOUNTS.map((account) => (
-                      <li key={account.id}>
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-3 rounded-[1rem] border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-left text-sm transition hover:border-[var(--accent)] hover:bg-[var(--surface-muted)]"
-                          onClick={() => {
-                            setEmail(account.email);
-                            setPassword(DEV_ADMIN_PASSWORD_HINT);
-                            setError("");
-                          }}
-                        >
-                          <Avatar name={account.name} size="sm" />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-medium">{account.name}</span>
-                            <span className="block truncate text-xs text-[var(--muted)]">
-                              {account.email}
-                            </span>
-                          </span>
-                          <span className="shrink-0 text-xs capitalize text-[var(--muted)]">
-                            {account.role.replace("_", " ")}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
 
               <p className="mt-6 text-sm text-[var(--muted)]">
                 Looking for your workspace?{" "}
