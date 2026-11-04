@@ -90,8 +90,8 @@ export default function AppLoginPage() {
 
       <div className="login-body relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
         <main className="flex flex-1 flex-col justify-start pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:pt-4 lg:justify-center lg:py-8">
-          <div className="my-0 flex w-full flex-col gap-4 sm:gap-5 lg:my-auto lg:grid lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)] lg:gap-0 lg:overflow-hidden lg:rounded-[1.75rem] lg:border lg:border-[var(--border)] lg:bg-[var(--surface-elevated)] lg:shadow-[var(--shadow-float)] lg:ring-1 lg:ring-black/5 dark:lg:ring-white/10">
-            <aside className="relative flex min-h-[18.5rem] flex-col justify-between overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#071015] p-6 text-white shadow-[var(--shadow-float)] sm:min-h-[22rem] sm:rounded-[1.75rem] sm:p-8 lg:min-h-[40rem] lg:rounded-none lg:border-0 lg:border-r lg:border-white/10 lg:p-10 lg:shadow-none xl:p-12">
+          <div className="my-0 flex w-full flex-col overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] dark:ring-white/10 lg:my-auto lg:grid lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
+            <aside className="relative flex min-h-[18.5rem] flex-col justify-between overflow-hidden border-b border-white/10 bg-[#071015] p-6 text-white sm:min-h-[22rem] sm:p-8 lg:min-h-[40rem] lg:border-b-0 lg:border-r lg:border-white/10 lg:p-10 xl:p-12">
               <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(23,186,168,0.22),transparent_58%)]" />
               <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl" />
@@ -125,7 +125,7 @@ export default function AppLoginPage() {
               </div>
             </aside>
 
-            <div className="flex flex-col justify-center rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-7 shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] sm:px-10 sm:py-12 dark:ring-white/10 lg:rounded-none lg:border-0 lg:px-12 lg:shadow-none lg:ring-0">
+            <div className="flex flex-col justify-center bg-[var(--surface-elevated)] px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
               <h1 className="font-sans text-[2.05rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.6rem]">
                 Sign in
               </h1>
