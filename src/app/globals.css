@@ -601,30 +601,19 @@ html,
   background: var(--canvas);
 }
 
-.login-field {
+.login-field-mobile {
   position: relative;
   z-index: 1;
   display: flex;
   justify-content: center;
-  order: 2;
+  padding: 0.25rem 0 0.5rem;
   overflow: visible;
   pointer-events: none;
-  /* Distance from the viewport edge to the card: half the leftover width
-     outside the max-w-5xl column, plus that column's horizontal padding. */
-  --login-space: calc((100% - 64rem) / 2 + 1.5rem);
-}
-
-.login-screen > header {
-  order: 1;
-}
-
-.login-body {
-  order: 3;
 }
 
 .login-bg {
   position: relative;
-  width: min(19.5rem, 72vw);
+  width: min(11.5rem, 46vw);
   height: auto;
   user-select: none;
 }
@@ -641,30 +630,21 @@ html,
   display: block;
 }
 
-/* Landscape phones are too short for a large mark above the form. */
-@media (max-width: 1279px) and (max-height: 520px) {
-  .login-bg,
-  .dark .login-bg-dark {
+.login-panel-mark {
+  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.35));
+  animation: logo-float 3.6s ease-in-out infinite;
+}
+
+/* Landscape phones / short viewports: hide the mobile mark above the form. */
+@media (max-height: 520px) {
+  .login-field-mobile {
     display: none;
   }
 }
 
-@media (min-width: 1280px) {
-  .login-field {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    display: block;
-    order: 0;
-    overflow: hidden;
-  }
-
-  .login-bg {
-    position: absolute;
-    width: min(27.5rem, calc((var(--login-space) - 1.5rem) * 1.26));
-    left: calc(var(--login-space) / 2);
-    top: 50%;
-    transform: translate(-50%, -50%);
+@media (min-width: 1024px) {
+  .login-field-mobile {
+    display: none;
   }
 }
 
@@ -713,7 +693,8 @@ html,
   .animate-float-slow,
   .animate-pulse-ring,
   body::before,
-  .logo-loader-mark {
+  .logo-loader-mark,
+  .login-panel-mark {
     animation: none;
   }
 

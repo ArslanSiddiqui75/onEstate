@@ -30,22 +30,22 @@ export function LogoLoader({
       <div
         className={cn(
           "logo-loader-mark relative",
-          layout === "compact" ? "h-[7.5rem] w-[6.25rem]" : "h-[14.2rem] w-[12rem]",
+          layout === "compact" ? "h-[6.75rem] w-[6rem]" : "h-[12.5rem] w-[11rem]",
         )}
       >
         <img
           src="/brand/loader-mark-light.webp"
           alt=""
-          width={618}
-          height={860}
+          width={487}
+          height={560}
           draggable={false}
           className="absolute inset-0 h-full w-full object-contain dark:hidden"
         />
         <img
           src="/brand/loader-mark-dark.webp"
           alt=""
-          width={640}
-          height={853}
+          width={475}
+          height={516}
           draggable={false}
           className="absolute inset-0 hidden h-full w-full object-contain dark:block"
         />

@@ -374,18 +374,18 @@ function ShellFrame({
               <img
                 src="/brand/loader-mark-light.webp"
                 alt=""
-                width={618}
-                height={860}
+                width={487}
+                height={560}
                 draggable={false}
-                className="h-[8.6rem] w-auto dark:hidden"
+                className="h-[7.25rem] w-auto dark:hidden"
               />
               <img
                 src="/brand/loader-mark-dark.webp"
                 alt=""
-                width={640}
-                height={853}
+                width={475}
+                height={516}
                 draggable={false}
-                className="hidden h-[8.6rem] w-auto dark:block"
+                className="hidden h-[7.25rem] w-auto dark:block"
               />
             </Link>
             <button
