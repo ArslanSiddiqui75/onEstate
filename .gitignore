@@ -50,3 +50,6 @@ supabase/.temp/
 # Playwright
 /test-results/
 /playwright-report/
+
+# Local Vercel file-deploy staging (never commit)
+.tmp-vercel-upload/
