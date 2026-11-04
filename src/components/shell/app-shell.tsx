@@ -35,6 +35,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NoticeBell } from "@/components/notices/notice-bell";
 import { useBrand } from "@/components/brand/brand-provider";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { useTheme } from "@/lib/theme/provider";
 import { settingsSectionFor } from "@/lib/nav/settings-sections";
 
@@ -369,17 +370,9 @@ function ShellFrame({
               : "border border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--foreground)] shadow-[var(--shadow-soft)]",
           )}
         >
-          <div className="relative flex items-center justify-center px-5 pt-4">
-            <Link href={basePath} aria-label="OneStreet" className="flex justify-center">
-              {/* Floor-glow reflection mark — same asset and size in light and dark. */}
-              <img
-                src="/brand/loader-mark-dark.webp"
-                alt=""
-                width={524}
-                height={706}
-                draggable={false}
-                className="h-[8.6rem] w-auto"
-              />
+          <div className="relative flex items-center px-5 pt-5">
+            <Link href={basePath} aria-label="OneStreet" className="inline-flex min-w-0">
+              <BrandMark tone={ink ? "dark" : "auto"} className="text-xl" />
             </Link>
             <button
               className={cn(

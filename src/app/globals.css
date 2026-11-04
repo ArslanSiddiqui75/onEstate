@@ -596,8 +596,9 @@ html,
   border-radius: var(--radius-sm);
 }
 
-/* Sign-in mark. One reflection render for both themes (floor glow is in the
-   artwork). Sized to the dark-theme hero so light and dark match. */
+/* Sign-in studio. Each theme uses its own render, faded to nothing at the
+   edges so it sits on the canvas instead of a rectangle. Width stays under
+   the source size so the sculpture is never blown up. */
 .login-screen {
   background: var(--canvas);
 }
@@ -625,16 +626,27 @@ html,
 
 .login-bg {
   position: relative;
-  /* Match the dark-theme loader mark: taller frame so the house + floor glow
-     read at the same visual weight as the old light-only crop. */
-  width: min(19.5rem, 72vw);
+  width: min(15.5rem, 60vw);
   height: auto;
   user-select: none;
 }
 
+.login-bg-dark {
+  display: none;
+}
+
+.dark .login-bg-light {
+  display: none;
+}
+
+.dark .login-bg-dark {
+  display: block;
+}
+
 /* Landscape phones are too short for a large mark above the form. */
 @media (max-width: 1279px) and (max-height: 520px) {
-  .login-bg {
+  .login-bg,
+  .dark .login-bg-dark {
     display: none;
   }
 }
@@ -651,7 +663,7 @@ html,
 
   .login-bg {
     position: absolute;
-    width: min(27.5rem, calc((var(--login-space) - 1.5rem) * 1.26));
+    width: min(22rem, calc(var(--login-space) - 1.5rem));
     left: calc(var(--login-space) / 2);
     top: 50%;
     transform: translate(-50%, -50%);
