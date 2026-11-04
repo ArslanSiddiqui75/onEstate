@@ -95,17 +95,7 @@ export default function AppLoginPage() {
               <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(23,186,168,0.22),transparent_58%)]" />
               <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl" />
-              <Link href={home} className="relative z-10 inline-flex" aria-label="OneStreet">
-                <img
-                  src="/brand/logo-dark.png"
-                  alt="OneStreet"
-                  width={1359}
-                  height={354}
-                  draggable={false}
-                  className="h-8 w-auto max-w-[12rem] sm:h-10 sm:max-w-[14rem]"
-                />
-              </Link>
-              <div className="relative flex flex-1 items-center justify-center py-4 sm:py-6 lg:py-8">
+              <div className="relative flex flex-1 items-center justify-center py-6 sm:py-8 lg:py-10">
                 <img
                   src="/brand/loader-mark-dark.webp"
                   alt=""

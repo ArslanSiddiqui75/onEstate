@@ -5,24 +5,44 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
+import type { PlatformAdminRole } from "@/lib/admin/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { toast } from "@/components/ui/toast";
 
+const GATE_COPY: Record<
+  PlatformAdminRole,
+  { headline: string; support: string }
+> = {
+  super_admin: {
+    headline: "One console.",
+    support: "Subscriptions, tenants, and the audit trail.",
+  },
+  billing_admin: {
+    headline: "Billing console.",
+    support: "Plans, invoices, and subscription control.",
+  },
+  support_admin: {
+    headline: "Support console.",
+    support: "Accounts, access, and tenant assistance.",
+  },
+};
+
 /**
  * Operator lock screen. The public URL is an opaque single-segment gate
  * rewritten here; the slug from the address bar is posted as `gate` so the
  * API can bind credentials to that role only.
  */
-export function AdminGateLogin() {
+export function AdminGateLogin({ role }: { role: PlatformAdminRole }) {
   const { signIn } = useAdminSession();
   const router = useRouter();
   const pathname = usePathname();
   const gate = pathname.split("/").filter(Boolean)[0] || "";
   const emailId = useId();
   const passwordId = useId();
+  const copy = GATE_COPY[role];
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -93,17 +113,7 @@ export function AdminGateLogin() {
               <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,rgba(23,186,168,0.22),transparent_58%)]" />
               <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl" />
-              <Link href="/UK" className="relative z-10 inline-flex" aria-label="OneStreet">
-                <img
-                  src="/brand/logo-dark.png"
-                  alt="OneStreet"
-                  width={1359}
-                  height={354}
-                  draggable={false}
-                  className="h-8 w-auto max-w-[12rem] sm:h-10 sm:max-w-[14rem]"
-                />
-              </Link>
-              <div className="relative flex flex-1 items-center justify-center py-4 sm:py-6">
+              <div className="relative flex flex-1 items-center justify-center py-6 sm:py-8">
                 <img
                   src="/brand/loader-mark-dark.webp"
                   alt=""
@@ -115,10 +125,10 @@ export function AdminGateLogin() {
               </div>
               <div className="relative max-w-sm">
                 <h2 className="font-sans text-[2.15rem] font-semibold leading-[0.92] tracking-[-0.045em] sm:text-[2.6rem] lg:text-[3.25rem]">
-                  One console.
+                  {copy.headline}
                 </h2>
                 <p className="mt-3 text-[14px] leading-relaxed text-white/70 sm:mt-4 sm:text-[15px] lg:mt-5">
-                  Subscriptions, tenants, and the audit trail.
+                  {copy.support}
                 </p>
               </div>
             </aside>
