@@ -137,7 +137,7 @@ export default function AdminLoginPage() {
                 Platform sign in
               </h1>
               <p className="mt-2.5 text-balance text-[15px] leading-snug text-[var(--muted)]">
-                Enter the console for tenants, billing, and support across UK and US.
+                For Official Use Only
               </p>
 
               <form onSubmit={onSubmit} className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
