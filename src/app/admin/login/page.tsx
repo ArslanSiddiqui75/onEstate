@@ -76,9 +76,9 @@ export default function AdminLoginPage() {
       </header>
 
       <div className="login-body relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
-        <main className="flex flex-1 flex-col justify-start pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 lg:justify-center lg:py-8">
-          <div className="my-0 grid w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] lg:my-auto dark:ring-white/10 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
-            <aside className="relative hidden min-h-[40rem] flex-col justify-between overflow-hidden border-white/10 bg-[#071015] p-10 text-white lg:flex lg:border-r xl:p-12">
+        <main className="flex flex-1 flex-col justify-start pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:pt-4 lg:justify-center lg:py-8">
+          <div className="my-0 flex w-full flex-col gap-4 sm:gap-5 lg:my-auto lg:grid lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)] lg:gap-0 lg:overflow-hidden lg:rounded-[1.75rem] lg:border lg:border-[var(--border)] lg:bg-[var(--surface-elevated)] lg:shadow-[var(--shadow-float)] lg:ring-1 lg:ring-black/5 dark:lg:ring-white/10">
+            <aside className="relative flex min-h-[18.5rem] flex-col justify-between overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#071015] p-6 text-white shadow-[var(--shadow-float)] sm:min-h-[22rem] sm:rounded-[1.75rem] sm:p-8 lg:min-h-[40rem] lg:rounded-none lg:border-0 lg:border-r lg:border-white/10 lg:p-10 lg:shadow-none xl:p-12">
               <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,rgba(23,186,168,0.22),transparent_58%)]" />
               <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl" />
@@ -89,36 +89,33 @@ export default function AdminLoginPage() {
                   width={1359}
                   height={354}
                   draggable={false}
-                  className="h-10 w-auto max-w-[14rem]"
+                  className="h-8 w-auto max-w-[12rem] sm:h-10 sm:max-w-[14rem]"
                 />
               </Link>
-              <div className="relative flex flex-1 items-center justify-center py-6">
+              <div className="relative flex flex-1 items-center justify-center py-4 sm:py-6">
                 <img
                   src="/brand/loader-mark-dark.webp"
                   alt=""
                   width={475}
                   height={516}
                   draggable={false}
-                  className="login-panel-mark h-auto w-[min(15.5rem,68%)] object-contain"
+                  className="login-panel-mark h-auto w-[min(10.5rem,44%)] object-contain sm:w-[min(13rem,54%)] lg:w-[min(15.5rem,68%)]"
                 />
               </div>
               <div className="relative max-w-sm">
-                <h2 className="font-sans text-[3.25rem] font-semibold leading-[0.92] tracking-[-0.045em]">
+                <h2 className="font-sans text-[2.15rem] font-semibold leading-[0.92] tracking-[-0.045em] sm:text-[2.6rem] lg:text-[3.25rem]">
                   One console.
                 </h2>
-                <p className="mt-5 text-[15px] leading-relaxed text-white/70">
+                <p className="mt-3 text-[14px] leading-relaxed text-white/70 sm:mt-4 sm:text-[15px] lg:mt-5">
                   Subscriptions, tenants, and the audit trail.
                 </p>
               </div>
             </aside>
 
-            <div className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
+            <div className="flex flex-col justify-center rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-7 shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] sm:px-10 sm:py-12 dark:ring-white/10 lg:rounded-none lg:border-0 lg:px-12 lg:shadow-none lg:ring-0">
               <h1 className="font-sans text-[2.05rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.6rem]">
                 Sign in
               </h1>
-              <p className="mt-2.5 text-balance text-[15px] leading-snug text-[var(--muted)] lg:hidden">
-                Subscriptions, tenants, and the audit trail.
-              </p>
 
               <form onSubmit={onSubmit} className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
                 <div className="space-y-1.5">

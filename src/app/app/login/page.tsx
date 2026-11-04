@@ -89,133 +89,129 @@ export default function AppLoginPage() {
       </header>
 
       <div className="login-body relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
-      <main className="flex flex-1 flex-col justify-start pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 lg:justify-center lg:py-8">
-        <div className="my-0 grid w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] lg:my-auto dark:ring-white/10 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
-          <aside className="relative hidden min-h-[40rem] flex-col justify-between overflow-hidden border-white/10 bg-[#071015] p-10 text-white lg:flex lg:border-r xl:p-12">
-            <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(23,186,168,0.22),transparent_58%)]" />
-            <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl" />
-            <Link href={home} className="relative z-10 inline-flex" aria-label="OneStreet">
-              <img
-                src="/brand/logo-dark.png"
-                alt="OneStreet"
-                width={1359}
-                height={354}
-                draggable={false}
-                className="h-10 w-auto max-w-[14rem]"
-              />
-            </Link>
-            <div className="relative flex flex-1 items-center justify-center py-8">
-              <img
-                src="/brand/loader-mark-dark.webp"
-                alt=""
-                width={475}
-                height={516}
-                draggable={false}
-                className="login-panel-mark h-auto w-[min(17.5rem,72%)] object-contain"
-              />
-            </div>
-            <div className="relative max-w-sm">
-              <h2 className="font-sans text-[3.25rem] font-semibold leading-[0.92] tracking-[-0.045em]">
-                One login.
-              </h2>
-              <p className="mt-5 text-[15px] leading-relaxed text-white/70">
-                Everything you need, just a login away.
+        <main className="flex flex-1 flex-col justify-start pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:pt-4 lg:justify-center lg:py-8">
+          <div className="my-0 flex w-full flex-col gap-4 sm:gap-5 lg:my-auto lg:grid lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)] lg:gap-0 lg:overflow-hidden lg:rounded-[1.75rem] lg:border lg:border-[var(--border)] lg:bg-[var(--surface-elevated)] lg:shadow-[var(--shadow-float)] lg:ring-1 lg:ring-black/5 dark:lg:ring-white/10">
+            <aside className="relative flex min-h-[18.5rem] flex-col justify-between overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#071015] p-6 text-white shadow-[var(--shadow-float)] sm:min-h-[22rem] sm:rounded-[1.75rem] sm:p-8 lg:min-h-[40rem] lg:rounded-none lg:border-0 lg:border-r lg:border-white/10 lg:p-10 lg:shadow-none xl:p-12">
+              <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(23,186,168,0.22),transparent_58%)]" />
+              <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl" />
+              <Link href={home} className="relative z-10 inline-flex" aria-label="OneStreet">
+                <img
+                  src="/brand/logo-dark.png"
+                  alt="OneStreet"
+                  width={1359}
+                  height={354}
+                  draggable={false}
+                  className="h-8 w-auto max-w-[12rem] sm:h-10 sm:max-w-[14rem]"
+                />
+              </Link>
+              <div className="relative flex flex-1 items-center justify-center py-4 sm:py-6 lg:py-8">
+                <img
+                  src="/brand/loader-mark-dark.webp"
+                  alt=""
+                  width={475}
+                  height={516}
+                  draggable={false}
+                  className="login-panel-mark h-auto w-[min(11rem,46%)] object-contain sm:w-[min(14rem,56%)] lg:w-[min(17.5rem,72%)]"
+                />
+              </div>
+              <div className="relative max-w-sm">
+                <h2 className="font-sans text-[2.15rem] font-semibold leading-[0.92] tracking-[-0.045em] sm:text-[2.6rem] lg:text-[3.25rem]">
+                  One login.
+                </h2>
+                <p className="mt-3 text-[14px] leading-relaxed text-white/70 sm:mt-4 sm:text-[15px] lg:mt-5">
+                  Everything you need, just a login away.
+                </p>
+              </div>
+            </aside>
+
+            <div className="flex flex-col justify-center rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-7 shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] sm:px-10 sm:py-12 dark:ring-white/10 lg:rounded-none lg:border-0 lg:px-12 lg:shadow-none lg:ring-0">
+              <h1 className="font-sans text-[2.05rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.6rem]">
+                Sign in
+              </h1>
+
+              <form onSubmit={onSubmit} className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
+                <div className="space-y-1.5">
+                  <label htmlFor={emailId} className="text-sm font-medium text-[var(--foreground)]">
+                    Email
+                  </label>
+                  <Input
+                    id={emailId}
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: "" }));
+                    }}
+                    placeholder="you@brokerage.com"
+                    autoComplete="email"
+                    autoFocus
+                    className="h-12 rounded-[1rem] px-4 text-[15px]"
+                    aria-invalid={fieldErrors.email ? true : undefined}
+                  />
+                  {fieldErrors.email ? (
+                    <p className="text-xs font-medium text-[var(--danger)]" role="alert">
+                      {fieldErrors.email}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    <label htmlFor={passwordId} className="text-sm font-medium text-[var(--foreground)]">
+                      Password
+                    </label>
+                    <Link href="/app/reset-password" className="text-sm font-medium text-[var(--accent)]">
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      id={passwordId}
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: "" }));
+                      }}
+                      placeholder="Password"
+                      autoComplete="current-password"
+                      className="h-12 rounded-[1rem] px-4 pr-12 text-[15px]"
+                      aria-invalid={fieldErrors.password ? true : undefined}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((current) => !current)}
+                      className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {fieldErrors.password ? (
+                    <p className="text-xs font-medium text-[var(--danger)]" role="alert">
+                      {fieldErrors.password}
+                    </p>
+                  ) : null}
+                </div>
+
+                {formError ? <Alert tone="danger">{formError}</Alert> : null}
+                {formInfo ? <Alert tone="success">{formInfo}</Alert> : null}
+
+                <Button type="submit" className="w-full rounded-[1rem]" size="lg" disabled={loading}>
+                  {loading ? "Signing in…" : "Sign in"}
+                </Button>
+              </form>
+
+              <p className="mt-6 text-sm text-[var(--muted)]">
+                Still not on OneStreet?{" "}
+                <Link href="/app/signup" className="font-semibold text-[var(--accent)]">
+                  Sign Up Now
+                </Link>
               </p>
             </div>
-          </aside>
-
-          <div className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
-            <h1 className="font-sans text-[2.05rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.6rem]">
-              Sign in
-            </h1>
-            <p className="mt-2.5 text-balance text-[15px] leading-snug text-[var(--muted)] lg:hidden">
-              Everything you need, just a login away.
-            </p>
-
-            <form onSubmit={onSubmit} className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
-              <div className="space-y-1.5">
-                <label htmlFor={emailId} className="text-sm font-medium text-[var(--foreground)]">
-                  Email
-                </label>
-                <Input
-                  id={emailId}
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (fieldErrors.email) setFieldErrors((prev) => ({ ...prev, email: "" }));
-                  }}
-                  placeholder="you@brokerage.com"
-                  autoComplete="email"
-                  autoFocus
-                  className="h-12 rounded-[1rem] px-4 text-[15px]"
-                  aria-invalid={fieldErrors.email ? true : undefined}
-                />
-                {fieldErrors.email ? (
-                  <p className="text-xs font-medium text-[var(--danger)]" role="alert">
-                    {fieldErrors.email}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-                  <label htmlFor={passwordId} className="text-sm font-medium text-[var(--foreground)]">
-                    Password
-                  </label>
-                  <Link href="/app/reset-password" className="text-sm font-medium text-[var(--accent)]">
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Input
-                    id={passwordId}
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      if (fieldErrors.password) setFieldErrors((prev) => ({ ...prev, password: "" }));
-                    }}
-                    placeholder="Password"
-                    autoComplete="current-password"
-                    className="h-12 rounded-[1rem] px-4 pr-12 text-[15px]"
-                    aria-invalid={fieldErrors.password ? true : undefined}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((current) => !current)}
-                    className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {fieldErrors.password ? (
-                  <p className="text-xs font-medium text-[var(--danger)]" role="alert">
-                    {fieldErrors.password}
-                  </p>
-                ) : null}
-              </div>
-
-              {formError ? <Alert tone="danger">{formError}</Alert> : null}
-              {formInfo ? <Alert tone="success">{formInfo}</Alert> : null}
-
-              <Button type="submit" className="w-full rounded-[1rem]" size="lg" disabled={loading}>
-                {loading ? "Signing in…" : "Sign in"}
-              </Button>
-            </form>
-
-            <p className="mt-6 text-sm text-[var(--muted)]">
-              Still not on OneStreet?{" "}
-              <Link href="/app/signup" className="font-semibold text-[var(--accent)]">
-                Sign Up Now
-              </Link>
-            </p>
-
           </div>
-        </div>
-      </main>
+        </main>
       </div>
     </div>
   );
