@@ -185,9 +185,6 @@ export default function AppSignupPage() {
         <Button type="submit" className="w-full rounded-[1rem]" size="lg">
           Continue to checkout
         </Button>
-        <p className="text-center text-xs leading-relaxed text-[var(--muted)]">
-          Nothing is created on this step. The workspace opens after payment.
-        </p>
       </form>
     </AuthFrame>
   );
