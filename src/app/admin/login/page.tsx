@@ -241,9 +241,9 @@ export default function AdminLoginPage() {
               ) : null}
 
               <p className="mt-6 text-sm text-[var(--muted)]">
-                Looking for a brokerage workspace?{" "}
+                Looking for your workspace?{" "}
                 <Link href="/app/login" className="font-semibold text-[var(--accent)]">
-                  Workspace sign in
+                  Workspace sign in here
                 </Link>
               </p>
             </div>
