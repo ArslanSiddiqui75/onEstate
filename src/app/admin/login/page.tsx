@@ -80,7 +80,8 @@ export default function AdminLoginPage() {
           <div className="my-0 grid w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] lg:my-auto dark:ring-white/10 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
             <aside className="relative hidden min-h-[40rem] flex-col justify-between overflow-hidden border-white/10 bg-[#071015] p-10 text-white lg:flex lg:border-r xl:p-12">
               <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
-              <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/20 blur-3xl" />
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,rgba(23,186,168,0.22),transparent_58%)]" />
+              <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl" />
               <Link href="/UK" className="relative z-10 inline-flex" aria-label="OneStreet">
                 <img
                   src="/brand/logo-dark.png"
@@ -91,6 +92,16 @@ export default function AdminLoginPage() {
                   className="h-10 w-auto max-w-[14rem]"
                 />
               </Link>
+              <div className="relative flex flex-1 items-center justify-center py-6">
+                <img
+                  src="/brand/loader-mark-dark.webp"
+                  alt=""
+                  width={475}
+                  height={516}
+                  draggable={false}
+                  className="login-panel-mark h-auto w-[min(15.5rem,68%)] object-contain"
+                />
+              </div>
               <div className="relative max-w-sm">
                 <h2 className="font-sans text-[3.25rem] font-semibold leading-[0.92] tracking-[-0.045em]">
                   One console.
@@ -99,7 +110,6 @@ export default function AdminLoginPage() {
                   Subscriptions, tenants, and the audit trail.
                 </p>
               </div>
-              <div className="relative h-6" aria-hidden />
             </aside>
 
             <div className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
