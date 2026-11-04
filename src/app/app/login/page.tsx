@@ -59,14 +59,21 @@ export default function AppLoginPage() {
   return (
     <div data-auth-screen="login" className="login-screen relative flex min-h-dvh flex-col overflow-x-hidden">
       <div className="login-field" aria-hidden>
-        {/* Floor glow/reflection is baked into this render — same asset and size in both themes. */}
+        <img
+          src="/brand/loader-mark-light.webp"
+          alt=""
+          width={618}
+          height={860}
+          draggable={false}
+          className="login-bg login-bg-light"
+        />
         <img
           src="/brand/loader-mark-dark.webp"
           alt=""
-          width={524}
-          height={706}
+          width={640}
+          height={853}
           draggable={false}
-          className="login-bg"
+          className="login-bg login-bg-dark"
         />
       </div>
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6 sm:py-4">

@@ -33,14 +33,21 @@ export function LogoLoader({
           layout === "compact" ? "h-[7.5rem] w-[6.25rem]" : "h-[14.2rem] w-[12rem]",
         )}
       >
-        {/* Reflection/floor glow asset — same mark and size in light and dark. */}
+        <img
+          src="/brand/loader-mark-light.webp"
+          alt=""
+          width={618}
+          height={860}
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-contain dark:hidden"
+        />
         <img
           src="/brand/loader-mark-dark.webp"
           alt=""
-          width={524}
-          height={706}
+          width={640}
+          height={853}
           draggable={false}
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute inset-0 hidden h-full w-full object-contain dark:block"
         />
       </div>
       {label ? (

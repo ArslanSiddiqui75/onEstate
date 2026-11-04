@@ -47,12 +47,20 @@ export default function AdminLoginPage() {
     >
       <div className="login-field" aria-hidden>
         <img
+          src="/brand/loader-mark-light.webp"
+          alt=""
+          width={618}
+          height={860}
+          draggable={false}
+          className="login-bg login-bg-light"
+        />
+        <img
           src="/brand/loader-mark-dark.webp"
           alt=""
-          width={524}
-          height={706}
+          width={640}
+          height={853}
           draggable={false}
-          className="login-bg"
+          className="login-bg login-bg-dark"
         />
       </div>
 

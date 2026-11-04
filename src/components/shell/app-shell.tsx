@@ -371,14 +371,21 @@ function ShellFrame({
         >
           <div className="relative flex items-center justify-center px-5 pt-4">
             <Link href={basePath} aria-label="OneStreet" className="flex justify-center">
-              {/* Floor-glow reflection mark — same asset and size in light and dark. */}
+              <img
+                src="/brand/loader-mark-light.webp"
+                alt=""
+                width={618}
+                height={860}
+                draggable={false}
+                className="h-[8.6rem] w-auto dark:hidden"
+              />
               <img
                 src="/brand/loader-mark-dark.webp"
                 alt=""
-                width={524}
-                height={706}
+                width={640}
+                height={853}
                 draggable={false}
-                className="h-[8.6rem] w-auto"
+                className="hidden h-[8.6rem] w-auto dark:block"
               />
             </Link>
             <button
