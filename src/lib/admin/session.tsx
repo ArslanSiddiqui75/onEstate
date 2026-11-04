@@ -47,7 +47,7 @@ interface AdminState {
   registry: PlatformRegistry;
   registryError: string | null;
   metrics: ReturnType<typeof getPlatformMetrics>;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string, gate: string) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => void;
   canManageBilling: boolean;
@@ -155,11 +155,11 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     };
   }, [refresh]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string, gate: string) => {
     const res = await fetch("/api/admin/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, gate }),
     });
     const json = (await res.json().catch(() => null)) as {
       admin?: PlatformAdminUser;

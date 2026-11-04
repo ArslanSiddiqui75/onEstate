@@ -169,7 +169,12 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     useAdminSession();
   const pathname = usePathname();
   const router = useRouter();
-  const isLogin = pathname.startsWith("/admin/login");
+  // Opaque gates rewrite to /admin/gate but the browser URL stays `/{slug}`,
+  // so anything outside `/admin…` here is a gate lock screen.
+  const isLogin =
+    pathname === "/admin/gate" ||
+    pathname.startsWith("/admin/login") ||
+    !pathname.startsWith("/admin");
 
   const tenantId = pathname.startsWith("/admin/organizations/")
     ? pathname.split("/")[3]
@@ -206,7 +211,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
-    if (!admin && !isLogin) router.replace("/admin/login");
+    if (!admin && !isLogin) router.replace("/");
     if (admin && isLogin) router.replace("/admin");
   }, [admin, loading, isLogin, router]);
 
@@ -314,7 +319,7 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
                 type="button"
                 className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:bg-[var(--surface)] hover:text-[var(--foreground)] dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
                 onClick={() => {
-                  void signOut().then(() => router.replace("/admin/login"));
+                  void signOut().then(() => router.replace("/"));
                 }}
               >
                 <LogOut className="h-3 w-3" aria-hidden />

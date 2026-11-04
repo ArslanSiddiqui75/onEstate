@@ -38,6 +38,25 @@ describe("authenticatePlatformAdmin", () => {
     vi.stubEnv("PLATFORM_ADMIN_PASSWORD", "RotateMeNow!");
     expect(authenticatePlatformAdmin("nobody@x.com", "RotateMeNow!")).toBeNull();
   });
+
+  it("rejects a valid admin on the wrong role gate", () => {
+    vi.stubEnv("PLATFORM_ADMIN_PASSWORD_SUPER", "SuperOnly!");
+    vi.stubEnv("PLATFORM_ADMIN_PASSWORD_SUPPORT", "SupportOnly!");
+    expect(
+      authenticatePlatformAdmin(
+        "admin@certified.local",
+        "SuperOnly!",
+        "support_admin",
+      ),
+    ).toBeNull();
+    expect(
+      authenticatePlatformAdmin(
+        "admin@certified.local",
+        "SuperOnly!",
+        "super_admin",
+      ),
+    ).toMatchObject({ role: "super_admin" });
+  });
 });
 
 describe("admin session tokens", () => {

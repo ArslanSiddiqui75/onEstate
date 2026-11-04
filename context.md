@@ -62,7 +62,7 @@ Migrations: apply `supabase/migrations/` in order on hosted (or Supabase CLI loc
 
 ## Env / ops (names only — see `.env.example`)
 
-Critical groups: Supabase (`NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`), brand (`NEXT_PUBLIC_BRAND`), Stripe, Twilio + `MESSAGING_MODE`, Resend email, `PLATFORM_ADMIN_PASSWORD` (server-only admin login), social OAuth + `SOCIAL_TOKEN_ENCRYPTION_KEY`, cron secrets (`CRON_SECRET` / `SOCIAL_CRON_SECRET` / `AUTOMATION_CRON_SECRET` — production cron fails closed if unset).
+Critical groups: Supabase (`NEXT_PUBLIC_SUPABASE_*`, `SUPABASE_SERVICE_ROLE_KEY`), brand (`NEXT_PUBLIC_BRAND`), Stripe, Twilio + `MESSAGING_MODE`, Resend email, platform admin gates (`PLATFORM_ADMIN_GATE_*` + per-role `PLATFORM_ADMIN_PASSWORD_*` — opaque URLs, not `/admin/login`), social OAuth + `SOCIAL_TOKEN_ENCRYPTION_KEY`, cron secrets (`CRON_SECRET` / `SOCIAL_CRON_SECRET` / `AUTOMATION_CRON_SECRET` — production cron fails closed if unset).
 
 - Vercel Hobby: platform cron is **daily** only (`vercel.json` is `0 0 * * *`). Point cron-job.org (or upgrade) every few minutes at `/api/social/cron/publish` and `/api/automations/cron/run` with `X-Cron-Secret` (or `Authorization: Bearer <CRON_SECRET>`). Without that, waits and scheduled social posts stall.
 - Duplicate org names (e.g. several `tp`): shell shows workspace id; wrong email → empty Social accounts.

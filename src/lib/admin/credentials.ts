@@ -38,11 +38,13 @@ export function adminSessionSecret(): string | null {
 export function authenticatePlatformAdmin(
   email: string,
   password: string,
+  requiredRole?: PlatformAdminRole,
 ): PlatformAdminUser | null {
   const account = PLATFORM_ADMIN_ACCOUNTS.find(
     (a) => a.email.toLowerCase() === email.trim().toLowerCase(),
   );
   if (!account) return null;
+  if (requiredRole && account.role !== requiredRole) return null;
   const expected = passwordForRole(account.role);
   if (!expected || !safeEqual(password, expected)) return null;
   return account;

@@ -1,6 +1,7 @@
 /**
- * Platform admin identities (no passwords). Passwords live in env vars and are
- * checked only on the server — see `credentials.ts` and `/api/admin/login`.
+ * Platform admin identities (no passwords). Passwords and opaque gate URLs live
+ * in env vars and are checked only on the server — see `credentials.ts`,
+ * `gates.ts`, and `/api/admin/login`.
  */
 import type { PlatformAdminRole, PlatformAdminUser } from "@/lib/admin/types";
 

@@ -7,6 +7,7 @@
 - Personal module grants cannot exceed the role matrix ceiling (none unlocks to view only).
 - Invite escalation blocked server-side (`/api/team/invite`).
 - Admin passwords checked only on server (`POST /api/admin/login`); httpOnly signed cookie.
+- Operator lock screens use opaque single-segment gates (`PLATFORM_ADMIN_GATE_*`) rewritten in `proxy.ts`; `/admin/login` is retired; gates are `noindex` and role-locked.
 - Twilio webhooks: signature validation; unmatched inbound persisted; cron routes fail closed in production without secrets.
 - `documents` storage bucket: org-prefixed path RLS on `storage.objects`.
 - Public lead capture: honeypot + coarse rate limit.

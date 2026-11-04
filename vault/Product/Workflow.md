@@ -14,6 +14,7 @@
 
 ## Platform operator
 
-1. `/admin/login` (server-checked `PLATFORM_ADMIN_*`).
-2. Tenants, subscriptions, users, audit, tickets, impersonation (where shipped).
-3. Org sign-out clears admin session and vice versa (dual cookies until then).
+1. Opaque per-role gate URLs (env `PLATFORM_ADMIN_GATE_*`), not `/admin/login`.
+2. Each gate only accepts that role’s credentials (`PLATFORM_ADMIN_PASSWORD_*`).
+3. Tenants, subscriptions, users, audit, tickets, impersonation (where shipped).
+4. Org sign-out clears admin session and vice versa (dual cookies until then).

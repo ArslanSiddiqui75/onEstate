@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { resolveAdminGate } from "@/lib/admin/gates";
 import { defaultMarket, marketFromHost, marketFromPath, UK_DOMAIN, US_DOMAIN } from "@/lib/brand/host";
 import type { Market } from "@/types";
 
@@ -57,7 +58,20 @@ export function proxy(request: NextRequest) {
   let response: NextResponse;
   const pathname = request.nextUrl.pathname;
   const previewPath = pathname === "/uk" ? "/UK" : pathname === "/us" ? "/US" : null;
-  if (!isPlatform && pathname === "/") {
+  const pathParts = pathname.split("/").filter(Boolean);
+  const gateRole =
+    pathParts.length === 1 ? resolveAdminGate(pathParts[0]) : null;
+
+  if (gateRole) {
+    // Keep the opaque public URL; serve the internal gate lock screen.
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin/gate";
+    requestHeaders.set("x-admin-gate-role", gateRole);
+    response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+    response.headers.set("Referrer-Policy", "no-referrer");
+    response.headers.set("Cache-Control", "no-store");
+  } else if (!isPlatform && pathname === "/") {
     const url = request.nextUrl.clone();
     url.pathname = `/site/${host}`;
     response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
@@ -67,6 +81,10 @@ export function proxy(request: NextRequest) {
     response = NextResponse.rewrite(url, { request: { headers: requestHeaders } });
   } else {
     response = NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   }
 
   const explicit = marketFromHost(host) || marketFromPath(request.nextUrl.pathname);
