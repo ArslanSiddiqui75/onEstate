@@ -91,60 +91,23 @@ export default function AdminLoginPage() {
                   className="h-10 w-auto max-w-[14rem]"
                 />
               </Link>
-              <div className="relative z-10 max-w-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7dccc2]">
-                  Platform console
-                </p>
-                <h2 className="mt-4 font-sans text-[3.25rem] font-semibold leading-[0.92] tracking-[-0.045em]">
-                  Both markets, kept apart.
+              <div className="relative max-w-sm">
+                <h2 className="font-sans text-[3.25rem] font-semibold leading-[0.92] tracking-[-0.045em]">
+                  One console.
                 </h2>
                 <p className="mt-5 text-[15px] leading-relaxed text-white/70">
-                  Subscriptions, tenants, and the audit trail. Each region bills on its own
-                  Stripe account.
+                  Subscriptions, tenants, and the audit trail.
                 </p>
-                <ul className="mt-8 space-y-3">
-                  {[
-                    "Organizations, seats, and lifecycle",
-                    "Pause, change, or cancel a subscription",
-                    "Who resolved a ticket, and how long it took",
-                  ].map((point) => (
-                    <li key={point} className="flex items-start gap-3 text-sm text-white/85">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#17baa8]" />
-                      <span>{point}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
               <div className="relative h-6" aria-hidden />
             </aside>
 
             <div className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
-              <Link href="/UK" className="mb-6 inline-flex lg:hidden" aria-label="OneStreet">
-                <img
-                  src="/brand/logo-light.png"
-                  alt="OneStreet"
-                  width={1292}
-                  height={331}
-                  draggable={false}
-                  className="h-8 w-auto dark:hidden"
-                />
-                <img
-                  src="/brand/logo-dark.png"
-                  alt=""
-                  width={1359}
-                  height={354}
-                  draggable={false}
-                  className="hidden h-8 w-auto dark:block"
-                />
-              </Link>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-                Operator
-              </p>
-              <h1 className="mt-2 font-sans text-[2.05rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.6rem]">
-                Platform sign in
+              <h1 className="font-sans text-[2.05rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.6rem]">
+                Sign in
               </h1>
-              <p className="mt-2.5 text-balance text-[15px] leading-snug text-[var(--muted)]">
-                For Official Use Only
+              <p className="mt-2.5 text-balance text-[15px] leading-snug text-[var(--muted)] lg:hidden">
+                Subscriptions, tenants, and the audit trail.
               </p>
 
               <form onSubmit={onSubmit} className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
@@ -202,7 +165,7 @@ export default function AdminLoginPage() {
                   size="lg"
                   disabled={loading}
                 >
-                  {loading ? "Signing in…" : "Enter the console"}
+                  {loading ? "Signing in…" : "Sign in"}
                 </Button>
               </form>
 
