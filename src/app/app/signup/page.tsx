@@ -177,8 +177,7 @@ export default function AppSignupPage() {
               >
                 Privacy Policy
               </Link>
-              . This covers CRM, messaging, phone, listings, transactions, website, social,
-              lettings, billing, and the rest of the workspace modules.
+              .
             </span>
           </label>
         </FormField>
