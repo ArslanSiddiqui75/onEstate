@@ -58,6 +58,17 @@ export default function AppLoginPage() {
 
   return (
     <div data-auth-screen="login" className="login-screen relative flex min-h-dvh flex-col overflow-x-hidden">
+      <div className="login-field" aria-hidden>
+        {/* Floor glow/reflection is baked into this render — same asset and size in both themes. */}
+        <img
+          src="/brand/loader-mark-dark.webp"
+          alt=""
+          width={524}
+          height={706}
+          draggable={false}
+          className="login-bg"
+        />
+      </div>
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6 sm:py-4">
         <Link href={home} className="inline-flex min-w-0 lg:hidden" aria-label="OneStreet">
           <img
@@ -89,30 +100,11 @@ export default function AppLoginPage() {
       </header>
 
       <div className="login-body relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
-      <div className="login-field login-field-mobile" aria-hidden>
-        <img
-          src="/brand/loader-mark-light.webp"
-          alt=""
-          width={487}
-          height={560}
-          draggable={false}
-          className="login-bg login-bg-light"
-        />
-        <img
-          src="/brand/loader-mark-dark.webp"
-          alt=""
-          width={475}
-          height={516}
-          draggable={false}
-          className="login-bg login-bg-dark"
-        />
-      </div>
       <main className="flex flex-1 flex-col justify-start pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 lg:justify-center lg:py-8">
         <div className="my-0 grid w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] lg:my-auto dark:ring-white/10 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
           <aside className="relative hidden min-h-[40rem] flex-col justify-between overflow-hidden border-white/10 bg-[#071015] p-10 text-white lg:flex lg:border-r xl:p-12">
             <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_42%,rgba(23,186,168,0.22),transparent_58%)]" />
-            <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl" />
+            <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/20 blur-3xl" />
             <Link href={home} className="relative inline-flex" aria-label="OneStreet">
               <img
                 src="/brand/mark-dark.png"
@@ -120,19 +112,9 @@ export default function AppLoginPage() {
                 width={304}
                 height={345}
                 draggable={false}
-                className="h-10 w-auto opacity-90"
+                className="h-12 w-auto"
               />
             </Link>
-            <div className="relative flex flex-1 items-center justify-center py-8">
-              <img
-                src="/brand/loader-mark-dark.webp"
-                alt=""
-                width={475}
-                height={516}
-                draggable={false}
-                className="login-panel-mark h-auto w-[min(17.5rem,72%)] object-contain"
-              />
-            </div>
             <div className="relative max-w-sm">
               <h2 className="font-sans text-[3.25rem] font-semibold leading-[0.92] tracking-[-0.045em]">
                 One login.
@@ -141,6 +123,7 @@ export default function AppLoginPage() {
                 Everything you need, just a login away.
               </p>
             </div>
+            <div className="relative h-6" aria-hidden />
           </aside>
 
           <div className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
