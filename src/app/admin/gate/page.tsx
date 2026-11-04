@@ -24,6 +24,24 @@ const ROLES = new Set<PlatformAdminRole>([
   "support_admin",
 ]);
 
+const GATE_COPY: Record<
+  PlatformAdminRole,
+  { headline: string; support: string }
+> = {
+  super_admin: {
+    headline: "One console.",
+    support: "Subscriptions, tenants, and the audit trail.",
+  },
+  billing_admin: {
+    headline: "Billing console.",
+    support: "Plans, invoices, and subscription control.",
+  },
+  support_admin: {
+    headline: "Support console.",
+    support: "Accounts, access, and tenant assistance.",
+  },
+};
+
 function isPlatformAdminRole(value: string | null): value is PlatformAdminRole {
   return value != null && ROLES.has(value as PlatformAdminRole);
 }
@@ -32,5 +50,6 @@ export default async function AdminGatePage() {
   // Only reachable via opaque slug rewrite that sets this request header.
   const role = (await headers()).get("x-admin-gate-role");
   if (!isPlatformAdminRole(role)) notFound();
-  return <AdminGateLogin role={role} />;
+  const copy = GATE_COPY[role];
+  return <AdminGateLogin headline={copy.headline} support={copy.support} />;
 }

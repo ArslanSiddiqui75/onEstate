@@ -5,44 +5,33 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { useAdminSession } from "@/lib/admin/session";
-import type { PlatformAdminRole } from "@/lib/admin/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { toast } from "@/components/ui/toast";
 
-const GATE_COPY: Record<
-  PlatformAdminRole,
-  { headline: string; support: string }
-> = {
-  super_admin: {
-    headline: "One console.",
-    support: "Subscriptions, tenants, and the audit trail.",
-  },
-  billing_admin: {
-    headline: "Billing console.",
-    support: "Plans, invoices, and subscription control.",
-  },
-  support_admin: {
-    headline: "Support console.",
-    support: "Accounts, access, and tenant assistance.",
-  },
-};
-
 /**
  * Operator lock screen. The public URL is an opaque single-segment gate
  * rewritten here; the slug from the address bar is posted as `gate` so the
  * API can bind credentials to that role only.
+ *
+ * Headline/support are resolved on the server from the gate role so the
+ * client never indexes copy by a missing prop (HMR / partial RSC payloads).
  */
-export function AdminGateLogin({ role }: { role: PlatformAdminRole }) {
+export function AdminGateLogin({
+  headline,
+  support,
+}: {
+  headline: string;
+  support: string;
+}) {
   const { signIn } = useAdminSession();
   const router = useRouter();
   const pathname = usePathname();
   const gate = pathname.split("/").filter(Boolean)[0] || "";
   const emailId = useId();
   const passwordId = useId();
-  const copy = GATE_COPY[role];
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -125,10 +114,10 @@ export function AdminGateLogin({ role }: { role: PlatformAdminRole }) {
               </div>
               <div className="relative max-w-sm">
                 <h2 className="font-sans text-[2.15rem] font-semibold leading-[0.92] tracking-[-0.045em] sm:text-[2.6rem] lg:text-[3.25rem]">
-                  {copy.headline}
+                  {headline}
                 </h2>
                 <p className="mt-3 text-[14px] leading-relaxed text-white/70 sm:mt-4 sm:text-[15px] lg:mt-5">
-                  {copy.support}
+                  {support}
                 </p>
               </div>
             </aside>
