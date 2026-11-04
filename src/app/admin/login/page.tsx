@@ -46,25 +46,25 @@ export default function AdminLoginPage() {
       className="login-screen relative flex min-h-dvh flex-col overflow-x-hidden"
     >
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6 sm:py-4">
-        <Link href="/UK" className="inline-flex min-w-0 lg:hidden" aria-label="OneStreet">
+        <Link href="/UK" className="inline-flex min-w-0" aria-label="OneStreet">
           <img
-            src="/brand/mark.png"
+            src="/brand/logo-light.png"
             alt="OneStreet"
-            width={291}
-            height={322}
+            width={1292}
+            height={331}
             draggable={false}
-            className="h-8 w-auto dark:hidden"
+            className="h-7 w-auto dark:hidden"
           />
           <img
-            src="/brand/mark-dark.png"
+            src="/brand/logo-dark.png"
             alt=""
-            width={304}
-            height={345}
+            width={1359}
+            height={354}
             draggable={false}
-            className="hidden h-8 w-auto dark:block"
+            className="hidden h-7 w-auto dark:block"
           />
         </Link>
-        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           <Link
             href="/app/login"
             className="text-[13px] font-medium text-[var(--muted)] transition hover:text-[var(--foreground)] sm:text-sm"
@@ -83,15 +83,15 @@ export default function AdminLoginPage() {
               <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/20 blur-3xl" />
               <Link href="/UK" className="relative z-10 inline-flex" aria-label="OneStreet">
                 <img
-                  src="/brand/mark-dark.png"
+                  src="/brand/logo-dark.png"
                   alt="OneStreet"
-                  width={304}
-                  height={345}
+                  width={1359}
+                  height={354}
                   draggable={false}
-                  className="h-14 w-auto"
+                  className="h-10 w-auto max-w-[14rem]"
                 />
               </Link>
-              <div className="relative max-w-sm">
+              <div className="relative z-10 max-w-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7dccc2]">
                   Platform console
                 </p>
@@ -119,6 +119,24 @@ export default function AdminLoginPage() {
             </aside>
 
             <div className="flex flex-col justify-center px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
+              <Link href="/UK" className="mb-6 inline-flex lg:hidden" aria-label="OneStreet">
+                <img
+                  src="/brand/logo-light.png"
+                  alt="OneStreet"
+                  width={1292}
+                  height={331}
+                  draggable={false}
+                  className="h-8 w-auto dark:hidden"
+                />
+                <img
+                  src="/brand/logo-dark.png"
+                  alt=""
+                  width={1359}
+                  height={354}
+                  draggable={false}
+                  className="hidden h-8 w-auto dark:block"
+                />
+              </Link>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
                 Operator
               </p>

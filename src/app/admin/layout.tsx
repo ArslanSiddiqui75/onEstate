@@ -210,11 +210,14 @@ function AdminGuard({ children }: { children: React.ReactNode }) {
     if (admin && isLogin) router.replace("/admin");
   }, [admin, loading, isLogin, router]);
 
+  // Never block the lock screen behind the session bootstrap loader —
+  // the logo and form must paint immediately.
+  if (isLogin) return <>{children}</>;
+
   if (loading) {
     return <LogoLoader label="Loading admin console…" />;
   }
 
-  if (isLogin) return <>{children}</>;
   if (!admin) return null;
 
   const navItems = NAV.filter((item) =>
