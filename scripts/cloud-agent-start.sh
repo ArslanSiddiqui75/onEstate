@@ -3,7 +3,23 @@ set -euo pipefail
 
 PORT=43129
 
-# Free a stale Next.js listener from a previous session (fuser is often absent).
+# Some agent boots re-check out the branch and drop ignored dirs (node_modules).
+# Rehydrate quietly so start stays self-contained without moving install fully here.
+if [[ ! -d node_modules/next ]]; then
+  echo "[cloud-agent-start] node_modules missing; running npm ci"
+  npm ci
+fi
+
+if [[ ! -f .env.local ]]; then
+  umask 077
+  cat > .env.local <<'ENV'
+NEXT_PUBLIC_BRAND=onestreet-uk
+NEXT_PUBLIC_APP_URL=http://127.0.0.1:43129
+DEMO_PUBLIC_INBOX=1
+ENV
+fi
+
+# Free a stale Next.js listener from a previous session.
 python3 - "$PORT" <<'PY'
 import os, sys, signal
 port = int(sys.argv[1])
@@ -15,8 +31,7 @@ with open("/proc/net/tcp") as f:
         parts = line.split()
         if len(parts) < 10:
             continue
-        local = parts[1].upper()
-        if local.endswith(":" + hexport):
+        if parts[1].upper().endswith(":" + hexport):
             inodes.add(parts[9])
 pids = set()
 for pid in os.listdir("/proc"):
