@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/config";
 import { signupStripeCreated } from "@/lib/stripe/signup-checkout";
+import { clientIp } from "@/lib/http/client-ip";
 
 const schema = z
   .object({
@@ -14,10 +15,6 @@ const schema = z
 
 const isLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 12 });
 
-function clientIp(request: Request) {
-  const forwarded = request.headers.get("x-forwarded-for") || "";
-  return forwarded.split(",")[0].trim() || "unknown";
-}
 
 /** Checks a signup Checkout Session on the regional Stripe account. No workspace is created here. */
 export async function POST(request: Request) {

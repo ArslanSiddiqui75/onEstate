@@ -6,6 +6,7 @@ import {
   getEsignByToken,
 } from "@/lib/esign/service";
 import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
+import { clientIp } from "@/lib/http/client-ip";
 
 const bodySchema = z.object({
   token: z.string().min(16),
@@ -13,10 +14,6 @@ const bodySchema = z.object({
 
 const isRateLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 30 });
 
-function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for") || "";
-  return forwarded.split(",")[0].trim() || "unknown";
-}
 
 export async function GET(request: Request) {
   if (isRateLimited(`get:${clientIp(request)}`)) {

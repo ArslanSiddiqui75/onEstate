@@ -41,6 +41,11 @@ const nextConfig: NextConfig = {
   // The dev server is opened at 127.0.0.1. Without this, Next blocks the
   // client runtime and the app stays on the server-rendered loader.
   allowedDevOrigins: ["127.0.0.1", "localhost"],
+  // Tree-shake icon/date/motion barrels — these are imported across many
+  // client routes and otherwise inflate each page chunk.
+  experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns", "framer-motion"],
+  },
   async headers() {
     return [
       {

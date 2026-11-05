@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { cookies } from "next/headers";
 import { requireAdminRole } from "@/lib/admin/request-admin";
+import { adminJson } from "@/lib/admin/json";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import {
   IMPERSONATION_COOKIE,
@@ -18,26 +18,26 @@ export async function GET() {
   const jar = await cookies();
   const session = verifyImpersonationToken(jar.get(IMPERSONATION_COOKIE)?.value);
   if (!session) {
-    return NextResponse.json({ active: false });
+    return adminJson({ active: false });
   }
-  return NextResponse.json({ active: true, session });
+  return adminJson({ active: true, session });
 }
 
 export async function POST(request: Request) {
   const check = await requireAdminRole("super_admin", "support_admin");
   if (!check.ok) {
-    return NextResponse.json({ error: check.error }, { status: check.status });
+    return adminJson({ error: check.error }, { status: check.status });
   }
 
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
+    return adminJson({ error: "userId is required" }, { status: 400 });
   }
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return NextResponse.json(
+    return adminJson(
       { error: "Hosted auth is not configured" },
       { status: 503 },
     );
@@ -49,14 +49,14 @@ export async function POST(request: Request) {
     .eq("id", parsed.data.userId)
     .maybeSingle();
   if (profileError || !profile) {
-    return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    return adminJson({ error: "Member not found" }, { status: 404 });
   }
 
   const { data: userData, error: userError } =
     await supabase.auth.admin.getUserById(parsed.data.userId);
   const email = userData.user?.email;
   if (userError || !email) {
-    return NextResponse.json(
+    return adminJson(
       { error: "This member has not accepted their invite yet" },
       { status: 409 },
     );
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   });
   const tokenHash = link?.properties?.hashed_token;
   if (linkError || !tokenHash) {
-    return NextResponse.json(
+    return adminJson(
       { error: linkError?.message || "Could not start impersonation" },
       { status: 502 },
     );
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     orgName: String(orgName || "Workspace"),
   });
   if (!token) {
-    return NextResponse.json({ error: "Session secret missing" }, { status: 500 });
+    return adminJson({ error: "Session secret missing" }, { status: 500 });
   }
 
   await supabase.from("platform_audit_events").insert({
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     metadata: { orgId: profile.org_id, role: profile.role },
   });
 
-  const response = NextResponse.json({
+  const response = adminJson({
     tokenHash,
     email,
     orgName: orgName || "Workspace",
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
 export async function DELETE() {
   const check = await requireAdminRole("super_admin", "support_admin");
   if (!check.ok) {
-    return NextResponse.json({ error: check.error }, { status: check.status });
+    return adminJson({ error: check.error }, { status: check.status });
   }
 
   const jar = await cookies();
@@ -130,7 +130,7 @@ export async function DELETE() {
     });
   }
 
-  const response = NextResponse.json({ ok: true });
+  const response = adminJson({ ok: true });
   response.cookies.set(IMPERSONATION_COOKIE, "", {
     ...impersonationCookieOptions(),
     maxAge: 0,

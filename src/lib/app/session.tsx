@@ -2531,7 +2531,9 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       socialPosts,
       loading,
       authMode,
-      persistence: (repoRef.current?.mode || authMode) as "local" | "supabase",
+      // Prefer authMode (render state) over repoRef — reading a ref during
+      // useMemo trips React's pure-render rules and skipped updates.
+      persistence: authMode,
       signIn,
       signUp,
       signOut,

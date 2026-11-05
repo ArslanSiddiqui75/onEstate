@@ -5,6 +5,7 @@ import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import { TERMS_VERSION } from "@/lib/team/invite-token";
 import { checkSeatLimit } from "@/lib/access";
 import type { PlanId } from "@/types";
+import { clientIp } from "@/lib/http/client-ip";
 
 const schema = z.object({
   token: z.string().min(16).max(80),
@@ -15,10 +16,6 @@ const schema = z.object({
 
 const isLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 10 });
 
-function clientIp(request: Request) {
-  const forwarded = request.headers.get("x-forwarded-for") || "";
-  return forwarded.split(",")[0].trim() || "unknown";
-}
 
 /**
  * Accept a team invite without Stripe Checkout.

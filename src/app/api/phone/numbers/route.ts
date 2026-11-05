@@ -116,7 +116,7 @@ export async function POST(request: Request) {
 
   try {
     const purchased = await buyNumber(parsed.data.phoneNumber);
-    let numbers =
+    const numbers =
       profile && db
         ? await addOrgPhoneNumber(db, {
             orgId: profile.orgId,

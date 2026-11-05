@@ -7,6 +7,7 @@ import { defaultDialCode, isE164, toE164 } from "@/lib/phone/e164";
 import { hydrateLeadRouting, ownerId, prepareNewLead } from "@/lib/crm/routing";
 import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import type { LeadType, PlanId, Role } from "@/types";
+import { clientIp } from "@/lib/http/client-ip";
 
 const bodySchema = z.object({
   /** Public site slug or custom domain the form was rendered on */
@@ -34,10 +35,6 @@ const isSiteRateLimited = createSlidingWindowLimiter({
   max: 60,
 });
 
-function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for") || "";
-  return forwarded.split(",")[0].trim() || "unknown";
-}
 
 export async function POST(request: Request) {
   const json = await request.json().catch(() => null);

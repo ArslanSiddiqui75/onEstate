@@ -1,5 +1,6 @@
 import { randomInt } from "crypto";
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/http/client-ip";
 import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 
 export const adminLoginIpLimited = createSlidingWindowLimiter({
@@ -18,8 +19,7 @@ export const adminMfaCodeLimited = createSlidingWindowLimiter({
 });
 
 export function adminClientIp(request: Request) {
-  const forwarded = request.headers.get("x-forwarded-for") || "";
-  return forwarded.split(",")[0].trim() || "unknown";
+  return clientIp(request);
 }
 
 export function adminSameOrigin(request: Request): boolean {

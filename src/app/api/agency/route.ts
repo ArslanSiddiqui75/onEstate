@@ -18,13 +18,10 @@ import { appRedirectUrl } from "@/lib/http/same-origin";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { demoInboxEnabled } from "@/lib/server/demo-inbox";
 import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
+import { clientIp } from "@/lib/http/client-ip";
 
 const isRateLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 20 });
 
-function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for") || "";
-  return forwarded.split(",")[0].trim() || "unknown";
-}
 
 function redirectTo(request: Request, path: string, query: Record<string, string>) {
   const url = appRedirectUrl(request, path);

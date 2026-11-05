@@ -9,6 +9,7 @@ import {
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { TERMS_VERSION } from "@/lib/team/invite-token";
 import type { Market, PlanId } from "@/types";
+import { clientIp } from "@/lib/http/client-ip";
 
 const planSchema = z.enum(["solo", "team", "enterprise"]);
 const marketSchema = z.enum(["uk", "us"]);
@@ -26,10 +27,6 @@ const postSchema = z
 const isStatusLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 30 });
 const isSessionLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 8 });
 
-function clientIp(request: Request) {
-  const forwarded = request.headers.get("x-forwarded-for") || "";
-  return forwarded.split(",")[0].trim() || "unknown";
-}
 
 function decisionFor(plan: PlanId, market: Market) {
   return signupCheckoutDecision({

@@ -6,6 +6,8 @@ import { checkSeatLimit } from "@/lib/access";
 import { canInvite, canInviteRole } from "@/lib/rbac/invites";
 import { newInviteToken } from "@/lib/team/invite-token";
 import { workspaceBlocked } from "@/lib/server/require-module";
+import { clientIp } from "@/lib/http/client-ip";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import type { PlanId, Role } from "@/types";
 
 const bodySchema = z.object({
@@ -21,7 +23,19 @@ const bodySchema = z.object({
   ]),
 });
 
+const isRateLimited = createSlidingWindowLimiter({
+  windowMs: 15 * 60_000,
+  max: 20,
+});
+
 export async function POST(request: Request) {
+  if (isRateLimited(clientIp(request))) {
+    return NextResponse.json(
+      { error: "Too many invite attempts. Try again shortly." },
+      { status: 429 },
+    );
+  }
+
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
     return NextResponse.json(

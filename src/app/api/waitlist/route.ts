@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/http/client-ip";
 import { appRedirectUrl } from "@/lib/http/same-origin";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 
 const schema = z.object({
@@ -13,6 +15,11 @@ const schema = z.object({
 
 const demoRequests: z.infer<typeof schema>[] = [];
 
+const isRateLimited = createSlidingWindowLimiter({
+  windowMs: 15 * 60_000,
+  max: 8,
+});
+
 function formRedirect(request: Request, demo: "received" | "invalid" | "error") {
   const url = appRedirectUrl(request, "/");
   url.searchParams.set("demo", demo);
@@ -24,6 +31,13 @@ export async function POST(request: Request) {
   try {
     const contentType = request.headers.get("content-type") || "";
     const formPost = !contentType.includes("application/json");
+    if (isRateLimited(clientIp(request))) {
+      if (formPost) return formRedirect(request, "error");
+      return NextResponse.json(
+        { error: "Too many requests. Try again shortly." },
+        { status: 429 },
+      );
+    }
     const body = formPost
       ? Object.fromEntries(await request.formData())
       : await request.json();

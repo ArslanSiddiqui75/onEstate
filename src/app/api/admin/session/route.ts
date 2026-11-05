@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { adminJson } from "@/lib/admin/json";
 import {
   ADMIN_SESSION_COOKIE,
   verifyAdminSessionToken,
@@ -9,7 +9,7 @@ export async function GET() {
   const jar = await cookies();
   const admin = verifyAdminSessionToken(jar.get(ADMIN_SESSION_COOKIE)?.value);
   if (!admin) {
-    return NextResponse.json({ admin: null }, { status: 401 });
+    return adminJson({ admin: null }, { status: 401 });
   }
-  return NextResponse.json({ admin });
+  return adminJson({ admin });
 }

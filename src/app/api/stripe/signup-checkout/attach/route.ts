@@ -5,6 +5,7 @@ import { resolveProfileFromRequest } from "@/lib/server/request-profile";
 import { getStripe, isStripeConfigured } from "@/lib/stripe/config";
 import { signupStripeCreated } from "@/lib/stripe/signup-checkout";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
+import { clientIp } from "@/lib/http/client-ip";
 
 const schema = z
   .object({
@@ -16,10 +17,6 @@ const schema = z
 
 const isLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 12 });
 
-function clientIp(request: Request) {
-  const forwarded = request.headers.get("x-forwarded-for") || "";
-  return forwarded.split(",")[0].trim() || "unknown";
-}
 
 /**
  * Writes the Stripe customer and subscription onto the signed-in org.

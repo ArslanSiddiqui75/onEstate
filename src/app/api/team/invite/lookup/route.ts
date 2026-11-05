@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
+import { clientIp } from "@/lib/http/client-ip";
 
 const schema = z.object({
   token: z.string().min(16).max(80),
@@ -9,10 +10,6 @@ const schema = z.object({
 
 const isLimited = createSlidingWindowLimiter({ windowMs: 60_000, max: 30 });
 
-function clientIp(request: Request) {
-  const forwarded = request.headers.get("x-forwarded-for") || "";
-  return forwarded.split(",")[0].trim() || "unknown";
-}
 
 /** Public lookup for a pending invite (no auth). Token is the secret. */
 export async function GET(request: Request) {

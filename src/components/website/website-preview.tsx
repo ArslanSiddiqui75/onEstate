@@ -954,11 +954,3 @@ function ContactBlock({
   );
 }
 
-export function WebsitePreview(props: {
-  site: WebsiteSite;
-  orgName: string;
-  listings: Listing[];
-  market: Market;
-}) {
-  return <WebsiteCanvas {...props} />;
-}

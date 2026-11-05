@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePlatformAdmin } from "@/lib/admin/request-admin";
 import { adminCanManageBilling } from "@/lib/admin/accounts";
@@ -14,6 +13,7 @@ import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { getStripe, getStripePriceId } from "@/lib/stripe/config";
 import { applyStripeSubscriptionAction } from "@/lib/stripe/subscription-admin";
 import type { Market, PlanId } from "@/types";
+import { adminJson } from "@/lib/admin/json";
 
 const bodySchema = z.object({
   action: z.enum(SUBSCRIPTION_ACTIONS),
@@ -30,21 +30,21 @@ export async function POST(
 ) {
   const admin = await requirePlatformAdmin();
   if (!admin) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return adminJson({ error: "Unauthorized" }, { status: 401 });
   }
   if (!adminCanManageBilling(admin.role)) {
-    return NextResponse.json({ error: "Billing permission required" }, { status: 403 });
+    return adminJson({ error: "Billing permission required" }, { status: 403 });
   }
 
   const { orgId } = await context.params;
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    return adminJson({ error: "Invalid payload" }, { status: 400 });
   }
 
   const supabase = createServiceSupabaseClient();
   if (!supabase) {
-    return NextResponse.json({ source: "local" });
+    return adminJson({ source: "local" });
   }
 
   const [{ data: org }, { data: subRow }] = await Promise.all([
@@ -59,7 +59,7 @@ export async function POST(
   ]);
 
   if (!org) {
-    return NextResponse.json({ error: "Account not found" }, { status: 404 });
+    return adminJson({ error: "Account not found" }, { status: 404 });
   }
 
   const market = (org.market === "us" ? "us" : "uk") as Market;
@@ -100,7 +100,7 @@ export async function POST(
     (option) => option.action === parsed.data.action && (parsed.data.action !== "change_plan" || option.plan === parsed.data.plan),
   );
   if (!chosen) {
-    return NextResponse.json(
+    return adminJson(
       { error: "That action is not available for this subscription." },
       { status: 409 },
     );
@@ -111,7 +111,7 @@ export async function POST(
     next = projectSubscriptionAction(account, parsed.data.action, { plan: parsed.data.plan });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not update the subscription";
-    return NextResponse.json({ error: message }, { status: 409 });
+    return adminJson({ error: message }, { status: 409 });
   }
 
   const stripeSubId = org.stripe_subscription_id ? String(org.stripe_subscription_id) : "";
@@ -120,7 +120,7 @@ export async function POST(
   let note = "";
 
   if (parsed.data.action === "retry_payment" && (!stripe || !stripeSubId)) {
-    return NextResponse.json(
+    return adminJson(
       {
         error: `${regionLabel(market)} Stripe is not connected (or this account has no subscription id). Cannot invent a paid invoice.`,
       },
@@ -136,7 +136,7 @@ export async function POST(
       if (parsed.data.action === "change_plan" && parsed.data.plan && parsed.data.plan !== "enterprise") {
         const priceId = getStripePriceId(parsed.data.plan, market);
         if (!priceId) {
-          return NextResponse.json(
+          return adminJson(
             { error: `Missing ${regionLabel(market)} Stripe price for ${parsed.data.plan}.` },
             { status: 409 },
           );
@@ -162,7 +162,7 @@ export async function POST(
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Stripe could not update this subscription.";
-        return NextResponse.json({ error: message }, { status: 502 });
+        return adminJson({ error: message }, { status: 502 });
       }
     }
   } else if (stripeSubId && !stripe) {
@@ -170,5 +170,5 @@ export async function POST(
   }
 
   await saveSubscriptionProjection(supabase, orgId, admin.email, next);
-  return NextResponse.json({ ok: true, mode, message: `${next.summary}${note}` });
+  return adminJson({ ok: true, mode, message: `${next.summary}${note}` });
 }
