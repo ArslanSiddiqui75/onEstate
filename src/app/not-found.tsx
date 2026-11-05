@@ -1,28 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { HouseMark } from "@/components/brand/house-mark";
 import { ArrowLeft } from "lucide-react";
 
 export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center">
-      <div className="relative h-[7.5rem] w-[6.35rem]" aria-hidden>
-        <img
-          src="/brand/loader-mark-light.webp"
-          alt=""
-          width={512}
-          height={601}
-          draggable={false}
-          className="absolute inset-0 h-full w-full object-contain dark:hidden"
-        />
-        <img
-          src="/brand/loader-mark-dark.webp"
-          alt=""
-          width={524}
-          height={706}
-          draggable={false}
-          className="absolute inset-0 hidden h-full w-full origin-center scale-[1.26] object-contain dark:block"
-        />
-      </div>
+      <HouseMark className="h-[7.5rem] w-[6.35rem]" />
       <div className="space-y-2">
         <h1 className="font-display text-4xl font-bold tracking-tight text-[var(--foreground)]">
           Page not found

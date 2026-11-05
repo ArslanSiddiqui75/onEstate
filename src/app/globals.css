@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-/* The theme toggle sets `.dark` on <html>. Utilities follow that class. */
+/* The theme toggle sets `.dark` on <html>. Utilities follow that class.
+   Theme rules must change paint only (color, gradient, shadow color) — never
+   padding, margin, width, height, gap, font-size, or line-height. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
@@ -648,12 +650,13 @@ html,
   }
 }
 
-/* Lockup height follows the surrounding font size. Width keeps the artwork ratio. */
+/* Lockup height follows the surrounding font size. Width is locked to the
+   light lockup ratio so light/dark swaps never change layout geometry. */
 .brand-mark .brand-logo-light,
 .brand-mark .brand-logo-dark {
   display: block;
   height: 1.5em;
-  width: auto;
+  width: calc(1.5em * 1292 / 331);
   max-width: 100%;
   object-fit: contain;
   object-position: left center;

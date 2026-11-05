@@ -1,5 +1,6 @@
 "use client";
 
+import { HouseMark } from "@/components/brand/house-mark";
 import { cn } from "@/lib/utils";
 
 /** The 3D house, lifting slightly. The picture itself is not tilted. */
@@ -27,31 +28,16 @@ export function LogoLoader({
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(12,110,99,0.09),transparent_58%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(23,186,168,0.12),transparent_58%)]"
         />
       ) : null}
-      <div
-        className={cn(
-          "logo-loader-mark relative",
-          layout === "compact" ? "h-24 w-24" : "h-[11.25rem] w-[9.5rem]",
-        )}
-      >
-        <img
-          src="/brand/loader-mark-light.webp"
-          alt=""
-          width={512}
-          height={601}
-          draggable={false}
-          className="absolute inset-0 h-full w-full object-contain dark:hidden"
-        />
-        <img
-          src="/brand/loader-mark-dark.webp"
-          alt=""
-          width={524}
-          height={706}
-          draggable={false}
-          className="absolute inset-0 hidden h-full w-full origin-center scale-[1.26] object-contain dark:block"
-        />
-      </div>
+      <HouseMark
+        animated
+        className={
+          layout === "compact" ? "h-24 w-24" : "h-[11.25rem] w-[9.5rem]"
+        }
+      />
       {label ? (
-        <p className="relative mt-6 text-sm font-medium tracking-[-0.01em] text-[var(--muted)]">{label}</p>
+        <p className="relative mt-6 text-sm font-medium tracking-[-0.01em] text-[var(--muted)]">
+          {label}
+        </p>
       ) : (
         <span className="sr-only">Loading</span>
       )}

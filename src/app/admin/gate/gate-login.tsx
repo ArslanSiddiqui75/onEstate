@@ -87,22 +87,24 @@ export function AdminGateLogin({
     >
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6 sm:py-4">
         <Link href="/UK" className="inline-flex min-w-0" aria-label="OneStreet">
-          <img
-            src="/brand/logo-light.png"
-            alt="OneStreet"
-            width={1292}
-            height={331}
-            draggable={false}
-            className="h-7 w-auto dark:hidden"
-          />
-          <img
-            src="/brand/logo-dark.png"
-            alt=""
-            width={1359}
-            height={354}
-            draggable={false}
-            className="hidden h-7 w-auto dark:block"
-          />
+          <span className="relative inline-block h-7 w-[calc(1.75rem*1292/331)]">
+            <img
+              src="/brand/logo-light.png"
+              alt="OneStreet"
+              width={1292}
+              height={331}
+              draggable={false}
+              className="absolute inset-0 h-full w-full object-contain object-left dark:hidden"
+            />
+            <img
+              src="/brand/logo-dark.png"
+              alt=""
+              width={1359}
+              height={354}
+              draggable={false}
+              className="absolute inset-0 hidden h-full w-full object-contain object-left dark:block"
+            />
+          </span>
         </Link>
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           <Link
@@ -117,11 +119,11 @@ export function AdminGateLogin({
 
       <div className="login-body relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
         <main className="flex flex-1 flex-col justify-start pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:pt-4 lg:justify-center lg:py-8">
-          <div className="my-0 flex w-full flex-col overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] dark:ring-white/10 lg:my-auto lg:grid lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
+          <div className="my-0 flex w-full flex-col overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-[color:var(--border)] sm:rounded-[1.75rem] lg:my-auto lg:grid lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
             <LoginBrandPanel
               headline={headline}
               support={support}
-              markClassName="h-auto w-[min(10.5rem,44%)] sm:w-[min(13rem,54%)] lg:w-[min(15.5rem,68%)]"
+              markClassName="w-[min(10.5rem,44%)] sm:w-[min(13rem,54%)] lg:w-[min(15.5rem,68%)]"
             />
 
             <div className="flex flex-col justify-center bg-[var(--surface-elevated)] px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
