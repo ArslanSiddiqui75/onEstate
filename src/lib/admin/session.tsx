@@ -47,7 +47,16 @@ interface AdminState {
   registry: PlatformRegistry;
   registryError: string | null;
   metrics: ReturnType<typeof getPlatformMetrics>;
-  signIn: (email: string, password: string, gate: string) => Promise<void>;
+  /**
+   * Password step. Resolves with mfaRequired — console session is only
+   * issued after verifyMfa succeeds.
+   */
+  signIn: (
+    email: string,
+    password: string,
+    gate: string,
+  ) => Promise<{ mfaRequired: true; channel: string; devCode?: string }>;
+  verifyMfa: (code: string) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => void;
   canManageBilling: boolean;
@@ -155,33 +164,58 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
     };
   }, [refresh]);
 
-  const signIn = useCallback(async (email: string, password: string, gate: string) => {
-    const res = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, gate }),
-    });
-    const json = (await res.json().catch(() => null)) as {
-      admin?: PlatformAdminUser;
-      error?: string;
-    } | null;
-    if (!res.ok || !json?.admin) {
-      throw new Error(json?.error || "Invalid admin credentials");
-    }
-    // One principal per browser: admin login ends any brokerage session.
-    try {
-      const supabase = createBrowserSupabaseClient();
-      if (supabase) await supabase.auth.signOut();
-    } catch {
-      // Org session cleanup is best-effort.
-    }
-    // Load tenants before the console shell mounts. Setting the admin first
-    // painted the previous signed-out failure ("Unauthorized") for a few
-    // seconds, until this refresh replaced it.
-    setRegistryError(null);
-    await refresh();
-    setAdmin(json.admin);
-  }, [refresh]);
+  const signIn = useCallback(
+    async (email: string, password: string, gate: string) => {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, gate }),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        mfaRequired?: boolean;
+        channel?: string;
+        devCode?: string;
+        error?: string;
+      } | null;
+      if (!res.ok || !json?.mfaRequired) {
+        throw new Error(json?.error || "Invalid admin credentials");
+      }
+      return {
+        mfaRequired: true as const,
+        channel: json.channel || "totp",
+        ...(json.devCode ? { devCode: json.devCode } : {}),
+      };
+    },
+    [],
+  );
+
+  const verifyMfa = useCallback(
+    async (code: string) => {
+      const res = await fetch("/api/admin/login/mfa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        admin?: PlatformAdminUser;
+        error?: string;
+      } | null;
+      if (!res.ok || !json?.admin) {
+        throw new Error(json?.error || "Invalid verification code");
+      }
+      // One principal per browser: admin login ends any brokerage session.
+      try {
+        const supabase = createBrowserSupabaseClient();
+        if (supabase) await supabase.auth.signOut();
+      } catch {
+        // Org session cleanup is best-effort.
+      }
+      setRegistryError(null);
+      await refresh();
+      setAdmin(json.admin);
+    },
+    [refresh],
+  );
 
   const signOut = useCallback(async () => {
     try {
@@ -359,6 +393,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       registryError,
       metrics: getPlatformMetrics(registry),
       signIn,
+      verifyMfa,
       signOut,
       refresh,
       canManageBilling: admin ? adminCanManageBilling(admin.role) : false,
@@ -382,6 +417,7 @@ export function AdminSessionProvider({ children }: { children: ReactNode }) {
       registry,
       registryError,
       signIn,
+      verifyMfa,
       signOut,
       refresh,
       updatePlan,

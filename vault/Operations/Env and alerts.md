@@ -11,7 +11,7 @@
 | Stripe | Checkout, portal, webhooks, invoices |
 | Twilio + `MESSAGING_MODE` | SMS |
 | Resend / email envs | CRM + automation email |
-| `PLATFORM_ADMIN_GATE_*` + `PLATFORM_ADMIN_PASSWORD_*` + `PLATFORM_ADMIN_SESSION_SECRET` | Opaque per-role `/admin` gates (prod requires all of these) |
+| `PLATFORM_ADMIN_GATE_*` + `PLATFORM_ADMIN_PASSWORD_*` + `PLATFORM_ADMIN_SESSION_SECRET` + `PLATFORM_ADMIN_TOTP_*` | Opaque per-role `/admin` gates + TOTP 2FA (prod requires all of these) |
 | Social OAuth + `SOCIAL_TOKEN_ENCRYPTION_KEY` | Social connect/publish |
 | Cron secrets | Social + automation schedules; production fails closed if unset |
 
