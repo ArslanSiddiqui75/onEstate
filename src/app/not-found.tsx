@@ -1,25 +1,28 @@
-/**
- * 404 Not Found Page
- *
- * HOW THIS WORKS (for learning):
- *
- * When someone goes to a URL that doesn't exist (like /app/blahblah),
- * Next.js looks for a "not-found.tsx" file and renders it.
- *
- * Without this file, Next.js shows a very basic default 404 page.
- * With it, we can show a branded, friendly error page that matches
- * our app's design and helps users get back to where they need to be.
- */
-
 import Link from "next/link";
-import { BrandMark } from "@/components/brand/brand-mark";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
 export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center">
-      <BrandMark className="scale-125" />
+      <div className="relative h-[7.5rem] w-[6.35rem]" aria-hidden>
+        <img
+          src="/brand/loader-mark-light.webp"
+          alt=""
+          width={512}
+          height={601}
+          draggable={false}
+          className="absolute inset-0 h-full w-full object-contain dark:hidden"
+        />
+        <img
+          src="/brand/loader-mark-dark.webp"
+          alt=""
+          width={524}
+          height={706}
+          draggable={false}
+          className="absolute inset-0 hidden h-full w-full origin-center scale-[1.26] object-contain dark:block"
+        />
+      </div>
       <div className="space-y-2">
         <h1 className="font-display text-4xl font-bold tracking-tight text-[var(--foreground)]">
           Page not found
