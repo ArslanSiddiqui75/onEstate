@@ -5,6 +5,12 @@ import type { Market, PlanId, Role } from "@/types";
 
 export type PlatformAdminRole = "super_admin" | "billing_admin" | "support_admin";
 
+export const PLATFORM_ADMIN_ROLES: readonly PlatformAdminRole[] = [
+  "super_admin",
+  "billing_admin",
+  "support_admin",
+] as const;
+
 export type TenantLifecycleStatus =
   | "trialing"
   | "active"

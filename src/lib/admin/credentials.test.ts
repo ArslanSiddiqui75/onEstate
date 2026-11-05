@@ -40,19 +40,19 @@ describe("authenticatePlatformAdmin", () => {
   });
 
   it("rejects a valid admin on the wrong role gate", () => {
-    vi.stubEnv("PLATFORM_ADMIN_PASSWORD_SUPER", "SuperOnly!");
-    vi.stubEnv("PLATFORM_ADMIN_PASSWORD_SUPPORT", "SupportOnly!");
+    vi.stubEnv("PLATFORM_ADMIN_PASSWORD_SUPER", "SuperOnly!LongEnough");
+    vi.stubEnv("PLATFORM_ADMIN_PASSWORD_SUPPORT", "SupportOnly!LongOk");
     expect(
       authenticatePlatformAdmin(
         "admin@certified.local",
-        "SuperOnly!",
+        "SuperOnly!LongEnough",
         "support_admin",
       ),
     ).toBeNull();
     expect(
       authenticatePlatformAdmin(
         "admin@certified.local",
-        "SuperOnly!",
+        "SuperOnly!LongEnough",
         "super_admin",
       ),
     ).toMatchObject({ role: "super_admin" });
@@ -65,15 +65,15 @@ describe("admin session tokens", () => {
   });
 
   it("round-trips a signed token", () => {
-    vi.stubEnv("PLATFORM_ADMIN_SESSION_SECRET", "session-secret-value");
-    expect(adminSessionSecret()).toBe("session-secret-value");
+    vi.stubEnv("PLATFORM_ADMIN_SESSION_SECRET", "session-secret-value-32chars!!");
+    expect(adminSessionSecret()).toBe("session-secret-value-32chars!!");
     const token = issueAdminSessionToken(admin);
     expect(token).toBeTruthy();
     expect(verifyAdminSessionToken(token)).toEqual(admin);
   });
 
   it("rejects a tampered token", () => {
-    vi.stubEnv("PLATFORM_ADMIN_SESSION_SECRET", "session-secret-value");
+    vi.stubEnv("PLATFORM_ADMIN_SESSION_SECRET", "session-secret-value-32chars!!");
     const token = issueAdminSessionToken(admin);
     expect(verifyAdminSessionToken(`${token}x`)).toBeNull();
     expect(verifyAdminSessionToken("not-a-token")).toBeNull();

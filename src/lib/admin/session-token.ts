@@ -1,14 +1,23 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import type { PlatformAdminUser } from "@/lib/admin/types";
 import { adminSessionSecret } from "@/lib/admin/credentials";
+import { PLATFORM_ADMIN_ROLES } from "@/lib/admin/types";
 
-const COOKIE = "platform_admin_session";
-const TTL_SECONDS = 60 * 60 * 12;
+const isProd = process.env.NODE_ENV === "production";
+
+/** Host-only cookie in production — Secure + Path=/ + no Domain. */
+const COOKIE = isProd
+  ? "__Host-platform_admin_session"
+  : "platform_admin_session";
+
+/** Short-lived operator sessions. */
+const TTL_SECONDS = 60 * 60 * 4;
 
 export const ADMIN_SESSION_COOKIE = COOKIE;
 
 interface TokenPayload extends PlatformAdminUser {
   exp: number;
+  iat: number;
 }
 
 function sign(payload: string, secret: string): string {
@@ -22,14 +31,22 @@ function signaturesMatch(a: string, b: string): boolean {
   return timingSafeEqual(left, right);
 }
 
+function isKnownRole(role: string): role is PlatformAdminUser["role"] {
+  return (PLATFORM_ADMIN_ROLES as readonly string[]).includes(role);
+}
+
 export function issueAdminSessionToken(admin: PlatformAdminUser): string | null {
   const secret = adminSessionSecret();
   if (!secret) return null;
+  const now = Math.floor(Date.now() / 1000);
   const payload: TokenPayload = {
     ...admin,
-    exp: Math.floor(Date.now() / 1000) + TTL_SECONDS,
+    iat: now,
+    exp: now + TTL_SECONDS,
   };
-  const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString(
+    "base64url",
+  );
   return `${encoded}.${sign(encoded, secret)}`;
 }
 
@@ -52,6 +69,7 @@ export function verifyAdminSessionToken(
     if (!payload?.id || !payload.email || !payload.role || !payload.exp) {
       return null;
     }
+    if (!isKnownRole(payload.role)) return null;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
     return {
       id: payload.id,
@@ -67,8 +85,8 @@ export function verifyAdminSessionToken(
 export function adminSessionCookieOptions() {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
+    secure: isProd,
+    sameSite: "strict" as const,
     path: "/",
     maxAge: TTL_SECONDS,
   };

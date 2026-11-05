@@ -6,8 +6,9 @@
 - UI gates via `hasModuleAccess`; DB RLS aligned to the TypeScript matrix (`rbac_matrix_align` + `20261104120000_p0_honesty_hardening` for string AccessLevel overrides clamped to role ceilings).
 - Personal module grants cannot exceed the role matrix ceiling (none unlocks to view only).
 - Invite escalation blocked server-side (`/api/team/invite`).
-- Admin passwords checked only on server (`POST /api/admin/login`); httpOnly signed cookie.
-- Operator lock screens use opaque single-segment gates (`PLATFORM_ADMIN_GATE_*`) rewritten in `proxy.ts`; `/admin/login` is retired; gates are `noindex` and role-locked.
+- Admin passwords checked only on server (`POST /api/admin/login`); httpOnly signed cookie (`__Host-` in production), `SameSite=strict`, 4h TTL.
+- Operator lock screens use opaque single-segment gates (`PLATFORM_ADMIN_GATE_*`, ≥12 alphanumeric in prod) rewritten in `proxy.ts`; `/admin/login` is retired; gates are `noindex` and role-locked.
+- Production admin auth fails closed: per-role passwords (≥16), dedicated session secret (≥32, not equal to a password), same-origin login POST, tight rate limits + failure jitter.
 - Twilio webhooks: signature validation; unmatched inbound persisted; cron routes fail closed in production without secrets.
 - `documents` storage bucket: org-prefixed path RLS on `storage.objects`.
 - Public lead capture: honeypot + coarse rate limit.

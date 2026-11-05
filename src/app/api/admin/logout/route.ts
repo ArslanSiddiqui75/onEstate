@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
-import { ADMIN_SESSION_COOKIE } from "@/lib/admin/session-token";
+import {
+  ADMIN_SESSION_COOKIE,
+  adminSessionCookieOptions,
+} from "@/lib/admin/session-token";
 
 export async function POST() {
   const response = NextResponse.json({ ok: true });
   response.cookies.set(ADMIN_SESSION_COOKIE, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
+    ...adminSessionCookieOptions(),
     maxAge: 0,
   });
+  response.headers.set("Cache-Control", "no-store");
   return response;
 }

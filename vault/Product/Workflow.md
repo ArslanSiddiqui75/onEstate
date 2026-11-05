@@ -14,7 +14,7 @@
 
 ## Platform operator
 
-1. Opaque per-role gate URLs (env `PLATFORM_ADMIN_GATE_*`), not `/admin/login`.
-2. Each gate only accepts that role’s credentials (`PLATFORM_ADMIN_PASSWORD_*`).
+1. Opaque per-role gate URLs (env `PLATFORM_ADMIN_GATE_*`, long alphanumeric), not `/admin/login`.
+2. Each gate only accepts that role’s credentials (`PLATFORM_ADMIN_PASSWORD_*`); session cookie is short-lived and `__Host-` locked in production.
 3. Tenants, subscriptions, users, audit, tickets, impersonation (where shipped).
 4. Org sign-out clears admin session and vice versa (dual cookies until then).
