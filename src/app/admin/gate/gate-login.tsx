@@ -83,9 +83,9 @@ export function AdminGateLogin({
   return (
     <div
       data-auth-screen="admin"
-      className="login-screen relative flex min-h-dvh flex-col overflow-x-hidden"
+      className="login-screen relative flex h-dvh flex-col overflow-hidden"
     >
-      <header className="relative z-10 flex items-center justify-between gap-3 px-4 pb-2 pt-[max(0.85rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6 sm:py-4">
+      <header className="relative z-10 flex shrink-0 items-center justify-between gap-3 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:gap-4 sm:px-6 sm:py-3.5">
         <Link href="/UK" className="inline-flex min-w-0" aria-label="OneStreet">
           <span className="relative inline-block h-7 w-[calc(1.75rem*1292/331)]">
             <img
@@ -117,19 +117,19 @@ export function AdminGateLogin({
         </div>
       </header>
 
-      <div className="login-body relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
-        <main className="flex flex-1 flex-col justify-start pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:pt-4 lg:justify-center lg:py-8">
-          <div className="my-0 flex w-full flex-col overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-[color:var(--border)] sm:rounded-[1.75rem] lg:my-auto lg:grid lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
+      <div className="login-body relative z-10 mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-4">
+        <main className="flex min-h-0 flex-1 flex-col justify-center py-2 sm:py-3 lg:py-4">
+          <div className="grid h-full max-h-full min-h-0 w-full grid-rows-[minmax(0,36%)_minmax(0,1fr)] overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-[color:var(--border)] sm:rounded-[1.75rem] lg:h-auto lg:max-h-full lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)] lg:grid-rows-1 lg:items-stretch">
             <LoginBrandPanel
               headline={headline}
               support={support}
-              markClassName="w-[min(10.5rem,44%)] sm:w-[min(13rem,54%)] lg:w-[min(15.5rem,68%)]"
+              markClassName="w-[min(8rem,40%)] sm:w-[min(10rem,46%)] lg:w-[min(12.5rem,60%)]"
             />
 
-            <div className="flex flex-col justify-center bg-[var(--surface-elevated)] px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
+            <div className="flex min-h-0 flex-col justify-center overflow-y-auto bg-[var(--surface-elevated)] px-5 py-5 sm:px-8 sm:py-7 lg:px-10 lg:py-8">
               {step === "password" ? (
                 <>
-                  <h1 className="font-sans text-[2.05rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.6rem]">
+                  <h1 className="font-sans text-[1.85rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.25rem]">
                     Sign in
                   </h1>
                   <p className="mt-2 text-sm text-[var(--muted)]">
@@ -138,7 +138,7 @@ export function AdminGateLogin({
 
                   <form
                     onSubmit={onPasswordSubmit}
-                    className="mt-6 space-y-4 sm:mt-8 sm:space-y-5"
+                    className="mt-4 space-y-3.5 sm:mt-5 sm:space-y-4"
                   >
                     <div className="space-y-1.5">
                       <label
@@ -156,7 +156,7 @@ export function AdminGateLogin({
                         placeholder="you@0nestreet.com"
                         autoComplete="username"
                         autoFocus
-                        className="h-12 rounded-[1rem] px-4 text-[15px]"
+                        className="h-11 rounded-[1rem] px-4 text-[15px]"
                       />
                     </div>
 
@@ -176,7 +176,7 @@ export function AdminGateLogin({
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Password"
                           autoComplete="current-password"
-                          className="h-12 rounded-[1rem] px-4 pr-12 text-[15px]"
+                          className="h-11 rounded-[1rem] px-4 pr-12 text-[15px]"
                         />
                         <button
                           type="button"
@@ -213,7 +213,7 @@ export function AdminGateLogin({
                       Two-factor
                     </span>
                   </div>
-                  <h1 className="mt-2 font-sans text-[2.05rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.6rem]">
+                  <h1 className="mt-2 font-sans text-[1.85rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.25rem]">
                     Enter code
                   </h1>
                   <p className="mt-2 text-sm text-[var(--muted)]">
@@ -222,7 +222,7 @@ export function AdminGateLogin({
 
                   <form
                     onSubmit={onMfaSubmit}
-                    className="mt-6 space-y-4 sm:mt-8 sm:space-y-5"
+                    className="mt-4 space-y-3.5 sm:mt-5 sm:space-y-4"
                   >
                     <div className="space-y-1.5">
                       <label
@@ -243,7 +243,7 @@ export function AdminGateLogin({
                         }
                         placeholder="000000"
                         autoFocus
-                        className="h-12 rounded-[1rem] px-4 text-center font-mono text-[1.35rem] tracking-[0.35em]"
+                        className="h-11 rounded-[1rem] px-4 text-center font-mono text-[1.35rem] tracking-[0.35em]"
                       />
                     </div>
 
@@ -282,7 +282,7 @@ export function AdminGateLogin({
                 </>
               )}
 
-              <p className="mt-6 text-sm text-[var(--muted)]">
+              <p className="mt-4 text-sm text-[var(--muted)] sm:mt-5">
                 Looking for your workspace?{" "}
                 <Link href="/app/login" className="font-semibold text-[var(--accent)]">
                   Workspace sign in here

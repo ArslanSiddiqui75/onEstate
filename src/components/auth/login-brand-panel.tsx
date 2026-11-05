@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /**
  * Lock-screen brand column.
  * One layout box for both themes — only paints (wash vs ink) change.
- * Never put theme-specific padding, min-heights, or mark sizes here.
+ * Height follows the login card so the page can stay within 100dvh.
  */
 export function LoginBrandPanel({
   headline,
@@ -20,12 +20,12 @@ export function LoginBrandPanel({
 }) {
   const markSize =
     markClassName ??
-    "w-[min(11rem,46%)] sm:w-[min(14rem,56%)] lg:w-[min(17.5rem,72%)]";
+    "w-[min(8.5rem,42%)] sm:w-[min(10.5rem,48%)] lg:w-[min(13.5rem,64%)]";
 
   return (
     <aside
       className={cn(
-        "relative flex min-h-[18.5rem] flex-col justify-between overflow-hidden border-b p-6 sm:min-h-[22rem] sm:p-8 lg:min-h-[40rem] lg:border-b-0 lg:border-r lg:p-10 xl:p-12",
+        "relative flex min-h-0 flex-col justify-between overflow-hidden border-b p-5 sm:p-6 lg:h-full lg:border-b-0 lg:border-r lg:p-8 xl:p-10",
         "border-[var(--border)] bg-[linear-gradient(165deg,#f3f8f7_0%,#e7f1ef_48%,#dfecea_100%)] text-[var(--foreground)]",
         /* bg-none clears the light gradient image; solid ink color alone cannot. */
         "dark:border-white/10 dark:bg-none dark:bg-[#071015] dark:text-white",
@@ -56,14 +56,14 @@ export function LoginBrandPanel({
         className="pointer-events-none absolute -left-16 bottom-0 hidden h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl dark:block"
       />
 
-      <div className="relative flex flex-1 items-center justify-center py-6 sm:py-8 lg:py-10">
-        <HouseMark className={cn("login-panel-mark", markSize)} />
+      <div className="relative flex min-h-0 flex-1 items-center justify-center py-3 sm:py-4 lg:py-6">
+        <HouseMark className={cn("login-panel-mark max-h-full", markSize)} />
       </div>
-      <div className="relative max-w-sm">
-        <h2 className="font-sans text-[2.15rem] font-semibold leading-[0.92] tracking-[-0.045em] sm:text-[2.6rem] lg:text-[3.25rem]">
+      <div className="relative max-w-sm shrink-0">
+        <h2 className="font-sans text-[1.85rem] font-semibold leading-[0.92] tracking-[-0.045em] sm:text-[2.25rem] lg:text-[2.75rem]">
           {headline}
         </h2>
-        <p className="mt-3 text-[14px] leading-relaxed text-[var(--muted)] sm:mt-4 sm:text-[15px] lg:mt-5 dark:text-white/70">
+        <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted)] sm:mt-3 sm:text-[14px] lg:mt-3.5 dark:text-white/70">
           {support}
         </p>
       </div>

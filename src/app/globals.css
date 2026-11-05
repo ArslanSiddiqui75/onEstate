@@ -581,6 +581,10 @@ html,
    the source size so the sculpture is never blown up. */
 .login-screen {
   background: var(--canvas);
+  /* Lock screens are viewport-bound — never grow past the screen. */
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
 }
 
 .login-field {
