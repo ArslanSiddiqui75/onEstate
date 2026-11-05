@@ -29,15 +29,15 @@ const GATE_COPY: Record<
   { headline: string; support: string }
 > = {
   super_admin: {
-    headline: "One console.",
+    headline: "One Console.",
     support: "Subscriptions, tenants, and the audit trail.",
   },
   billing_admin: {
-    headline: "Billing console.",
+    headline: "Billing Console.",
     support: "Plans, invoices, and subscription control.",
   },
   support_admin: {
-    headline: "Support console.",
+    headline: "Support Console.",
     support: "Accounts, access, and tenant assistance.",
   },
 };
