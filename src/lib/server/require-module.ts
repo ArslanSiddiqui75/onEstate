@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { hasModuleAccess } from "@/lib/access";
+import {
+  BLOCKED_WORKSPACE_STATUSES,
+  isSubscriptionSoftLocked,
+} from "@/lib/billing/subscription-lock";
 import type { AccessLevel, ModuleId, PlanId, Role } from "@/types";
 import type { RequestProfile } from "@/lib/server/request-profile";
+
+export { BLOCKED_WORKSPACE_STATUSES, isSubscriptionSoftLocked };
 
 const ROLES: Role[] = [
   "owner",
@@ -36,27 +42,8 @@ export function profileCanAccess(
   );
 }
 
-/**
- * Soft-lock statuses — billing module stays reachable.
- * `past_due` is intentionally omitted: Stripe dunning grace keeps the workspace
- * usable while collection retries; only unpaid / paused / canceled lock product.
- */
-export const BLOCKED_WORKSPACE_STATUSES = new Set([
-  "paused",
-  "canceled",
-  "unpaid",
-  "incomplete_expired",
-]);
-
 export function workspaceBlocked(profile: Pick<RequestProfile, "subscriptionStatus">): boolean {
-  return Boolean(
-    profile.subscriptionStatus && BLOCKED_WORKSPACE_STATUSES.has(profile.subscriptionStatus),
-  );
-}
-
-/** Client-safe soft-lock check (same set as API). */
-export function isSubscriptionSoftLocked(status: string | null | undefined): boolean {
-  return Boolean(status && BLOCKED_WORKSPACE_STATUSES.has(status));
+  return isSubscriptionSoftLocked(profile.subscriptionStatus);
 }
 
 export function forbiddenIfNoModule(

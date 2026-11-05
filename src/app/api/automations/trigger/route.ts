@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { clientIp } from "@/lib/http/client-ip";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { triggerAndProcess } from "@/lib/automations/engine";
 import type { AutomationTrigger, LeadStage } from "@/types";
+
+const isRateLimited = createSlidingWindowLimiter({
+  windowMs: 60_000,
+  max: 30,
+});
 
 const bodySchema = z.object({
   leadId: z.string().min(1),
@@ -25,6 +32,13 @@ const bodySchema = z.object({
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  if (isRateLimited(clientIp(request))) {
+    return NextResponse.json(
+      { error: "Too many automation runs. Try again shortly." },
+      { status: 429 },
+    );
+  }
+
   const profile = await resolveProfileFromRequest(request);
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });

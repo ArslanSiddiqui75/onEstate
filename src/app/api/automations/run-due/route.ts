@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/http/client-ip";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { createServiceSupabaseClient } from "@/lib/supabase/server";
 import { processAutomationRuns } from "@/lib/automations/engine";
 
 export const maxDuration = 60;
+
+const isRateLimited = createSlidingWindowLimiter({
+  windowMs: 60_000,
+  max: 20,
+});
 
 /**
  * Flush this org's due automation runs. Called when the CRM opens so waits
@@ -12,6 +19,13 @@ export const maxDuration = 60;
  * module's publish-due workaround).
  */
 export async function POST(request: Request) {
+  if (isRateLimited(clientIp(request))) {
+    return NextResponse.json(
+      { error: "Too many automation runs. Try again shortly." },
+      { status: 429 },
+    );
+  }
+
   const profile = await resolveProfileFromRequest(request);
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });

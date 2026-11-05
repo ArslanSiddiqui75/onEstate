@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { clientIp } from "@/lib/http/client-ip";
 import { resolveProfileFromRequest } from "@/lib/server/request-profile";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
 import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { publishSocialPost } from "@/lib/social/publish-service";
 
@@ -9,7 +11,19 @@ import { publishSocialPost } from "@/lib/social/publish-service";
 // gets a chance to respond, leaving the client's "Publish now" button stuck.
 export const maxDuration = 60;
 
+const isRateLimited = createSlidingWindowLimiter({
+  windowMs: 60_000,
+  max: 20,
+});
+
 export async function POST(request: Request) {
+  if (isRateLimited(clientIp(request))) {
+    return NextResponse.json(
+      { error: "Too many publish requests. Try again shortly." },
+      { status: 429 },
+    );
+  }
+
   const profile = await resolveProfileFromRequest(request);
   if (!profile) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   const denied = forbiddenIfNoModule(profile, "social", "edit");

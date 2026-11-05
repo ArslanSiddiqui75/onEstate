@@ -14,6 +14,13 @@ import { forbiddenIfNoModule } from "@/lib/server/require-module";
 import { fireLeadContactedIfFirst } from "@/lib/automations/engine";
 import { profileHasDndForLead } from "@/lib/crm/dnd-server";
 import { DND_BLOCK_MESSAGE } from "@/lib/crm/dnd";
+import { clientIp } from "@/lib/http/client-ip";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
+
+const isRateLimited = createSlidingWindowLimiter({
+  windowMs: 60_000,
+  max: 30,
+});
 
 const bodySchema = z.object({
   leadId: z.string().min(1),
@@ -28,6 +35,13 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (isRateLimited(clientIp(request))) {
+    return NextResponse.json(
+      { error: "Too many emails. Try again shortly." },
+      { status: 429 },
+    );
+  }
+
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
@@ -37,20 +51,20 @@ export async function POST(request: Request) {
   const supabase = createServiceSupabaseClient();
   const profile = await resolveProfileFromRequest(request);
 
-  if (supabase && !profile) {
+  if (!profile) {
     return NextResponse.json({ error: "Sign in to send email" }, { status: 401 });
   }
-  if (profile) {
-    const denied = forbiddenIfNoModule(profile, "crm", "edit");
-    if (denied) return denied;
-  }
+  const denied = forbiddenIfNoModule(profile, "crm", "edit");
+  if (denied) return denied;
 
-  if (process.env.NODE_ENV === "production" && !profile) {
-    return NextResponse.json({ error: "Sign in to send email" }, { status: 401 });
-  }
-
-  const orgId = profile?.orgId;
+  const orgId = profile.orgId;
   if (!supabase || !orgId) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Email is not configured" },
+        { status: 503 },
+      );
+    }
     const domain = normalizeDomain(parsed.data.domain || "");
     const fromLocal = normalizeMailbox(parsed.data.fromLocal || "hello");
     const fromName = (parsed.data.fromName || "").trim().slice(0, 80);
@@ -82,8 +96,9 @@ export async function POST(request: Request) {
         sentAt: new Date().toISOString(),
       });
     } catch (error) {
+      console.error("[email/send] local send failed", error);
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Failed to send email" },
+        { error: "Failed to send email" },
         { status: 500 },
       );
     }

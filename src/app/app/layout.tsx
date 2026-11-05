@@ -8,7 +8,7 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { sanitizeRedirectTo } from "@/lib/auth/redirect";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { LogoLoader } from "@/components/brand/logo-loader";
-import { isSubscriptionSoftLocked } from "@/lib/server/require-module";
+import { isSubscriptionSoftLocked } from "@/lib/billing/subscription-lock";
 import { Alert } from "@/components/ui/alert";
 import Link from "next/link";
 

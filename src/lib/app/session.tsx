@@ -48,7 +48,7 @@ import {
   sequenceVarsFromLead,
 } from "@/lib/sequences/catalog";
 import type { WorkspaceRepository } from "@/lib/data/repository";
-import { isSubscriptionSoftLocked } from "@/lib/server/require-module";
+import { isSubscriptionSoftLocked } from "@/lib/billing/subscription-lock";
 import {
   createLocalRepository,
   findLocalWorkspaceByEmail,
@@ -667,18 +667,13 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      const existingByEmail = findLocalWorkspaceByEmail(email);
-      if (existingByEmail) {
-        const repo = createLocalRepository(existingByEmail);
-        repoRef.current = repo;
-        await applySnapshot(repo);
-        return;
-      }
-
+      // Never open a local workspace by email alone — that was a takeover hole.
+      // Only resume the workspace already owned by this browser session.
       const auth = getLocalAuth();
       if (auth && auth.user.email.toLowerCase() === email.toLowerCase()) {
-        const existing = loadWorkspace(auth.org.id);
-        if (existing) {
+        const existing =
+          loadWorkspace(auth.org.id) || findLocalWorkspaceByEmail(email);
+        if (existing && existing.org.id === auth.org.id) {
           const repo = createLocalRepository(existing);
           repoRef.current = repo;
           await applySnapshot(repo);
@@ -1829,7 +1824,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     } catch {
       return null;
     }
-  }, []);
+  }, [getAuthToken]);
 
   const requestEsign = useCallback(
     async (input: {
@@ -2006,6 +2001,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       body: string;
       kind?: "manual" | "bulk" | "automation" | "sequence";
     }) => {
+      assertWritable();
       if (!repoRef.current || !org) {
         return { mode: "simulated" as const };
       }
@@ -2692,5 +2688,8 @@ export function useAppSession() {
   const ctx = useContext(AppContext);
   const brand = useBrand();
   if (!ctx) throw new Error("useAppSession must be used within AppSessionProvider");
-  return { ...ctx, brand, market: brand.market };
+  return useMemo(
+    () => ({ ...ctx, brand, market: brand.market }),
+    [ctx, brand],
+  );
 }

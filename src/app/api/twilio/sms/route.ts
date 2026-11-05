@@ -11,6 +11,13 @@ import { hasTwilioAccount } from "@/lib/twilio/numbers";
 import { resolveOutboundFromNumber } from "@/lib/phone/org-numbers";
 import { profileHasDndForLead } from "@/lib/crm/dnd-server";
 import { DND_BLOCK_MESSAGE } from "@/lib/crm/dnd";
+import { clientIp } from "@/lib/http/client-ip";
+import { createSlidingWindowLimiter } from "@/lib/server/rate-limit";
+
+const isRateLimited = createSlidingWindowLimiter({
+  windowMs: 60_000,
+  max: 30,
+});
 
 const bodySchema = z.object({
   leadId: z.string().min(1),
@@ -23,6 +30,13 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  if (isRateLimited(clientIp(request))) {
+    return NextResponse.json(
+      { error: "Too many texts. Try again shortly." },
+      { status: 429 },
+    );
+  }
+
   const json = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
   if (!parsed.success) {
@@ -49,25 +63,22 @@ export async function POST(request: Request) {
   const supabase = createServiceSupabaseClient();
   const profile = await resolveProfileFromRequest(request);
 
-  if (supabase && !profile) {
+  if (!profile) {
     return NextResponse.json({ error: "Sign in to send SMS" }, { status: 401 });
   }
-  if (profile) {
-    const denied = forbiddenIfNoModule(profile, "crm", "edit");
-    if (denied) return denied;
-  }
+  const denied = forbiddenIfNoModule(profile, "crm", "edit");
+  if (denied) return denied;
 
-  if (process.env.NODE_ENV === "production" && !profile) {
-    return NextResponse.json({ error: "Sign in to send SMS" }, { status: 401 });
-  }
+  const orgId = profile.orgId;
 
-  const orgId = profile?.orgId;
-
-  // Local-workspace mode has no Supabase to persist to; the client stores the
-  // message itself. Production still requires a signed-in profile.
+  // Hosted path requires service role. Never send live Twilio from a
+  // misconfigured production deploy without org-scoped persistence.
   if (!supabase || !orgId) {
-    if (process.env.NODE_ENV === "production" && !profile) {
-      return NextResponse.json({ error: "Sign in to send SMS" }, { status: 401 });
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Messaging is not configured" },
+        { status: 503 },
+      );
     }
     const from = (parsed.data.from || process.env.TWILIO_FROM_NUMBER || "").trim();
     if (!hasTwilioAccount() || !isE164(from)) {

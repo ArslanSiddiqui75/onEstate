@@ -94,13 +94,3 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
-  const supabase = createServiceSupabaseClient();
-  if (supabase) {
-    const { count } = await supabase
-      .from("waitlist_submissions")
-      .select("id", { count: "exact", head: true });
-    return NextResponse.json({ count: count ?? 0 });
-  }
-  return NextResponse.json({ count: demoRequests.length });
-}
