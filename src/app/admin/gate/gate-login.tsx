@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { toast } from "@/components/ui/toast";
+import { LoginBrandPanel } from "@/components/auth/login-brand-panel";
 
 /**
  * Operator lock screen. The public URL is an opaque single-segment gate
@@ -98,29 +99,11 @@ export function AdminGateLogin({
       <div className="login-body relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 sm:px-6">
         <main className="flex flex-1 flex-col justify-start pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:pt-4 lg:justify-center lg:py-8">
           <div className="my-0 flex w-full flex-col overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--surface-elevated)] shadow-[var(--shadow-float)] ring-1 ring-black/5 sm:rounded-[1.75rem] dark:ring-white/10 lg:my-auto lg:grid lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)]">
-            <aside className="relative flex min-h-[18.5rem] flex-col justify-between overflow-hidden border-b border-white/10 bg-[#071015] p-6 text-white sm:min-h-[22rem] sm:p-8 lg:min-h-[40rem] lg:border-b-0 lg:border-r lg:border-white/10 lg:p-10 xl:p-12">
-              <div className="pointer-events-none absolute inset-0 bg-[image:var(--ink-mesh)]" />
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_38%,rgba(23,186,168,0.22),transparent_58%)]" />
-              <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl" />
-              <div className="relative flex flex-1 items-center justify-center py-6 sm:py-8">
-                <img
-                  src="/brand/loader-mark-dark.webp"
-                  alt=""
-                  width={475}
-                  height={516}
-                  draggable={false}
-                  className="login-panel-mark h-auto w-[min(10.5rem,44%)] object-contain sm:w-[min(13rem,54%)] lg:w-[min(15.5rem,68%)]"
-                />
-              </div>
-              <div className="relative max-w-sm">
-                <h2 className="font-sans text-[2.15rem] font-semibold leading-[0.92] tracking-[-0.045em] sm:text-[2.6rem] lg:text-[3.25rem]">
-                  {headline}
-                </h2>
-                <p className="mt-3 text-[14px] leading-relaxed text-white/70 sm:mt-4 sm:text-[15px] lg:mt-5">
-                  {support}
-                </p>
-              </div>
-            </aside>
+            <LoginBrandPanel
+              headline={headline}
+              support={support}
+              markClassName="h-auto w-[min(10.5rem,44%)] sm:w-[min(13rem,54%)] lg:w-[min(15.5rem,68%)]"
+            />
 
             <div className="flex flex-col justify-center bg-[var(--surface-elevated)] px-5 py-7 sm:px-10 sm:py-12 lg:px-12">
               <h1 className="font-sans text-[2.05rem] font-semibold leading-[0.95] tracking-[-0.045em] text-[var(--foreground)] sm:text-[2.6rem]">
