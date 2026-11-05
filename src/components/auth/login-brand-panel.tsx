@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 
 /**
- * Left lock-screen panel. Follows the active theme — light surface + dark
- * mark in light mode, ink panel + bright mark in dark mode.
+ * Left lock-screen panel. Dark theme keeps the original ink treatment and
+ * bright house mark. Light theme uses a soft teal wash and the dark mark.
  */
 export function LoginBrandPanel({
   headline,
@@ -15,37 +15,46 @@ export function LoginBrandPanel({
   markClassName?: string;
   className?: string;
 }) {
+  const markSize =
+    markClassName ??
+    "h-auto w-[min(11rem,46%)] object-contain sm:w-[min(14rem,56%)] lg:w-[min(17.5rem,72%)]";
+
   return (
     <aside
       className={cn(
+        // Light theme
         "relative flex min-h-[18.5rem] flex-col justify-between overflow-hidden border-b border-[var(--border)] bg-[linear-gradient(165deg,#f3f8f7_0%,#e7f1ef_48%,#dfecea_100%)] p-6 text-[var(--foreground)] sm:min-h-[22rem] sm:p-8 lg:min-h-[40rem] lg:border-b-0 lg:border-r lg:p-10 xl:p-12",
-        "dark:border-white/10 dark:bg-[#071015] dark:text-white",
+        // Dark theme — original ink panel
+        "dark:border-white/10 dark:bg-[#071015] dark:text-white dark:lg:border-white/10",
         className,
       )}
     >
+      {/* Dark-only mesh (same as before) */}
       <div className="pointer-events-none absolute inset-0 hidden bg-[image:var(--ink-mesh)] dark:block" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgba(12,110,99,0.14),transparent_58%)] dark:bg-[radial-gradient(ellipse_at_50%_38%,rgba(23,186,168,0.22),transparent_58%)]" />
-      <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#0c6e63]/10 blur-3xl dark:bg-[#17baa8]/15" />
+      {/* Light glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgba(12,110,99,0.14),transparent_58%)] dark:hidden" />
+      <div className="pointer-events-none absolute -left-16 bottom-0 h-64 w-64 rounded-full bg-[#0c6e63]/10 blur-3xl dark:hidden" />
+      {/* Dark glow — original */}
+      <div className="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(ellipse_at_50%_38%,rgba(23,186,168,0.22),transparent_58%)] dark:block" />
+      <div className="pointer-events-none absolute -left-16 bottom-0 hidden h-64 w-64 rounded-full bg-[#17baa8]/15 blur-3xl dark:block" />
 
       <div className="relative flex flex-1 items-center justify-center py-6 sm:py-8 lg:py-10">
-        <div className={cn("relative", markClassName ?? "h-auto w-[min(11rem,46%)] sm:w-[min(14rem,56%)] lg:w-[min(17.5rem,72%)]")}>
-          <img
-            src="/brand/loader-mark-light.webp"
-            alt=""
-            width={475}
-            height={516}
-            draggable={false}
-            className="login-panel-mark h-auto w-full object-contain dark:hidden"
-          />
-          <img
-            src="/brand/loader-mark-dark.webp"
-            alt=""
-            width={475}
-            height={516}
-            draggable={false}
-            className="login-panel-mark hidden h-auto w-full origin-center scale-[1.08] object-contain dark:block"
-          />
-        </div>
+        <img
+          src="/brand/loader-mark-light.webp"
+          alt=""
+          width={475}
+          height={516}
+          draggable={false}
+          className={cn("login-panel-mark dark:hidden", markSize)}
+        />
+        <img
+          src="/brand/loader-mark-dark.webp"
+          alt=""
+          width={475}
+          height={516}
+          draggable={false}
+          className={cn("login-panel-mark hidden dark:block", markSize)}
+        />
       </div>
 
       <div className="relative max-w-sm">

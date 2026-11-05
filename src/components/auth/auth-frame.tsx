@@ -7,8 +7,8 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useBrand } from "@/components/brand/brand-provider";
 
 /**
- * Shared sign-in chrome. The left panel and form column both follow the
- * active theme so light mode never leaves an ink strip on the side.
+ * Shared sign-in chrome. Dark theme keeps the original ink left panel;
+ * light theme uses a soft wash so the strip matches the form column.
  */
 export function AuthFrame({
   screen,
@@ -41,10 +41,14 @@ export function AuthFrame({
     >
       <aside className="relative hidden min-h-dvh flex-col justify-between overflow-hidden bg-[linear-gradient(165deg,#f3f8f7_0%,#e7f1ef_48%,#dfecea_100%)] px-10 py-10 text-[var(--foreground)] lg:flex xl:px-14 dark:bg-[#071015] dark:text-[#f4f7f8]">
         <div className="pointer-events-none absolute inset-0 hidden bg-[image:var(--ink-mesh)] dark:block" />
-        <div className="pointer-events-none absolute -left-20 bottom-[-4rem] h-72 w-72 rounded-full bg-[#0c6e63]/12 blur-3xl dark:bg-[#17baa8]/25" />
+        <div className="pointer-events-none absolute -left-20 bottom-[-4rem] h-72 w-72 rounded-full bg-[#0c6e63]/12 blur-3xl dark:hidden" />
+        <div className="pointer-events-none absolute -left-20 bottom-[-4rem] hidden h-72 w-72 rounded-full bg-[#17baa8]/25 blur-3xl dark:block" />
         <div className="relative">
-          <Link href={home} className="inline-flex" aria-label="OneStreet">
+          <Link href={home} className="inline-flex dark:hidden" aria-label="OneStreet">
             <BrandMark className="text-2xl" />
+          </Link>
+          <Link href={home} className="hidden dark:inline-flex" aria-label="OneStreet">
+            <BrandMark tone="dark" className="text-2xl" />
           </Link>
         </div>
         <div className="relative max-w-md">
