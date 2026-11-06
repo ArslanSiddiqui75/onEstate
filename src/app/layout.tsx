@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const brand = getBrandByMarket(marketFromHeaders(await headers()));
   return {
     title: {
-      default: `${brand.name} — ${brand.localeLabel}`,
+      default: brand.name,
       template: `%s · ${brand.name}`,
     },
     description: brand.supporting,

@@ -5,7 +5,7 @@ import { getBrandByMarket } from "@/lib/brand/config";
 const brand = getBrandByMarket("us");
 
 export const metadata: Metadata = {
-  title: `${brand.name} US`,
+  title: brand.name,
   description: brand.supporting,
 };
 
