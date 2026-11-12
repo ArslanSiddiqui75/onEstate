@@ -28,7 +28,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const profile = await resolveProfileFromRequest(request);
+  const profile = await resolveProfileFromRequest(
+    request,
+    typeof body.accessToken === "string" ? body.accessToken : null,
+  );
   if (!profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }

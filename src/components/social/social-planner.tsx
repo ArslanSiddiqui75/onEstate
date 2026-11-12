@@ -175,7 +175,7 @@ export type SocialPlannerProps = {
    * media files can be uploaded to Supabase Storage instead of being stored as
    * base64 blobs in the database (which causes browser/laptop freezes).
    */
-  getAuthToken?: () => Promise<string | null>;
+  getAuthToken?: (options?: { refresh?: boolean }) => Promise<string | null>;
   onPublishNow?: (postId: string) => Promise<{ ok: boolean; message: string }>;
   onCreate: (
     post: Omit<SocialPost, "id" | "createdAt" | "orgId">,
@@ -1078,7 +1078,7 @@ export function AccountsPanel({
   canEdit: boolean;
   busy: boolean;
   live: boolean;
-  getAuthToken?: () => Promise<string | null>;
+  getAuthToken?: (options?: { refresh?: boolean }) => Promise<string | null>;
   onConnect: (input: {
     id?: string;
     platform: SocialPlatform;
@@ -1166,16 +1166,32 @@ export function AccountsPanel({
     setConnectError(null);
     setConnectingPlatform(platform);
     try {
-      const token = getAuthToken ? await getAuthToken() : null;
-      const res = await fetch("/api/social/oauth/start", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ platform, returnTo: window.location.pathname }),
-      });
-      const json = await res.json();
+      const post = async (token: string) => {
+        const res = await fetch("/api/social/oauth/start", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            platform,
+            returnTo: window.location.pathname,
+            accessToken: token,
+          }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+        return { res, json };
+      };
+
+      let token = getAuthToken ? await getAuthToken() : null;
+      if (!token) {
+        throw new Error("Your session expired. Refresh the page and sign in again.");
+      }
+      let { res, json } = await post(token);
+      if (res.status === 401 && getAuthToken) {
+        token = await getAuthToken({ refresh: true });
+        if (token) ({ res, json } = await post(token));
+      }
       if (!res.ok || !json.url) {
         throw new Error(json.error || "Could not start the connection");
       }
@@ -1470,7 +1486,7 @@ function SelectedPostEditor({
   canEdit: boolean;
   busy: boolean;
   live?: boolean;
-  getAuthToken?: () => Promise<string | null>;
+  getAuthToken?: (options?: { refresh?: boolean }) => Promise<string | null>;
   onPublishNow?: (postId: string) => Promise<{ ok: boolean; message: string }>;
   onClose: () => void;
   onSave: (
