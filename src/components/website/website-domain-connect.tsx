@@ -51,15 +51,24 @@ export function WebsiteDomainConnect() {
     setVerifying(true);
     updateDraft({ customDomain: domain, domainStatus: "verifying" });
     try {
-      const token = persistence === "supabase" ? await getAuthToken() : null;
-      const res = await fetch("/api/website/domain/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ domain }),
-      });
+      let token = persistence === "supabase" ? await getAuthToken() : null;
+      if (persistence === "supabase" && !token) {
+        throw new Error("Your session expired. Refresh the page and sign in again.");
+      }
+      const post = (bearer: string | null) =>
+        fetch("/api/website/domain/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+          },
+          body: JSON.stringify({ domain, accessToken: bearer || undefined }),
+        });
+      let res = await post(token);
+      if (res.status === 401 && persistence === "supabase") {
+        token = await getAuthToken({ refresh: true });
+        if (token) res = await post(token);
+      }
       const data = (await res.json()) as {
         domain?: string;
         status?: string;
@@ -127,14 +136,22 @@ export function WebsiteDomainConnect() {
       <div>
         <h2 className="font-display text-xl">Website domain</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Buy a domain here with Namecheap, or point one you already own at Hostinger, GoDaddy,
-          Cloudflare, and so on. Add the DNS records below, verify, then publish. Edit the page from{" "}
+          Point a domain you already own. It can live at Hostinger, GoDaddy, Cloudflare,
+          Namecheap, or any other DNS host. Add the records below, then connect. Edit the page
+          from{" "}
           <Link href="/app/website" className="text-[var(--accent)] hover:underline">
             Website
           </Link>
           .
         </p>
       </div>
+      <DomainPanel
+        site={site}
+        canEdit={canEdit}
+        verifying={verifying}
+        onChange={updateDraft}
+        onVerify={() => void handleVerify()}
+      />
       <NamecheapDomains
         canBuy={user.role === "owner"}
         market={market === "us" ? "us" : "uk"}
@@ -144,13 +161,6 @@ export function WebsiteDomainConnect() {
         onConnected={async (domain) => {
           await handleVerify(domain);
         }}
-      />
-      <DomainPanel
-        site={site}
-        canEdit={canEdit}
-        verifying={verifying}
-        onChange={updateDraft}
-        onVerify={() => void handleVerify()}
       />
     </section>
   );

@@ -64,7 +64,7 @@ export function DomainPanel({
   return (
     <div className="grid gap-4">
       <div className="space-y-3">
-        <label className="text-xs font-medium text-[var(--muted)]">Custom domain</label>
+        <label className="text-xs font-medium text-[var(--muted)]">Domain</label>
         <div className="flex gap-2">
           <Input
             value={site.customDomain || ""}
@@ -72,14 +72,14 @@ export function DomainPanel({
             onChange={(e) =>
               onChange({ customDomain: e.target.value, domainStatus: "none", sslStatus: "none" })
             }
-            placeholder="www.agency.com"
+            placeholder="agency.com or www.agency.com"
           />
           <Button
             variant="secondary"
             disabled={!canEdit || !host || verifying}
             onClick={onVerify}
           >
-            {verifying ? "Checking…" : "Verify DNS"}
+            {verifying ? "Checking…" : domainStatus === "connected" ? "Check DNS" : "Connect"}
           </Button>
         </div>
         {domainStatus !== "none" ? (
@@ -108,8 +108,8 @@ export function DomainPanel({
         ) : null}
         <p className="text-[11px] leading-relaxed text-[var(--muted)]">
           {apex
-            ? "Root domains need an A record — CNAME is not valid on @. Use www if your registrar is limited."
-            : `Point a CNAME at ${cnameTarget()}. DNS is checked live; HTTPS is probed on port 443.`}
+            ? "Add these records where the domain’s DNS is managed, then connect. Root domains need an A record — CNAME is not valid on @."
+            : `Add a CNAME for this host at your DNS provider, pointing at ${cnameTarget()}, then connect.`}
         </p>
         {site.published ? null : (
           <p className="text-[11px] text-[var(--muted)]">
@@ -118,19 +118,18 @@ export function DomainPanel({
         )}
       </div>
 
-      <DnsProviderGuide kind="website" />
-
-      <div className="rounded-xl border border-[var(--border)] p-3">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium">
-          <Globe className="h-3.5 w-3.5" />
-          Add these records
+      <div className="rounded-[1.25rem] border border-[var(--border)] px-4 py-3">
+        <p className="text-sm font-semibold">Already own the domain? How to point it here</p>
+        <p className="mt-0.5 text-xs text-[var(--muted)]">
+          Hostinger, GoDaddy, Cloudflare, Namecheap, and similar DNS panels
         </p>
-        <div className="space-y-2">
+        <div className="mt-3 space-y-3 border-t border-[var(--border)] pt-3">
+          <p className="flex items-center gap-1.5 text-xs font-medium">
+            <Globe className="h-3.5 w-3.5" />
+            Add these records
+          </p>
           {instructions.map((row) => (
-            <div
-              key={`${row.type}-${row.host}-${row.value}`}
-              className="rounded-lg bg-[var(--surface-muted)] px-3 py-2 text-xs"
-            >
+            <div key={`${row.type}-${row.host}-${row.value}`} className="text-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-semibold">{row.type}</span>
                 <button
@@ -153,6 +152,7 @@ export function DomainPanel({
             </div>
           ))}
         </div>
+        <DnsProviderGuide kind="website" embedded />
       </div>
     </div>
   );
