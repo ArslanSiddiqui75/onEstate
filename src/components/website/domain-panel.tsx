@@ -118,19 +118,18 @@ export function DomainPanel({
         )}
       </div>
 
-      <DnsProviderGuide kind="website" />
-
-      <div className="rounded-xl border border-[var(--border)] p-3">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium">
-          <Globe className="h-3.5 w-3.5" />
-          Add these records
+      <div className="rounded-[1.25rem] border border-[var(--border)] px-4 py-3">
+        <p className="text-sm font-semibold">Already own the domain? How to point it here</p>
+        <p className="mt-0.5 text-xs text-[var(--muted)]">
+          Hostinger, GoDaddy, Cloudflare, Namecheap, and similar DNS panels
         </p>
-        <div className="space-y-2">
+        <div className="mt-3 space-y-3 border-t border-[var(--border)] pt-3">
+          <p className="flex items-center gap-1.5 text-xs font-medium">
+            <Globe className="h-3.5 w-3.5" />
+            Add these records
+          </p>
           {instructions.map((row) => (
-            <div
-              key={`${row.type}-${row.host}-${row.value}`}
-              className="rounded-lg bg-[var(--surface-muted)] px-3 py-2 text-xs"
-            >
+            <div key={`${row.type}-${row.host}-${row.value}`} className="text-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-semibold">{row.type}</span>
                 <button
@@ -153,6 +152,7 @@ export function DomainPanel({
             </div>
           ))}
         </div>
+        <DnsProviderGuide kind="website" embedded />
       </div>
     </div>
   );

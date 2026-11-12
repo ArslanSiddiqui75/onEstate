@@ -30,19 +30,45 @@ const PROVIDERS = [
   },
 ] as const;
 
-export function DnsProviderGuide({ kind }: { kind: GuideKind }) {
+export function DnsProviderGuide({
+  kind,
+  embedded = false,
+}: {
+  kind: GuideKind;
+  embedded?: boolean;
+}) {
   const isWebsite = kind === "website";
 
   return (
-    <details className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-muted)]/60 open:bg-[var(--surface)]">
-      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-        Already own the domain? Add the DNS records
-        <span className="mt-0.5 block text-xs font-normal text-[var(--muted)]">
-          Hostinger, GoDaddy, Cloudflare, Namecheap, and similar DNS panels
-        </span>
+    <details
+      className={
+        embedded
+          ? "mt-3 border-t border-[var(--border)] pt-3"
+          : "rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-muted)]/60 open:bg-[var(--surface)]"
+      }
+    >
+      <summary
+        className={
+          embedded
+            ? "cursor-pointer list-none text-sm font-semibold [&::-webkit-details-marker]:hidden"
+            : "cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden"
+        }
+      >
+        {embedded ? "How to add them" : "Already own the domain? How to point it here"}
+        {embedded ? null : (
+          <span className="mt-0.5 block text-xs font-normal text-[var(--muted)]">
+            Hostinger, GoDaddy, Cloudflare, Namecheap, and similar DNS panels
+          </span>
+        )}
       </summary>
 
-      <div className="space-y-4 border-t border-[var(--border)] px-4 py-4 text-sm leading-relaxed text-[var(--muted)]">
+      <div
+        className={
+          embedded
+            ? "mt-3 space-y-4 text-sm leading-relaxed text-[var(--muted)]"
+            : "space-y-4 border-t border-[var(--border)] px-4 py-4 text-sm leading-relaxed text-[var(--muted)]"
+        }
+      >
         <ol className="list-decimal space-y-3 pl-5 text-[var(--foreground)]">
           <li>
             Sign in where the domain is managed — for Hostinger that is{" "}
@@ -97,7 +123,13 @@ export function DnsProviderGuide({ kind }: { kind: GuideKind }) {
         </ol>
 
         {isWebsite ? (
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-3 text-xs">
+          <div
+            className={
+              embedded
+                ? "text-xs"
+                : "rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-3 text-xs"
+            }
+          >
             <p className="font-medium text-[var(--foreground)]">Keep Hostinger email working</p>
             <p className="mt-1">
               Pointing the website here does not move your mailbox. Leave Hostinger{" "}
