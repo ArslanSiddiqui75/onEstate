@@ -64,7 +64,7 @@ export function DomainPanel({
   return (
     <div className="grid gap-4">
       <div className="space-y-3">
-        <label className="text-xs font-medium text-[var(--muted)]">Custom domain</label>
+        <label className="text-xs font-medium text-[var(--muted)]">Domain</label>
         <div className="flex gap-2">
           <Input
             value={site.customDomain || ""}
@@ -72,14 +72,14 @@ export function DomainPanel({
             onChange={(e) =>
               onChange({ customDomain: e.target.value, domainStatus: "none", sslStatus: "none" })
             }
-            placeholder="www.agency.com"
+            placeholder="agency.com or www.agency.com"
           />
           <Button
             variant="secondary"
             disabled={!canEdit || !host || verifying}
             onClick={onVerify}
           >
-            {verifying ? "Checking…" : "Verify DNS"}
+            {verifying ? "Checking…" : domainStatus === "connected" ? "Check DNS" : "Connect"}
           </Button>
         </div>
         {domainStatus !== "none" ? (
@@ -108,8 +108,8 @@ export function DomainPanel({
         ) : null}
         <p className="text-[11px] leading-relaxed text-[var(--muted)]">
           {apex
-            ? "Root domains need an A record — CNAME is not valid on @. Use www if your registrar is limited."
-            : `Point a CNAME at ${cnameTarget()}. DNS is checked live; HTTPS is probed on port 443.`}
+            ? "Add these records where the domain’s DNS is managed, then connect. Root domains need an A record — CNAME is not valid on @."
+            : `Add a CNAME for this host at your DNS provider, pointing at ${cnameTarget()}, then connect.`}
         </p>
         {site.published ? null : (
           <p className="text-[11px] text-[var(--muted)]">

@@ -64,11 +64,10 @@ export function NamecheapDomains({
   onConnected: (domain: string) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
-  const [owned, setOwned] = useState("");
   const [results, setResults] = useState<DomainQuote[]>([]);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"search" | "buy" | "connect" | null>(null);
+  const [busy, setBusy] = useState<"search" | "buy" | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
   const [legalType, setLegalType] = useState<(typeof LEGAL_TYPES)[number]["value"]>("IND");
   const [companyId, setCompanyId] = useState("");
@@ -146,7 +145,7 @@ export function NamecheapDomains({
       if (!res.ok || !json.domain) throw new Error(json.error || "Could not buy that domain.");
       await onConnected(json.domain);
       if (json.dnsReady === false) {
-        toast.info(json.message || "The domain is registered. Add the website records below.");
+        toast.info(json.message || "The domain is registered. Add the website records above.");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not buy that domain.");
@@ -156,38 +155,25 @@ export function NamecheapDomains({
     }
   }
 
-  async function connect(event: React.FormEvent) {
-    event.preventDefault();
-    setBusy("connect");
-    setError(null);
-    try {
-      const res = await fetch("/api/website/domain/namecheap", {
-        method: "POST",
-        headers: await authHeaders(),
-        body: JSON.stringify({ action: "connect", domain: owned }),
-      });
-      const json = (await res.json()) as { domain?: string; error?: string; message?: string };
-      if (!res.ok || !json.domain) throw new Error(json.error || "Could not connect that domain.");
-      await onConnected(json.domain);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not connect that domain.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   if (!canBuy) {
     return (
       <p className="text-sm text-[var(--muted)]">
-        The owner buys a domain, or connects one already at Namecheap. You can still point a hostname you control.
+        The owner connects a domain with the DNS records on this page. Buying a new name is optional.
       </p>
     );
   }
 
-  const showUk = results.some((row) => row.available && needsUkDetails(row.domain)) || needsUkDetails(owned.trim().toLowerCase());
+  const showUk = results.some((row) => row.available && needsUkDetails(row.domain));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 border-t border-[var(--border)] pt-4">
+      <div>
+        <h3 className="text-sm font-semibold">Buy a new domain</h3>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Optional. A domain you already own connects above, at whichever company holds its DNS.
+          Buying here registers the name and adds the website records.
+        </p>
+      </div>
       <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => void search(event)}>
         <Input
           value={query}
@@ -197,7 +183,7 @@ export function NamecheapDomains({
           autoComplete="off"
         />
         <Button type="submit" className="shrink-0" disabled={busy === "search" || !query.trim()}>
-          {busy === "search" ? "Searching…" : "Search Namecheap"}
+          {busy === "search" ? "Searching…" : "Search"}
         </Button>
       </form>
 
@@ -257,19 +243,6 @@ export function NamecheapDomains({
           ))}
         </ul>
       ) : null}
-
-      <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => void connect(event)}>
-        <Input
-          value={owned}
-          onChange={(event) => setOwned(event.target.value)}
-          placeholder="A domain already at Namecheap"
-          aria-label="Domain already at Namecheap"
-          autoComplete="off"
-        />
-        <Button type="submit" variant="secondary" className="shrink-0" disabled={busy === "connect" || !owned.trim()}>
-          {busy === "connect" ? "Connecting…" : "Connect"}
-        </Button>
-      </form>
       <p className="text-[11px] leading-relaxed text-[var(--muted)]">
         Registration uses the business profile in{" "}
         <Link href="/app/settings" className="text-[var(--accent)] hover:underline">

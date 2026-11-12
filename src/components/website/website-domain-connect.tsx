@@ -127,14 +127,22 @@ export function WebsiteDomainConnect() {
       <div>
         <h2 className="font-display text-xl">Website domain</h2>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Buy a domain here with Namecheap, or point one you already own at Hostinger, GoDaddy,
-          Cloudflare, and so on. Add the DNS records below, verify, then publish. Edit the page from{" "}
+          Point a domain you already own. It can live at Hostinger, GoDaddy, Cloudflare,
+          Namecheap, or any other DNS host. Add the records below, then connect. Edit the page
+          from{" "}
           <Link href="/app/website" className="text-[var(--accent)] hover:underline">
             Website
           </Link>
           .
         </p>
       </div>
+      <DomainPanel
+        site={site}
+        canEdit={canEdit}
+        verifying={verifying}
+        onChange={updateDraft}
+        onVerify={() => void handleVerify()}
+      />
       <NamecheapDomains
         canBuy={user.role === "owner"}
         market={market === "us" ? "us" : "uk"}
@@ -144,13 +152,6 @@ export function WebsiteDomainConnect() {
         onConnected={async (domain) => {
           await handleVerify(domain);
         }}
-      />
-      <DomainPanel
-        site={site}
-        canEdit={canEdit}
-        verifying={verifying}
-        onChange={updateDraft}
-        onVerify={() => void handleVerify()}
       />
     </section>
   );

@@ -36,7 +36,7 @@ export function DnsProviderGuide({ kind }: { kind: GuideKind }) {
   return (
     <details className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-muted)]/60 open:bg-[var(--surface)]">
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-        Already own the domain? How to point it here
+        Already own the domain? Add the DNS records
         <span className="mt-0.5 block text-xs font-normal text-[var(--muted)]">
           Hostinger, GoDaddy, Cloudflare, Namecheap, and similar DNS panels
         </span>
@@ -83,7 +83,7 @@ export function DnsProviderGuide({ kind }: { kind: GuideKind }) {
             {isWebsite ? (
               <>
                 Save the zone, wait a few minutes (sometimes up to a few hours), then press{" "}
-                <strong className="font-medium">Verify DNS</strong> here. Publish the website in
+                <strong className="font-medium">Connect</strong> here. Publish the website in
                 the app or the domain will still show a 404.
               </>
             ) : (
