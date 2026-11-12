@@ -51,15 +51,24 @@ export function WebsiteDomainConnect() {
     setVerifying(true);
     updateDraft({ customDomain: domain, domainStatus: "verifying" });
     try {
-      const token = persistence === "supabase" ? await getAuthToken() : null;
-      const res = await fetch("/api/website/domain/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ domain }),
-      });
+      let token = persistence === "supabase" ? await getAuthToken() : null;
+      if (persistence === "supabase" && !token) {
+        throw new Error("Your session expired. Refresh the page and sign in again.");
+      }
+      const post = (bearer: string | null) =>
+        fetch("/api/website/domain/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+          },
+          body: JSON.stringify({ domain, accessToken: bearer || undefined }),
+        });
+      let res = await post(token);
+      if (res.status === 401 && persistence === "supabase") {
+        token = await getAuthToken({ refresh: true });
+        if (token) res = await post(token);
+      }
       const data = (await res.json()) as {
         domain?: string;
         status?: string;

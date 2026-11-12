@@ -60,7 +60,7 @@ export function NamecheapDomains({
   market: "uk" | "us";
   fullName: string;
   business?: BusinessProfile;
-  getAuthToken: () => Promise<string | null>;
+  getAuthToken: (options?: { refresh?: boolean }) => Promise<string | null>;
   onConnected: (domain: string) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
@@ -72,12 +72,27 @@ export function NamecheapDomains({
   const [legalType, setLegalType] = useState<(typeof LEGAL_TYPES)[number]["value"]>("IND");
   const [companyId, setCompanyId] = useState("");
 
-  async function authHeaders() {
-    const token = await getAuthToken();
-    return {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
+  async function sessionToken(refresh = false) {
+    return getAuthToken(refresh ? { refresh: true } : undefined);
+  }
+
+  async function fetchWithSession(input: string, init: RequestInit) {
+    const send = async (token: string | null) =>
+      fetch(input, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+    let token = await sessionToken();
+    if (!token) token = await sessionToken(true);
+    let res = await send(token);
+    if (res.status === 401) {
+      const refreshed = await sessionToken(true);
+      if (refreshed && refreshed !== token) res = await send(refreshed);
+    }
+    return res;
   }
 
   async function search(event: React.FormEvent) {
@@ -85,10 +100,9 @@ export function NamecheapDomains({
     setBusy("search");
     setError(null);
     try {
-      const token = await getAuthToken();
       const params = new URLSearchParams({ q: query, market });
-      const res = await fetch(`/api/website/domain/namecheap?${params.toString()}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      const res = await fetchWithSession(`/api/website/domain/namecheap?${params.toString()}`, {
+        method: "GET",
       });
       const json = (await res.json()) as { results?: DomainQuote[]; error?: string };
       if (!res.ok) throw new Error(json.error || "Could not search domains.");
@@ -120,9 +134,8 @@ export function NamecheapDomains({
     setBuying(domain);
     setError(null);
     try {
-      const res = await fetch("/api/website/domain/namecheap", {
+      const res = await fetchWithSession("/api/website/domain/namecheap", {
         method: "POST",
-        headers: await authHeaders(),
         body: JSON.stringify({
           action: "buy",
           domain,

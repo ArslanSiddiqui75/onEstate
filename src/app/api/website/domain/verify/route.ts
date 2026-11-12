@@ -24,7 +24,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid domain payload" }, { status: 400 });
   }
 
-  const profile = await resolveProfileFromRequest(request);
+  const profile = await resolveProfileFromRequest(
+    request,
+    typeof body === "object" && body && "accessToken" in body && typeof body.accessToken === "string"
+      ? body.accessToken
+      : null,
+  );
   const supabase = createServiceSupabaseClient();
   if (supabase && !profile) {
     return NextResponse.json({ error: "Sign in required" }, { status: 401 });
