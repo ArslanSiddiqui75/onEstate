@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultDialCode, isE164, toE164, toTelHref } from "@/lib/phone/e164";
+import { DIAL_CODES, defaultDialCode, isE164, toE164, toTelHref } from "@/lib/phone/e164";
 import { phoneLookupVariants } from "@/lib/messaging/service";
 import { getPasswordStrength, signupSchema, validateForm } from "@/lib/auth/validation";
 import {
@@ -43,6 +43,7 @@ describe("E.164 phones", () => {
     expect(toE164("0333 1234567", "+92")).toBe("+923331234567");
     expect(defaultDialCode("uk")).toBe("+44");
     expect(defaultDialCode("us")).toBe("+1");
+    expect(DIAL_CODES.map((row) => row.label)).not.toContain("Pakistan +92");
   });
 
   it("builds a tel: href for the device dialer", () => {

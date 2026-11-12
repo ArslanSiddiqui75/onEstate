@@ -3,7 +3,6 @@ import type { Market } from "@/types";
 export const DIAL_CODES = [
   { code: "+44", label: "UK +44" },
   { code: "+1", label: "US/CA +1" },
-  { code: "+92", label: "Pakistan +92" },
   { code: "+353", label: "Ireland +353" },
   { code: "+61", label: "Australia +61" },
   { code: "+971", label: "UAE +971" },
@@ -44,7 +43,7 @@ export function splitE164(raw: string): { dialCode: string; national: string } {
 
 /**
  * Compose a sendable number. A leading 0 is treated as a local trunk prefix
- * (0333… + Pakistan → +92333…). An already-international + or 00 wins over the picker.
+ * (07911… + UK → +447911…). An already-international + or 00 wins over the picker.
  */
 export function toE164(raw: string, dialCode: string): string {
   const trimmed = raw.trim();
