@@ -475,6 +475,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   const [dndContactIds, setDndContactIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const repoRef = useRef<WorkspaceRepository | null>(null);
+  const signingOutRef = useRef(false);
   const authMode: AppState["authMode"] = isSupabaseConfigured()
     ? "supabase"
     : "local";
@@ -565,10 +566,18 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           const { data } = supabase.auth.onAuthStateChange((event, session) => {
             if (cancelled) return;
             if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !session)) {
+              const intentional = signingOutRef.current;
+              signingOutRef.current = false;
+              const hadSession = repoRef.current !== null;
               repoRef.current = null;
               setUser(null);
               setOrg(null);
-              toast.error("Session expired. Please sign in again.");
+              if (!hadSession && !intentional) return;
+              if (intentional) {
+                toast.success("Signed out.");
+              } else {
+                toast.error("Session expired. Please sign in again.");
+              }
               return;
             }
             const needsHydration =
@@ -802,8 +811,18 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
-    if (repoRef.current) {
-      await repoRef.current.clearAuth();
+    signingOutRef.current = true;
+    try {
+      if (repoRef.current) {
+        await repoRef.current.clearAuth();
+      }
+    } catch (error) {
+      signingOutRef.current = false;
+      throw error;
+    }
+    if (authMode !== "supabase") {
+      signingOutRef.current = false;
+      toast.success("Signed out.");
     }
     // Session isolation: ending the org session also ends any platform
     // admin session that is active in this browser.
@@ -829,7 +848,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     setWebsite(null);
     setSocialAccounts([]);
     setSocialPosts([]);
-  }, []);
+  }, [authMode]);
 
   const setPlan = useCallback(
     async (plan: PlanId) => {
