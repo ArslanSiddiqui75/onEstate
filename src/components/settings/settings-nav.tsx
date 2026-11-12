@@ -26,6 +26,7 @@ export function SettingsSectionNav() {
   return (
     <SectionPillLinks
       label="Settings"
+      fit
       items={items.map((section) => ({ href: section.href, label: section.short }))}
       isActive={(href) => settingsSectionMatches(pathname, href)}
     />
