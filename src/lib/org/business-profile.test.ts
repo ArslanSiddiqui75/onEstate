@@ -82,6 +82,35 @@ describe("business profile", () => {
     expect(profile.notRegistered).toBe(false);
   });
 
+  it("keeps a written niche only when Other is selected", () => {
+    const other = normalizeBusinessProfile({
+      niche: "other",
+      nicheDetail: "  Holiday lets  ",
+    });
+    expect(other.nicheDetail).toBe("Holiday lets");
+
+    const listed = normalizeBusinessProfile({
+      niche: "lettings",
+      nicheDetail: "Holiday lets",
+    });
+    expect(listed.nicheDetail).toBe("");
+
+    const missing = validateBusinessProfile({
+      tradingName: "Harbour Homes",
+      niche: "other",
+    });
+    expect(missing.ok).toBe(false);
+
+    const saved = validateBusinessProfile({
+      tradingName: "Harbour Homes",
+      niche: "other",
+      nicheDetail: "Holiday lets",
+    });
+    expect(saved.ok).toBe(true);
+    if (!saved.ok) return;
+    expect(saved.value.nicheDetail).toBe("Holiday lets");
+  });
+
   it("clears registration fields when the business is not registered", () => {
     const saved = validateBusinessProfile({
       tradingName: "Harbour Homes",

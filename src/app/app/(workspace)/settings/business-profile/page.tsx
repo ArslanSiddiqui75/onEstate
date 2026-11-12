@@ -220,6 +220,17 @@ export default function BusinessProfileSettingsPage() {
                   </MenuSelect>
                 </label>
               </div>
+              {business.niche === "other" ? (
+                <label className="block space-y-1 text-sm">
+                  <FieldLabel>Specify niche</FieldLabel>
+                  <Input
+                    value={business.nicheDetail}
+                    onChange={(e) => patchBusiness({ nicheDetail: e.target.value })}
+                    placeholder="What does this brokerage do?"
+                    maxLength={80}
+                  />
+                </label>
+              ) : null}
               <label className="block space-y-1 text-sm">
                 <FieldLabel>Business email</FieldLabel>
                 <Input

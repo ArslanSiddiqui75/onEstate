@@ -106,6 +106,8 @@ export interface BusinessProfile {
   /** Custom / branded domain hostname (without protocol). */
   brandedDomain: string;
   niche: BusinessNiche;
+  /** Free text when niche is Other. Empty for every other niche. */
+  nicheDetail: string;
   currency: BusinessCurrency;
   businessType: BusinessType;
   industry: BusinessIndustry;
@@ -151,6 +153,7 @@ export const EMPTY_BUSINESS: BusinessProfile = {
   about: "",
   brandedDomain: "",
   niche: "",
+  nicheDetail: "",
   currency: "",
   businessType: "",
   industry: "",
@@ -227,6 +230,11 @@ function normalizeRegions(raw: unknown): OperationRegion[] {
 export function normalizeBusinessProfile(
   input: Partial<BusinessProfile> | null | undefined,
 ): BusinessProfile {
+  const niche = pick(
+    input?.niche,
+    BUSINESS_NICHES.map((o) => o.value),
+    "",
+  );
   return {
     tradingName: text(input?.tradingName, 120),
     address: text(input?.address, 160),
@@ -240,11 +248,8 @@ export function normalizeBusinessProfile(
       .toLowerCase()
       .replace(/^https?:\/\//i, "")
       .replace(/\/.*$/, ""),
-    niche: pick(
-      input?.niche,
-      BUSINESS_NICHES.map((o) => o.value),
-      "",
-    ),
+    niche,
+    nicheDetail: niche === "other" ? text(input?.nicheDetail, 80) : "",
     currency: pick(
       input?.currency,
       BUSINESS_CURRENCIES.map((o) => o.value),
@@ -295,6 +300,7 @@ function coreFilled(profile: BusinessProfile) {
     profile.about,
     profile.brandedDomain,
     profile.niche,
+    profile.nicheDetail,
     profile.currency,
     profile.businessType,
     profile.industry,
@@ -330,6 +336,14 @@ export function readBusinessProfile(raw: unknown): BusinessProfile | undefined {
   return businessProfileFilled(profile) ? profile : undefined;
 }
 
+export function businessNicheLabel(
+  profile: Pick<BusinessProfile, "niche" | "nicheDetail"> | undefined,
+) {
+  if (!profile?.niche) return "";
+  if (profile.niche === "other") return profile.nicheDetail.trim() || "Other";
+  return BUSINESS_NICHES.find((option) => option.value === profile.niche)?.label || "";
+}
+
 export function defaultCurrencyForMarket(market: "uk" | "us"): BusinessCurrency {
   return market === "us" ? "USD" : "GBP";
 }
@@ -344,6 +358,9 @@ export function validateBusinessProfile(
   const value = normalizeBusinessProfile(input);
   if (value.tradingName.length < 2) {
     return { ok: false, error: "Trading name must be at least 2 characters" };
+  }
+  if (value.niche === "other" && value.nicheDetail.length < 2) {
+    return { ok: false, error: "Specify the business niche." };
   }
   if (value.phone && !/^\+[1-9]\d{7,14}$/.test(value.phone)) {
     return { ok: false, error: "Add a business phone with the country code." };
