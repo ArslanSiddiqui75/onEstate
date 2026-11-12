@@ -14,7 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toast";
 import { PhoneField } from "@/components/crm/phone-field";
-import { businessProfileFilled } from "@/lib/org/business-profile";
+import { businessNicheLabel, businessProfileFilled } from "@/lib/org/business-profile";
 import { copyToClipboard } from "@/lib/utils";
 
 export default function AppSettingsPage() {
@@ -207,10 +207,7 @@ export default function AppSettingsPage() {
             <BusinessFact label="Trading name" value={org.business?.tradingName} />
             <BusinessFact label="Business email" value={org.business?.email} />
             <BusinessFact label="Website" value={org.business?.website} />
-            <BusinessFact
-              label="Niche"
-              value={org.business?.niche ? org.business.niche.replaceAll("_", " ") : undefined}
-            />
+            <BusinessFact label="Niche" value={businessNicheLabel(org.business) || undefined} />
             <BusinessFact label="Currency" value={org.business?.currency} />
             <BusinessFact
               label="Platform language"
