@@ -37,6 +37,12 @@ import type {
   LeadRoutingSettings,
 } from "@/types";
 import { isSupabaseConfigured, createBrowserSupabaseClient } from "@/lib/supabase/client";
+import {
+  isAccessTokenUsable,
+  readStoredAccessToken,
+  rememberAccessToken,
+  rememberedAccessToken,
+} from "@/lib/supabase/access-token";
 import { toast } from "@/components/ui/toast";
 import { findMatchingContact } from "@/lib/crm/contact-match";
 import { useBrand } from "@/components/brand/brand-provider";
@@ -394,8 +400,12 @@ interface AppState {
   createSocialPost: (
     post: Omit<SocialPost, "id" | "createdAt" | "orgId">,
   ) => Promise<string | undefined>;
-  /** Bearer token for the browser session; used by /api/social/* routes. Null outside Supabase mode. */
-  getAuthToken: () => Promise<string | null>;
+  /**
+   * Bearer token for the browser session; used by /api/social/* routes.
+   * Null outside Supabase mode. Pass `{ refresh: true }` after a 401 to
+   * exchange the refresh token before retrying.
+   */
+  getAuthToken: (options?: { refresh?: boolean }) => Promise<string | null>;
   /** Calls /api/social/publish for a post that already exists. Supabase mode only. */
   publishSocialPostNow: (postId: string) => Promise<{ ok: boolean; message: string }>;
   updateSocialPost: (
@@ -540,6 +550,14 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       try {
         if (authMode === "supabase") {
           const supabase = createBrowserSupabaseClient();
+          // Keep the saved session before hydrate. getUser() may try to refresh
+          // and, if that refresh fails, drop the stored token. Connect then has
+          // nothing to send and the API answers "Sign in required".
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          if (supabaseUrl && typeof window !== "undefined") {
+            const stored = readStoredAccessToken(window.localStorage, supabaseUrl);
+            if (stored) rememberAccessToken(stored);
+          }
           const hydrated = await hydrateSupabaseSession();
           if (cancelled) return;
           if (hydrated) {
@@ -564,6 +582,9 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           //    we don't have a repository yet.
           const { data } = supabase.auth.onAuthStateChange((event, session) => {
             if (cancelled) return;
+            // Store only. Do not call getSession/getUser here — this callback
+            // can run while the auth client is still initializing.
+            rememberAccessToken(session?.access_token ?? null);
             if (event === "SIGNED_OUT" || (event === "TOKEN_REFRESHED" && !session)) {
               repoRef.current = null;
               setUser(null);
@@ -873,18 +894,35 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     setUser((current) => ({ ...toAppUser(next), moduleAccess: next.moduleAccess ?? current?.moduleAccess }));
   }, []);
 
-  const getAuthToken = useCallback(async () => {
+  const getAuthToken = useCallback(async (options?: { refresh?: boolean }) => {
     if (authMode !== "supabase") return null;
+    if (!options?.refresh) {
+      const cached = rememberedAccessToken();
+      if (cached) return cached;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (supabaseUrl && typeof window !== "undefined") {
+        const stored = readStoredAccessToken(window.localStorage, supabaseUrl);
+        if (stored) {
+          rememberAccessToken(stored);
+          return stored;
+        }
+      }
+    }
+
     const supabase = createBrowserSupabaseClient();
-    // getSession() waits on the shared auth lock. If that lock is ever stuck
-    // (e.g. another tab hung mid-refresh), fail after 10s so callers surface
-    // an error instead of leaving the UI frozen on "Uploading…"/"Saving…".
+    // getSession() can stall on a stuck auth lock or a refresh that never
+    // returns. Fail after 10s so callers surface an error instead of leaving
+    // the UI frozen on "Uploading…"/"Saving…"/"Redirecting…".
     const result = await Promise.race([
-      supabase.auth.getSession(),
+      options?.refresh ? supabase.auth.refreshSession() : supabase.auth.getSession(),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000)),
     ]);
-    if (!result) return null;
-    return result.data.session?.access_token || null;
+    const token = result?.data.session?.access_token || null;
+    if (token && isAccessTokenUsable(token)) {
+      rememberAccessToken(token);
+      return token;
+    }
+    return null;
   }, [authMode]);
 
   useEffect(() => {
