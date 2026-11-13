@@ -550,6 +550,14 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       try {
         if (authMode === "supabase") {
           const supabase = createBrowserSupabaseClient();
+          // Keep the saved session before hydrate. getUser() may try to refresh
+          // and, if that refresh fails, drop the stored token. Connect then has
+          // nothing to send and the API answers "Sign in required".
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+          if (supabaseUrl && typeof window !== "undefined") {
+            const stored = readStoredAccessToken(window.localStorage, supabaseUrl);
+            if (stored) rememberAccessToken(stored);
+          }
           const hydrated = await hydrateSupabaseSession();
           if (cancelled) return;
           if (hydrated) {
@@ -891,6 +899,14 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     if (!options?.refresh) {
       const cached = rememberedAccessToken();
       if (cached) return cached;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (supabaseUrl && typeof window !== "undefined") {
+        const stored = readStoredAccessToken(window.localStorage, supabaseUrl);
+        if (stored) {
+          rememberAccessToken(stored);
+          return stored;
+        }
+      }
     }
 
     const supabase = createBrowserSupabaseClient();
@@ -905,17 +921,6 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
     if (token && isAccessTokenUsable(token)) {
       rememberAccessToken(token);
       return token;
-    }
-
-    if (!options?.refresh) {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      if (url && typeof window !== "undefined") {
-        const stored = readStoredAccessToken(window.localStorage, url);
-        if (stored) {
-          rememberAccessToken(stored);
-          return stored;
-        }
-      }
     }
     return null;
   }, [authMode]);

@@ -68,19 +68,25 @@ async function userFromToken(
   token: string,
   service: SupabaseClient | null,
 ): Promise<{ id: string; email: string } | null> {
-  if (service) {
-    const { data, error } = await service.auth.getUser(token);
-    if (!error && data.user?.id) {
-      return { id: data.user.id, email: String(data.user.email || "") };
-    }
-  }
-
   // Same check the browser already passed: anon key + the user access token.
-  // A service-role client that cannot validate the JWT must not look like
-  // "signed out" when Auth itself accepts the session.
+  // Do this before the service-role client. That client is created with the
+  // service key as its own Authorization header, and a failed getUser() there
+  // was treated as "signed out" for a session Auth itself accepts.
+  const fromAuth = await userFromAuthApi(token);
+  if (fromAuth) return fromAuth;
+
+  if (!service) return null;
+  const { data, error } = await service.auth.getUser(token);
+  if (error || !data.user?.id) return null;
+  return { id: data.user.id, email: String(data.user.email || "") };
+}
+
+async function userFromAuthApi(
+  token: string,
+): Promise<{ id: string; email: string } | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anon) return null;
+  if (!url || !anon || !token) return null;
   const res = await fetch(`${url.replace(/\/$/, "")}/auth/v1/user`, {
     headers: { apikey: anon, Authorization: `Bearer ${token}` },
     cache: "no-store",
@@ -107,23 +113,16 @@ async function loadProfile(
 ): Promise<ProfileRow | null> {
   if (!supabase) return null;
 
-  const full = await supabase
-    .from("profiles")
-    .select("id, org_id, role, module_access, organizations(plan, subscription_status)")
-    .eq("id", userId)
-    .maybeSingle();
-  if (full.data) return full.data as ProfileRow;
-  if (!full.error) return null;
-
-  // A missing column or a broken embed used to collapse into "Sign in required"
-  // even though the workspace had already loaded this same profile in the browser.
+  // Skip the organizations embed. A broken relationship or a missing column
+  // used to come back as "no profile", which Connect showed as Sign in required
+  // for a workspace the browser had already loaded.
   const basic = await supabase
     .from("profiles")
     .select("id, org_id, role, module_access")
     .eq("id", userId)
     .maybeSingle();
   let row = (basic.data as ProfileRow | null) ?? null;
-  if (basic.error) {
+  if (basic.error || !row) {
     const narrower = await supabase
       .from("profiles")
       .select("id, org_id, role")
