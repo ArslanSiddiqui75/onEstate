@@ -122,6 +122,51 @@ export interface BusinessProfile {
 export const DEFAULT_UNSUBSCRIBE_FOOTER =
   "If you no longer wish to receive these emails you may unsubscribe.";
 
+/** First word is the given name. Everything after it is the family name. */
+export function splitPersonName(name: string): { firstName: string; lastName: string } {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { firstName: "", lastName: "" };
+  return {
+    firstName: parts[0].slice(0, 80),
+    lastName: parts.slice(1).join(" ").slice(0, 80),
+  };
+}
+
+/**
+ * The person who creates the workspace is the authorised representative.
+ * Signup collects their name, work email, and phone. Job position is owner.
+ */
+export function authorizedRepFromSignup(input: {
+  name: string;
+  email: string;
+  phone?: string | null;
+}): BusinessAuthorizedRep {
+  const { firstName, lastName } = splitPersonName(input.name);
+  return normalizeRep({
+    firstName,
+    lastName,
+    email: input.email,
+    phone: input.phone || "",
+    jobPosition: "owner",
+  });
+}
+
+/** Fill a blank representative from signup. Leave a saved representative alone. */
+export function fillAuthorizedRepFromSignup(
+  profile: BusinessProfile,
+  signup: { name: string; email: string; phone?: string | null },
+): BusinessProfile {
+  const current = profile.authorizedRep;
+  const untouched =
+    !current.firstName &&
+    !current.lastName &&
+    !current.email &&
+    !current.phone &&
+    !current.jobPosition;
+  if (!untouched) return profile;
+  return { ...profile, authorizedRep: authorizedRepFromSignup(signup) };
+}
+
 export const EMPTY_AUTHORIZED_REP: BusinessAuthorizedRep = {
   firstName: "",
   lastName: "",

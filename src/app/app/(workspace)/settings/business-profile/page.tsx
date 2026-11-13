@@ -24,6 +24,7 @@ import {
   REGISTRATION_ID_TYPES,
   defaultCurrencyForMarket,
   defaultLanguageForMarket,
+  fillAuthorizedRepFromSignup,
   normalizeBusinessProfile,
   resolveUnsubscribeFooter,
   validateBusinessProfile,
@@ -70,8 +71,15 @@ export default function BusinessProfileSettingsPage() {
     if (!base.outboundLanguage) {
       base.outboundLanguage = defaultLanguageForMarket(market || "uk");
     }
+    if (user?.role === "owner" && user.name) {
+      return fillAuthorizedRepFromSignup(base, {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+      });
+    }
     return base;
-  }, [market, org?.business, org?.name]);
+  }, [market, org?.business, org?.name, user?.email, user?.name, user?.phone, user?.role]);
 
   const [business, setBusiness] = useState<BusinessProfile>(seeded);
   const [busy, setBusy] = useState<SectionBusy>(null);
