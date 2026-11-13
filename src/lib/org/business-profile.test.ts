@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  authorizedRepFromSignup,
   businessProfileFilled,
+  fillAuthorizedRepFromSignup,
   normalizeBusinessProfile,
   readBusinessProfile,
   resolveUnsubscribeFooter,
@@ -93,6 +95,45 @@ describe("business profile", () => {
     if (!saved.ok) return;
     expect(saved.value.registrationNumber).toBe("");
     expect(saved.value.registrationIdType).toBe("");
+  });
+
+  it("fills a blank authorised representative from signup", () => {
+    const rep = authorizedRepFromSignup({
+      name: "Jane Mary Smith",
+      email: "Jane@Brokerage.com",
+      phone: "+447700900123",
+    });
+    expect(rep).toMatchObject({
+      firstName: "Jane",
+      lastName: "Mary Smith",
+      email: "jane@brokerage.com",
+      phone: "+447700900123",
+      jobPosition: "owner",
+    });
+
+    const blank = normalizeBusinessProfile({});
+    const filled = fillAuthorizedRepFromSignup(blank, {
+      name: "Jane Smith",
+      email: "jane@brokerage.com",
+      phone: "+447700900123",
+    });
+    expect(filled.authorizedRep.firstName).toBe("Jane");
+    expect(filled.authorizedRep.lastName).toBe("Smith");
+
+    const saved = fillAuthorizedRepFromSignup(
+      normalizeBusinessProfile({
+        authorizedRep: {
+          firstName: "Ada",
+          lastName: "Broker",
+          email: "ada@harbour.example.com",
+          jobPosition: "broker",
+          phone: "+447700900999",
+        },
+      }),
+      { name: "Jane Smith", email: "jane@brokerage.com", phone: "+447700900123" },
+    );
+    expect(saved.authorizedRep.firstName).toBe("Ada");
+    expect(saved.authorizedRep.jobPosition).toBe("broker");
   });
 
   it("builds an unsubscribe footer with the trading name when missing", () => {

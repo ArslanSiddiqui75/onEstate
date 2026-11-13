@@ -1,3 +1,4 @@
+import { authorizedRepFromSignup, normalizeBusinessProfile } from "@/lib/org/business-profile";
 import type { Market, OrgMember, PlanId, Role } from "@/types";
 import { defaultSequences } from "@/lib/sequences/catalog";
 import {
@@ -202,6 +203,17 @@ export function createLocalIdentity(input: {
     plan: input.plan || "solo",
     market: input.market,
     onboardingCompleted: false,
+    ...(user.role === "owner"
+      ? {
+          business: normalizeBusinessProfile({
+            authorizedRep: authorizedRepFromSignup({
+              name: user.name,
+              email: user.email,
+              phone: user.phone,
+            }),
+          }),
+        }
+      : {}),
     ...(input.stripeCustomerId ? { stripeCustomerId: input.stripeCustomerId } : {}),
     ...(input.stripeSubscriptionId ? { stripeSubscriptionId: input.stripeSubscriptionId } : {}),
     ...(input.subscriptionStatus ? { subscriptionStatus: input.subscriptionStatus } : {}),
