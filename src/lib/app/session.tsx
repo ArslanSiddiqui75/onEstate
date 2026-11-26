@@ -68,6 +68,7 @@ import {
   findDevSeedAccount,
   isDevSeedEnabled,
 } from "@/lib/dev/seed-accounts";
+import { assertRoleNotUnderMaintenance } from "@/lib/admin/check-role-maintenance";
 import { setTenantPlan } from "@/lib/admin/registry";
 import { syncWorkspaceToPlatformRegistry } from "@/lib/admin/sync-workspace";
 import { prepareNewLead, hydrateLeadRouting, ownerId } from "@/lib/crm/routing";
@@ -543,9 +544,18 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           const hydrated = await hydrateSupabaseSession();
           if (cancelled) return;
           if (hydrated) {
-            const repo = createSupabaseRepository(hydrated);
-            repoRef.current = repo;
-            await applySnapshot(repo);
+            try {
+              await assertRoleNotUnderMaintenance(hydrated.user.role);
+              const repo = createSupabaseRepository(hydrated);
+              repoRef.current = repo;
+              await applySnapshot(repo);
+            } catch (err) {
+              await supabase.auth.signOut();
+              repoRef.current = null;
+              setUser(null);
+              setOrg(null);
+              if (err instanceof Error) toast.error(err.message);
+            }
           }
 
           // Register session expiry & refresh listener.
@@ -581,6 +591,13 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
                   if (cancelled || repoRef.current) return;
                   const refreshed = await hydrateSupabaseSession();
                   if (cancelled || !refreshed) return;
+                  try {
+                    await assertRoleNotUnderMaintenance(refreshed.user.role);
+                  } catch (err) {
+                    await supabase.auth.signOut();
+                    if (err instanceof Error) toast.error(err.message);
+                    return;
+                  }
                   const repo = createSupabaseRepository(refreshed);
                   repoRef.current = repo;
                   await applySnapshot(repo);
@@ -594,9 +611,18 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           if (auth) {
             const existing = loadWorkspace(auth.org.id);
             if (existing) {
-              const repo = createLocalRepository(existing);
-              repoRef.current = repo;
-              await applySnapshot(repo);
+              try {
+                await assertRoleNotUnderMaintenance(existing.user.role);
+                const repo = createLocalRepository(existing);
+                repoRef.current = repo;
+                await applySnapshot(repo);
+              } catch (err) {
+                await createLocalRepository(existing).clearAuth();
+                repoRef.current = null;
+                setUser(null);
+                setOrg(null);
+                if (err instanceof Error) toast.error(err.message);
+              }
             }
           }
         }
@@ -627,6 +653,12 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
           // Hydrate workspace after password login
           const hydrated = await hydrateSupabaseSession();
           if (hydrated) {
+            try {
+              await assertRoleNotUnderMaintenance(hydrated.user.role);
+            } catch (err) {
+              await supabase.auth.signOut();
+              throw err;
+            }
             const repo = createSupabaseRepository(hydrated);
             repoRef.current = repo;
             await applySnapshot(repo);
@@ -650,6 +682,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       if (isDevSeedEnabled()) {
         const seed = findDevSeedAccount(email, password);
         if (seed) {
+          await assertRoleNotUnderMaintenance(seed.role);
           const workspace = buildDevSeedWorkspace(seed, brand.market);
           saveWorkspace(workspace);
           const repo = createLocalRepository(workspace);
@@ -674,6 +707,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
         const existing =
           loadWorkspace(auth.org.id) || findLocalWorkspaceByEmail(email);
         if (existing && existing.org.id === auth.org.id) {
+          await assertRoleNotUnderMaintenance(existing.user.role);
           const repo = createLocalRepository(existing);
           repoRef.current = repo;
           await applySnapshot(repo);
@@ -682,6 +716,7 @@ export function AppSessionProvider({ children }: { children: ReactNode }) {
       }
 
       // Product path: signing in without an existing workspace creates a real empty org.
+      await assertRoleNotUnderMaintenance("owner");
       const identity = createLocalIdentity({
         email,
         name,

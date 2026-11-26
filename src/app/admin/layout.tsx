@@ -18,6 +18,7 @@ import {
   Users2,
   Menu,
   X,
+  Construction,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -42,6 +43,7 @@ const NAV = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/tickets", label: "Tickets", icon: Ticket },
   { href: "/admin/impersonate", label: "Impersonate", icon: UserCog },
+  { href: "/admin/maintenance", label: "Maintenance", icon: Construction },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
 ];
 
@@ -56,6 +58,7 @@ const NAV_ACCESS: Record<string, string[]> = {
     "/admin/tickets",
     "/admin/support",
     "/admin/impersonate",
+    "/admin/maintenance",
     "/admin/audit",
   ],
   billing_admin: ["/admin", "/admin/organizations", "/admin/subscriptions"],
@@ -134,6 +137,14 @@ const PAGES: Array<{
     title: "Impersonate",
     description: "Open a workspace as an active member. Audited and time-boxed.",
     icon: UserCog,
+  },
+  {
+    match: (p) => p.startsWith("/admin/maintenance"),
+    eyebrow: "Access",
+    title: "Maintenance",
+    description:
+      "Lock selected workspace user types out of sign-in while the platform is under maintenance.",
+    icon: Construction,
   },
   {
     match: (p) => p.startsWith("/admin/audit"),

@@ -26,6 +26,7 @@ Live: https://on-estate.vercel.app · Repo: `ArslanSiddiqui75/onEstate` (`main`)
 - **Business Profile** (`/app/settings/business-profile`) — trading/legal identity, regions, language, authorised representative, and email-compliance footer (stored on `organizations.business` jsonb).
 - **Portal HTTP** to Rightmove/Zoopla/MLS waits on commercial partner APIs (export-only today).
 - **Org switcher** — out of scope.
+- **Role maintenance** — super admin can lock selected workspace roles out of sign-in (`/admin/maintenance`). Blocked users see “Maintenance mode is on. Please try again later.”
 - Do not commit `supabase/.temp/` or unsolicited `.github/` noise unless asked.
 
 ---
@@ -96,7 +97,7 @@ Modules under `/app`: crm, listings, transactions, website, social, billing + te
 - Calls tab: `tel:` device dialer + log — **no** in-app WebRTC.
 - Website publish requires active/under-offer listings (UI, `saveWebsite`, and DB trigger agree); unpublished public URLs stay unavailable.
 - E-sign stays **simulated** until Dropbox Sign is wired end-to-end — a `DROPBOX_SIGN_API_KEY` alone does not mean live.
-- Apply on hosted (in order): through `20261104190000_messaging_compliance.sql` (multi-number + TCPA/PECR compliance).
+- Apply on hosted (in order): through `20261126100000_platform_settings.sql` (multi-number + TCPA/PECR compliance + platform settings / role maintenance).
 - Team invites use `/app/invite?token=…` (no Checkout). Owner signup still pays via Stripe.
 - Org + admin cookies can coexist until sign-out (sign-out clears both; overlap banner in app).
 - Twilio can send to many countries; PK inbound SMS is not reliable — use CRM **Simulate reply** in Conversations.
